@@ -7,7 +7,11 @@ import LoadingScreen from './components/ui/LoadingScreen'
 import WorkerLayout from './components/layout/WorkerLayout'
 import { AnimatedBackground } from './components/ui/AnimatedBackground'
 
+import Landing from './pages/Landing'
 import Login from './pages/worker/Login'
+import Register from './pages/worker/Register'
+import Onboarding from './pages/Onboarding'
+import PaymentSuccess from './pages/worker/PaymentSuccess'
 import OTP from './pages/worker/OTP'
 import ZoneSelect from './pages/worker/ZoneSelect'
 import RiskScore from './pages/worker/RiskScore'
@@ -20,6 +24,9 @@ import Profile from './pages/worker/Profile'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import Maintenance from './pages/Maintenance'
+
+import ClaimsList from './pages/worker/ClaimsList'
+import NotificationsPage from './pages/worker/NotificationsPage'
 
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ClaimsQueue from './pages/admin/ClaimsQueue'
@@ -44,7 +51,7 @@ function getNearestCity(lat, lng) {
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useWorkerStore((s) => s.isAuthenticated)
-  if (!isAuthenticated) return <Navigate to="/" replace />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
   return children
 }
 
@@ -60,8 +67,12 @@ function AppRoutes() {
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         {/* Public routes */}
-        <Route path="/" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
         <Route path="/otp" element={<PublicRoute><OTP /></PublicRoute>} />
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/onboarding" element={<Onboarding />} />
 
         {/* Protected worker routes — nested under WorkerLayout */}
         <Route
@@ -75,16 +86,13 @@ function AppRoutes() {
           <Route path="/risk-score"     element={<RiskScore />} />
           <Route path="/forecast"       element={<AIForecast />} />
           <Route path="/premium"        element={<Premium />} />
+          <Route path="/coverage"       element={<Premium />} />
           <Route path="/dashboard"      element={<Dashboard />} />
           <Route path="/claim/:id"      element={<ClaimStatus />} />
           <Route path="/payout-success" element={<PayoutSuccess />} />
           <Route path="/profile"        element={<Profile />} />
-          <Route path="/claims"         element={
-            <Maintenance
-              feature="Claims history"
-              eta="Live in Phase 2 — April 2026"
-            />
-          } />
+          <Route path="/claims"         element={<ClaimsList />} />
+          <Route path="/notifications"  element={<NotificationsPage />} />
         </Route>
 
         {/* Admin routes */}
@@ -97,7 +105,7 @@ function AppRoutes() {
         <Route path="/privacy" element={<Privacy />} />
 
         {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </AnimatePresence>
   )

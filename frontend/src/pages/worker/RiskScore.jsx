@@ -55,7 +55,8 @@ export default function RiskScore() {
 
   return (
     <motion.div
-      className="min-h-screen bg-white pb-28"
+      className="min-h-screen pb-28"
+      style={{ background: 'var(--bg-primary)' }}
       variants={pageVariants}
       initial="initial"
       animate="animate"
@@ -65,37 +66,37 @@ export default function RiskScore() {
 
       {/* Progress */}
       <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-        <div className="flex-1 h-[3px] bg-grey-200 rounded-full overflow-hidden mr-3">
+        <div className="flex-1 h-[3px] rounded-full overflow-hidden mr-3" style={{ background: 'var(--bg-tertiary)' }}>
           <div className="h-full bg-brand rounded-full" style={{ width: '66%' }} />
         </div>
-        <span className="text-[11px] text-[#9B9B9B] font-body flex-shrink-0">Step 2 of 3</span>
+        <span className="text-[11px] font-body flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Step 2 of 3</span>
       </div>
 
       <div className="px-4 mt-4">
         {/* Hero ring card */}
-        <div className="bg-white rounded-card shadow-card p-6 text-center">
+        <div className="rounded-card shadow-card p-6 text-center" style={{ background: 'var(--bg-card)' }}>
           <div className="flex justify-center">
             <RingScore score={score} />
           </div>
-          <h2 className="font-display font-bold text-[18px] text-[#0F0F0F] mt-2">
+          <h2 className="font-display font-bold text-[18px] mt-2" style={{ color: 'var(--text-primary)' }}>
             Low Risk Worker
           </h2>
-          <p className="font-body text-[14px] text-[#6B6B6B] mt-1">
+          <p className="font-body text-[14px] mt-1" style={{ color: 'var(--text-secondary)' }}>
             Your consistent activity earns you a ₹7/week discount
           </p>
 
           {/* Score breakdown */}
           <div className="mt-5 text-left">
-            <p className="text-[13px] font-semibold font-body text-[#0F0F0F] mb-3">
+            <p className="text-[13px] font-semibold font-body mb-3" style={{ color: 'var(--text-primary)' }}>
               Score breakdown
             </p>
             <div className="flex flex-col gap-3">
               {SCORE_ROWS.map((row) => (
                 <div key={row.label} className="flex items-center gap-3">
-                  <span className="text-[14px] font-body text-[#0F0F0F] w-36 flex-shrink-0">
+                  <span className="text-[14px] font-body w-36 flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
                     {row.label}
                   </span>
-                  <div className="flex-1 h-1 bg-grey-100 rounded-full overflow-hidden">
+                  <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-tertiary)' }}>
                     <motion.div
                       className="h-full rounded-full"
                       style={{ backgroundColor: row.color }}
@@ -120,18 +121,18 @@ export default function RiskScore() {
         <div className="mt-4 border-l-[3px] border-success bg-success-light rounded-r-card px-3.5 py-3">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={16} className="text-success flex-shrink-0" />
-            <p className="text-[14px] font-semibold font-body text-[#0F0F0F]">
+            <p className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>
               4 months of consistent activity
             </p>
           </div>
-          <p className="text-[13px] text-[#6B6B6B] font-body mt-1 pl-6">
+          <p className="text-[13px] font-body mt-1 pl-6" style={{ color: 'var(--text-secondary)' }}>
             2 claims in 6 months · No fraud flags
           </p>
         </div>
       </div>
 
       {/* Sticky bottom */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-grey-100 px-4 py-3 z-40">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-4 py-3 z-40" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)' }}>
         <Button onClick={() => navigate('/forecast')} fullWidth>
           See AI Disruption Forecast →
         </Button>

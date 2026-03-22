@@ -1,173 +1,241 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import {
-  ShieldCheck, Zap, Phone, MapPin, ArrowRight,
-} from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { LandingNav } from '../components/layout/LandingNav'
+import { LandingFooter } from '../components/layout/LandingFooter'
 
-const GradientBackground = () => (
-  <div style={{
-    position: 'fixed', inset: 0, zIndex: 0,
-    overflow: 'hidden', background: '#FAFAFA',
-  }}>
-    <motion.div
+// ── Video background for hero ──────────────────────────────────────────
+const VideoBackground = () => (
+  <div style={{ position: 'absolute', inset: 0, zIndex: 0, overflow: 'hidden' }}>
+    <video
+      autoPlay muted loop playsInline
       style={{
-        position: 'absolute', width: '70vw', height: '70vw',
-        maxWidth: 800, maxHeight: 800, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(217,119,87,0.18) 0%, transparent 65%)',
-        top: '-20%', right: '-15%',
+        position: 'absolute',
+        top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        minWidth: '100%', minHeight: '100%',
+        objectFit: 'cover', opacity: 0.35,
       }}
-      animate={{ x: [0,40,-20,30,0], y: [0,-30,20,-10,0], scale: [1,1.08,0.95,1.04,1] }}
-      transition={{ duration: 25, repeat: Infinity, ease: 'easeInOut' }}
-    />
-    <motion.div
-      style={{
-        position: 'absolute', width: '60vw', height: '60vw',
-        maxWidth: 700, maxHeight: 700, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(240,230,211,0.25) 0%, transparent 65%)',
-        bottom: '-10%', left: '-10%',
-      }}
-      animate={{ x: [0,-30,20,-10,0], y: [0,20,-30,15,0], scale: [1,0.96,1.06,0.98,1] }}
-      transition={{ duration: 30, repeat: Infinity, ease: 'easeInOut', delay: 8 }}
-    />
-    <motion.div
-      style={{
-        position: 'absolute', width: '50vw', height: '50vw',
-        maxWidth: 600, maxHeight: 600, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(217,119,87,0.08) 0%, transparent 70%)',
-        top: '35%', left: '25%',
-      }}
-      animate={{ x: [0,25,-15,10,0], y: [0,-15,25,-10,0] }}
-      transition={{ duration: 35, repeat: Infinity, ease: 'easeInOut', delay: 15 }}
-    />
+    >
+      <source
+        src="https://res.cloudinary.com/dqwm8wgg8/video/upload/v1774194675/m3wmgks3mlvhur17jybt.mp4"
+        type="video/mp4"
+      />
+    </video>
+    <div style={{
+      position: 'absolute', inset: 0,
+      background: 'linear-gradient(180deg, rgba(15,15,15,0.55) 0%, rgba(15,15,15,0.7) 60%, rgba(15,15,15,0.85) 100%)',
+    }} />
   </div>
 )
 
-const LandingNav = () => {
-  const navigate = useNavigate()
-  return (
-    <nav style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-      height: 60, display: 'flex', alignItems: 'center',
-      justifyContent: 'space-between', padding: '0 max(24px, 5vw)',
-      background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid rgba(0,0,0,0.06)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <ShieldCheck size={22} color="#D97757" />
-        <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 18, fontWeight: 800, color: '#0F0F0F' }}>
-          GuidePay
-        </span>
-      </div>
-      <div className="hidden md:flex" style={{ gap: 32 }}>
-        {['How it works', 'Coverage', 'For workers'].map(link => (
-          <a key={link} href={`#${link.toLowerCase().replace(/ /g, '-')}`}
-            style={{ fontSize: 14, color: '#6B6B6B', textDecoration: 'none', fontFamily: 'Inter, sans-serif', fontWeight: 500 }}>
-            {link}
-          </a>
-        ))}
-      </div>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <motion.button onClick={() => navigate('/login')} whileTap={{ scale: 0.97 }}
-          style={{ padding: '8px 16px', borderRadius: 10, border: '1px solid #E4E4E7', background: 'white', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F', cursor: 'pointer' }}>
-          Sign in
-        </motion.button>
-        <motion.button onClick={() => navigate('/login')} whileTap={{ scale: 0.97 }}
-          style={{ padding: '8px 20px', borderRadius: 10, border: 'none', background: '#D97757', fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: 'white', cursor: 'pointer' }}>
-          Get protected
-        </motion.button>
-      </div>
-    </nav>
-  )
-}
-
-const NEWS_ITEMS = [
-  { tag: 'Flood Alert', tagColor: '#2E90FA', title: 'IMD issues Red Alert for Hyderabad — 8 districts affected', source: 'Times of India', time: '2 hours ago', relevant: '32 GuidePay workers auto-covered' },
-  { tag: 'Platform Outage', tagColor: '#F79009', title: 'Zepto app down for 3 hours across Mumbai and Pune', source: 'Inc42', time: '5 hours ago', relevant: '847 payout claims processed automatically' },
-  { tag: 'Policy Update', tagColor: '#12B76A', title: 'IRDAI sandbox opens for parametric micro-insurance products', source: 'Financial Express', time: '1 day ago', relevant: 'GuidePay pursuing regulatory clearance' },
-  { tag: 'Gig Economy', tagColor: '#D97757', title: '12M delivery workers face income risk every monsoon season', source: 'NASSCOM Report', time: '3 days ago', relevant: 'The problem GuidePay solves' },
-  { tag: 'Climate', tagColor: '#F04438', title: 'India records 147% excess rainfall in 2024 monsoon season', source: 'IMD Bulletin', time: '1 week ago', relevant: 'Highest flood risk in 60 years' },
+// ── AI News data ───────────────────────────────────────────────────────
+const AI_NEWS = [
+  { tag: '🌊 Flood',      color: '#2E90FA', title: 'IMD Red Alert — Hyderabad flooding',           source: 'IMD SACHET',    time: 'Live',      impact: '32 workers auto-covered' },
+  { tag: '📱 Outage',     color: '#F79009', title: 'Zepto app down — Mumbai zone',                 source: 'Downdetector',  time: '2h ago',    impact: '18 payout claims processed' },
+  { tag: '🚫 Curfew',     color: '#7C3AED', title: 'Section 144 — North Bengaluru',               source: 'District Admin', time: '5h ago',    impact: '9 workers covered' },
+  { tag: '🌧️ Alert',      color: '#2E90FA', title: 'Orange alert — Chennai coastal zones',         source: 'IMD SACHET',    time: '8h ago',    impact: '14 workers pre-covered' },
+  { tag: '⚡ Outage',     color: '#F79009', title: 'Swiggy partial outage — Delhi',               source: 'Downdetector',  time: '12h ago',   impact: 'Monitoring active' },
+  { tag: '🔬 Research',   color: '#D97757', title: '12M gig workers face zero income protection', source: 'NASSCOM 2024',  time: '3 days ago', impact: 'The problem we solve' },
 ]
 
-const NewsCarousel = () => (
-  <div style={{ overflow: 'hidden', width: '100%' }}>
+const NewsCard = ({ item }) => (
+  <div style={{
+    width: 260, flexShrink: 0,
+    background: 'white', borderRadius: 16,
+    padding: '16px 18px',
+    boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
+    border: '1px solid #F4F4F5',
+  }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+      <span style={{
+        fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+        color: item.color, background: `${item.color}15`,
+        padding: '3px 8px', borderRadius: 999,
+      }}>{item.tag}</span>
+      <span style={{ fontSize: 10, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>{item.time}</span>
+    </div>
+    <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F', margin: '0 0 8px', lineHeight: 1.4 }}>{item.title}</p>
+    <p style={{ fontSize: 11, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: '0 0 10px' }}>{item.source}</p>
+    <div style={{ background: '#FDF1ED', borderRadius: 8, padding: '6px 10px', display: 'flex', gap: 6 }}>
+      <span style={{ fontSize: 10 }}>🛡️</span>
+      <p style={{ fontSize: 11, color: '#B85C3A', fontFamily: 'Inter, sans-serif', fontWeight: 600, margin: 0 }}>{item.impact}</p>
+    </div>
+  </div>
+)
+
+const NewsRow = ({ items, direction = -1 }) => (
+  <div style={{ overflow: 'hidden', marginBottom: 16 }}>
     <motion.div
       style={{ display: 'flex', gap: 16, width: 'max-content' }}
-      animate={{ x: ['0%', '-50%'] }}
-      transition={{ duration: 30, repeat: Infinity, ease: 'linear' }}
+      animate={{ x: direction === -1 ? ['0%', '-50%'] : ['-50%', '0%'] }}
+      transition={{ duration: 35, repeat: Infinity, ease: 'linear' }}
     >
-      {[...NEWS_ITEMS, ...NEWS_ITEMS].map((item, i) => (
-        <div key={i} style={{
-          width: 280, flexShrink: 0, background: 'white', borderRadius: 14,
-          padding: 16, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #F4F4F5',
-        }}>
-          <span style={{
-            fontSize: 10, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-            color: item.tagColor, background: `${item.tagColor}18`,
-            padding: '3px 8px', borderRadius: 999, display: 'inline-block', marginBottom: 8,
-          }}>{item.tag}</span>
-          <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F', lineHeight: 1.4, margin: '0 0 8px' }}>{item.title}</p>
-          <p style={{ fontSize: 11, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: '0 0 8px' }}>{item.source} · {item.time}</p>
-          <div style={{ background: '#FDF1ED', borderRadius: 8, padding: '6px 10px', display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-            <ShieldCheck size={12} color="#D97757" style={{ flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 11, color: '#B85C3A', fontFamily: 'Inter, sans-serif', fontWeight: 500, margin: 0, lineHeight: 1.3 }}>{item.relevant}</p>
-          </div>
-        </div>
-      ))}
+      {[...items, ...items].map((item, i) => <NewsCard key={i} item={item} />)}
     </motion.div>
   </div>
 )
 
+// ── Pricing plans ──────────────────────────────────────────────────────
+const PLANS = [
+  {
+    name: 'Basic', price: 49, zone: 'Low risk zone', popular: false,
+    features: ['Up to ₹600/week coverage', 'IMD flood trigger', 'Platform outage trigger', 'Govt curfew trigger', 'UPI instant payout', 'AI 24h flood forecast', 'Basic risk score'],
+    cta: 'Get Basic',
+  },
+  {
+    name: 'Standard', price: 58, zone: 'Medium risk zone', popular: true,
+    features: ['Up to ₹600/week coverage', 'All 3 triggers included', 'UPI instant payout < 2hrs', 'AI 24h flood forecast', 'Worker risk score tracking', 'Activity verification', 'Priority claim review', 'Flood alert notifications'],
+    cta: 'Get Standard →',
+  },
+  {
+    name: 'Premium', price: 69, zone: 'High risk zone', popular: false,
+    features: ['Up to ₹600/week coverage', 'All 3 triggers included', 'UPI instant payout < 1hr', 'AI 7-day forecast', 'Auto coverage extension', 'Priority fraud protection', 'Dedicated claim tracking', 'WhatsApp alerts', '24/7 support priority'],
+    cta: 'Get Premium',
+  },
+]
+
+// ── Main Landing ───────────────────────────────────────────────────────
 const Landing = () => {
   const navigate = useNavigate()
 
   return (
-    <div style={{ minHeight: '100vh', position: 'relative', background: 'transparent' }}>
-      <GradientBackground />
+    <div style={{ minHeight: '100vh', background: '#FAFAFA' }}>
       <LandingNav />
 
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      {/* ── HERO ── */}
+      <section style={{
+        position: 'relative', minHeight: '100vh',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        textAlign: 'center', padding: '100px max(20px, 5vw) 80px',
+        overflow: 'hidden',
+        background: 'linear-gradient(135deg, #1a0a00 0%, #0F0F0F 50%, #0a0a1a 100%)',
+      }}>
+        <VideoBackground />
 
-        {/* HERO */}
-        <section style={{
-          minHeight: '100vh', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          textAlign: 'center', padding: '100px max(20px, 5vw) 60px',
-        }}>
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#FDF1ED', border: '1px solid rgba(217,119,87,0.3)', borderRadius: 999, padding: '6px 16px', marginBottom: 28 }}>
-            <div style={{ width: 6, height: 6, borderRadius: 999, background: '#12B76A' }} />
-            <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#B85C3A' }}>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: 900, width: '100%' }}>
+          {/* LIVE badge */}
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'rgba(255,255,255,0.15)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              borderRadius: 999, padding: '6px 16px 6px 8px',
+              marginBottom: 28,
+            }}
+          >
+            <span style={{
+              background: '#12B76A', color: 'white',
+              fontSize: 10, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+              padding: '2px 8px', borderRadius: 999, letterSpacing: '0.5px',
+            }}>LIVE</span>
+            <span style={{ fontSize: 13, fontFamily: 'Inter, sans-serif', fontWeight: 500, color: 'white' }}>
               Guidewire DEVTrails 2026 · Team SentinelX
             </span>
           </motion.div>
 
-          <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 25 }}
-            style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(36px, 7vw, 72px)', fontWeight: 800, color: '#0F0F0F', lineHeight: 1.1, letterSpacing: -2, maxWidth: 800, margin: '0 auto 20px' }}>
-            Income protection for{' '}
-            <span style={{ color: '#D97757' }}>India's delivery workers</span>
+          {/* Headline */}
+          <motion.h1
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 25 }}
+            style={{
+              fontFamily: 'Bricolage Grotesque, sans-serif',
+              fontSize: 'clamp(40px, 7vw, 80px)',
+              fontWeight: 800, color: 'white',
+              lineHeight: 1.05, letterSpacing: -2,
+              maxWidth: 900, margin: '0 auto 24px',
+              textShadow: '0 2px 40px rgba(0,0,0,0.3)',
+            }}
+          >
+            When it floods, you<br />
+            <span style={{
+              background: 'linear-gradient(135deg, #FFD700, #FFA500)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}>
+              still get paid.
+            </span>
           </motion.h1>
 
-          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-            style={{ fontSize: 'clamp(16px, 2.5vw, 20px)', color: '#6B6B6B', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, maxWidth: 560, margin: '0 auto 40px' }}>
+          {/* Sub */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            style={{
+              fontSize: 'clamp(16px, 2.5vw, 20px)',
+              color: 'rgba(255,255,255,0.8)',
+              fontFamily: 'Inter, sans-serif', lineHeight: 1.6,
+              maxWidth: 540, margin: '0 auto 40px', fontWeight: 400,
+            }}
+          >
+            Parametric income insurance for India's 12 million delivery workers.
             Auto-pays when floods, outages, or curfews stop you from earning.
-            <strong style={{ color: '#0F0F0F' }}> Zero claims. Zero paperwork.</strong>
           </motion.p>
 
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}
-            style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 60 }}>
-            <motion.button onClick={() => navigate('/login')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              style={{ padding: '14px 28px', borderRadius: 12, border: 'none', background: '#D97757', color: 'white', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(217,119,87,0.35)' }}>
+          {/* CTAs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center' }}
+          >
+            <motion.button
+              onClick={() => navigate('/register')}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                padding: '15px 32px', borderRadius: 12, border: 'none',
+                background: 'linear-gradient(135deg, #D97757, #B85C3A)',
+                color: 'white', fontSize: 16, fontWeight: 700,
+                fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+                boxShadow: '0 4px 24px rgba(217,119,87,0.45)',
+              }}
+            >
               Get protected for ₹49/week <ArrowRight size={18} />
             </motion.button>
-            <motion.button onClick={() => navigate('/login')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              style={{ padding: '14px 28px', borderRadius: 12, border: '1.5px solid #E4E4E7', background: 'white', color: '#0F0F0F', fontSize: 16, fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer' }}>
+            <motion.button
+              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                padding: '15px 32px', borderRadius: 12,
+                border: '1.5px solid rgba(255,255,255,0.3)',
+                background: 'rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(8px)',
+                color: 'white', fontSize: 16, fontWeight: 600,
+                fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+              }}
+            >
               See how it works
             </motion.button>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
-            style={{ display: 'flex', gap: 'clamp(24px, 5vw, 64px)', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {/* Trust signals */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap', marginTop: 32 }}
+          >
+            {['🔒 UPI instant payout', '⚡ Under 2 hours', '📋 Zero claims to file'].map(t => (
+              <span key={t} style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontFamily: 'Inter, sans-serif' }}>{t}</span>
+            ))}
+          </motion.div>
+
+          {/* Stats */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+            style={{ display: 'flex', gap: 'clamp(24px, 5vw, 64px)', flexWrap: 'wrap', justifyContent: 'center', marginTop: 48 }}
+          >
             {[
               { value: '12M+', label: 'Workers uninsured' },
               { value: '₹4,200Cr', label: 'Annual income lost' },
@@ -175,170 +243,367 @@ const Landing = () => {
               { value: '₹0', label: 'Claims to file' },
             ].map((stat, i) => (
               <div key={i} style={{ textAlign: 'center' }}>
-                <p style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 800, color: '#0F0F0F', margin: 0 }}>{stat.value}</p>
-                <p style={{ fontSize: 13, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: '4px 0 0' }}>{stat.label}</p>
+                <p style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(24px, 3vw, 32px)', fontWeight: 800, color: 'white', margin: 0 }}>{stat.value}</p>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', margin: '4px 0 0' }}>{stat.label}</p>
               </div>
             ))}
           </motion.div>
-        </section>
+        </div>
+      </section>
 
-        {/* NEWS */}
-        <section style={{ padding: '40px 0', background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(8px)' }}>
-          <p style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#9B9B9B', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 20 }}>
-            Why this matters — latest news
-          </p>
-          <NewsCarousel />
-        </section>
-
-        {/* PROBLEM + SOLUTION */}
-        <section id="how-it-works" style={{ padding: 'clamp(60px, 8vw, 100px) max(20px, 8vw)', maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 32, alignItems: 'center', marginBottom: 80 }}>
-            <div>
-              <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '2px', textTransform: 'uppercase', display: 'block', marginBottom: 16 }}>The Problem</span>
-              <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, color: '#0F0F0F', lineHeight: 1.15, letterSpacing: -1, marginBottom: 20 }}>
-                Ravi loses ₹640 every time it floods. With zero recourse.
-              </h2>
-              <p style={{ fontSize: 16, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', lineHeight: 1.7, marginBottom: 24 }}>
-                Ravi Kumar, 27, delivers for Zepto in Kondapur, Hyderabad. When IMD issues a Red Alert, platforms suspend operations. Ravi loses an entire day's income — ₹640 — with no claim to file.
-              </p>
-              {['20–30% monthly income lost during monsoon', 'Zero parametric insurance products exist', 'No platform takes responsibility', '₹4,200 crore in uninsured losses annually'].map((point, i) => (
-                <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
-                  <div style={{ width: 20, height: 20, borderRadius: 999, background: '#FEF3F2', border: '1px solid rgba(240,68,56,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}>
-                    <span style={{ fontSize: 10, color: '#F04438' }}>✕</span>
-                  </div>
-                  <p style={{ fontSize: 14, color: '#0F0F0F', fontFamily: 'Inter, sans-serif', margin: 0, lineHeight: 1.5 }}>{point}</p>
-                </div>
-              ))}
-            </div>
-
-            <motion.div whileHover={{ y: -4 }} style={{ background: 'white', borderRadius: 20, padding: 28, boxShadow: '0 8px 40px rgba(0,0,0,0.1)', border: '1px solid #F4F4F5' }}>
-              <div style={{ width: 56, height: 56, borderRadius: 999, background: '#FDF1ED', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 28 }}>🛵</div>
-              <h3 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 20, fontWeight: 700, color: '#0F0F0F', marginBottom: 4 }}>Ravi Kumar, 27</h3>
-              <p style={{ fontSize: 13, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <MapPin size={12} /> Kondapur, Hyderabad · Zepto + Swiggy
-              </p>
-              {[
-                { label: 'Daily income', value: '₹800' },
-                { label: 'Lost per flood day', value: '₹640', danger: true },
-                { label: 'Insurance coverage', value: '₹0', danger: true },
-                { label: 'Recourse available', value: 'None', danger: true },
-              ].map((row, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: i < 3 ? '1px solid #F4F4F5' : 'none' }}>
-                  <span style={{ fontSize: 13, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>{row.label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Bricolage Grotesque, sans-serif', color: row.danger ? '#F04438' : '#0F0F0F' }}>{row.value}</span>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-
-          {/* Solution cards */}
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '2px', textTransform: 'uppercase', display: 'block', marginBottom: 16 }}>The Solution</span>
-            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 800, color: '#0F0F0F', lineHeight: 1.15, letterSpacing: -1, maxWidth: 600, margin: '0 auto 16px' }}>
-              Auto-pays before Ravi even knows the event happened.
+      {/* ── PROBLEM SECTION — dark ── */}
+      <section style={{ background: '#0F0F0F', padding: 'clamp(80px,10vw,120px) max(24px,8vw)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            style={{ marginBottom: 64 }}
+          >
+            <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+              The problem
+            </p>
+            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(32px,5vw,56px)', fontWeight: 800, color: 'white', letterSpacing: -1.5, lineHeight: 1.1, maxWidth: 700, margin: 0 }}>
+              12 million workers.
+              <span style={{ color: '#6B6B6B' }}> Zero protection.</span>
             </h2>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+          </motion.div>
+
+          {/* Stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 2, marginBottom: 80 }}>
             {[
-              { icon: '🌊', title: 'Flood Alert', desc: 'IMD Red/Orange alert in your zone triggers 100% weekly payout automatically.', stat: '100% payout' },
-              { icon: '📱', title: 'Platform Outage', desc: 'Zepto, Swiggy, Blinkit down for 2+ hours — 75% payout, no claim needed.', stat: '75% payout' },
-              { icon: '🚫', title: 'Govt Curfew', desc: 'Section 144 or lockdown in your area — full coverage, verified by admin API.', stat: '100% payout' },
-              { icon: '⚡', title: 'Under 2 Hours', desc: 'From trigger detected to UPI credit — faster than any insurance in India.', stat: '< 2hr pay' },
-            ].map((card, i) => (
-              <motion.div key={i} whileHover={{ y: -4 }} style={{ background: 'white', borderRadius: 16, padding: 24, boxShadow: '0 2px 16px rgba(0,0,0,0.06)', border: '1px solid #F4F4F5' }}>
-                <span style={{ fontSize: 32 }}>{card.icon}</span>
-                <h3 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 18, fontWeight: 700, color: '#0F0F0F', margin: '12px 0 8px' }}>{card.title}</h3>
-                <p style={{ fontSize: 13, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: '0 0 16px' }}>{card.desc}</p>
-                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', background: '#FDF1ED', padding: '4px 12px', borderRadius: 999 }}>{card.stat}</span>
+              { number: '12M+',     label: 'Uninsured workers',    sub: 'Across Zepto, Swiggy, Blinkit, Amazon', color: '#D97757', bg: 'rgba(217,119,87,0.08)', r: '16px 0 0 16px' },
+              { number: '₹640',     label: 'Lost per flood day',   sub: 'Average daily income wiped out',          color: '#F04438', bg: 'rgba(240,68,56,0.08)',  r: 0 },
+              { number: '₹4,200Cr', label: 'Annual income lost',   sub: 'Uninsured exposure across India',         color: '#F79009', bg: 'rgba(247,144,9,0.08)',  r: 0 },
+              { number: '0',        label: 'Products exist',       sub: 'No parametric insurance for gig workers', color: '#9B9B9B', bg: 'rgba(155,155,155,0.08)', r: '0 16px 16px 0' },
+            ].map((stat, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ background: stat.bg, borderColor: `${stat.color}30` }}
+                style={{
+                  padding: 32,
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: stat.r,
+                  transition: 'all 0.2s',
+                }}
+              >
+                <p style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 52, fontWeight: 800, color: stat.color, margin: '0 0 8px', letterSpacing: -2, lineHeight: 1 }}>{stat.number}</p>
+                <p style={{ fontSize: 16, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: 'white', margin: '0 0 6px' }}>{stat.label}</p>
+                <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter, sans-serif', margin: 0, lineHeight: 1.5 }}>{stat.sub}</p>
               </motion.div>
             ))}
           </div>
-        </section>
 
-        {/* HOW IT WORKS */}
-        <section id="coverage" style={{ padding: 'clamp(60px, 8vw, 100px) max(20px, 8vw)', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(8px)' }}>
-          <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center', marginBottom: 48 }}>
-            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1, marginBottom: 16 }}>How GuidePay works</h2>
-          </div>
-          <div style={{ maxWidth: 600, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {/* Ravi's story */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            style={{
+              background: 'linear-gradient(135deg, #1a0a00, #0F0F0F)',
+              border: '1px solid rgba(217,119,87,0.2)',
+              borderRadius: 20, padding: 'clamp(32px,5vw,56px)',
+              position: 'relative', overflow: 'hidden',
+            }}
+          >
+            <div style={{ position: 'absolute', top: 20, right: 32, fontSize: 180, fontFamily: 'Georgia', color: 'rgba(217,119,87,0.05)', lineHeight: 1, userSelect: 'none' }}>"</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 32, alignItems: 'center', position: 'relative', zIndex: 1 }}>
+              <div style={{ width: 72, height: 72, borderRadius: 999, background: 'linear-gradient(135deg, #D97757, #B85C3A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 36, flexShrink: 0 }}>🛵</div>
+              <div>
+                <p style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(18px,3vw,26px)', fontWeight: 700, color: 'white', lineHeight: 1.4, margin: '0 0 16px' }}>
+                  "July 2024. IMD issues Red Alert. Zepto suspends ops. I lose ₹640 in one day with zero recourse."
+                </p>
+                <p style={{ fontSize: 14, fontFamily: 'Inter, sans-serif', color: 'rgba(255,255,255,0.5)', margin: 0 }}>
+                  Ravi Kumar, 27 · Delivery partner · Kondapur, Hyderabad
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── SOLUTION — bento grid ── */}
+      <section id="coverage" style={{ background: 'white', padding: 'clamp(80px,10vw,120px) max(24px,8vw)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            style={{ textAlign: 'center', marginBottom: 64 }}
+          >
+            <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+              The solution
+            </p>
+            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(32px,5vw,52px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1.5, lineHeight: 1.1, marginBottom: 16 }}>
+              Auto-pays before Ravi<br />knows it happened.
+            </h2>
+            <p style={{ fontSize: 18, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+              GuidePay monitors 24/7. Detects. Verifies. Pays. Zero action needed from you.
+            </p>
+          </motion.div>
+
+          {/* Bento grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 16 }}>
+
+            {/* Large left — payout flow */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              whileHover={{ y: -4 }}
+              style={{ gridColumn: 'span 7', background: '#0F0F0F', borderRadius: 20, padding: 36, overflow: 'hidden', position: 'relative' }}
+            >
+              <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 12 }}>Zero-touch payout flow</p>
+              <h3 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 28, fontWeight: 800, color: 'white', marginBottom: 8, letterSpacing: -0.5 }}>₹600 in 2 hours.<br />No claim filed.</h3>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', fontFamily: 'Inter, sans-serif', marginBottom: 32, lineHeight: 1.5 }}>From flood alert to UPI credit — fully automated.</p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {[
+                  { label: 'Trigger detected',   sub: 'IMD Red Alert · Kondapur', time: '2:19 PM', done: true },
+                  { label: 'Activity verified',  sub: 'Last order 38 min ago',    time: '2:20 PM', done: true },
+                  { label: 'Fraud check passed', sub: 'Score 0.04 · Auto approved', time: '2:21 PM', done: true },
+                  { label: '₹600 to your UPI',  sub: 'ravi.kumar@okaxis',         time: '4:16 PM', done: false, active: true },
+                ].map((step, i) => (
+                  <div key={i} style={{ display: 'flex', gap: 14, paddingBottom: 16, position: 'relative' }}>
+                    {i < 3 && <div style={{ position: 'absolute', left: 11, top: 24, bottom: 0, width: 1, background: step.done ? 'rgba(18,183,106,0.4)' : 'rgba(255,255,255,0.08)' }} />}
+                    <div style={{ width: 24, height: 24, borderRadius: 999, background: step.done ? '#12B76A' : step.active ? '#D97757' : 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}>
+                      {step.done ? <span style={{ fontSize: 11, color: 'white' }}>✓</span> : step.active ? (
+                        <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 1, repeat: Infinity }} style={{ width: 8, height: 8, borderRadius: 999, background: 'white' }} />
+                      ) : null}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: step.active ? '#D97757' : step.done ? 'white' : 'rgba(255,255,255,0.3)', margin: '0 0 2px' }}>{step.label}</p>
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif' }}>{step.time}</span>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter, sans-serif', margin: 0 }}>{step.sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Right top — Premium pricing */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              whileHover={{ y: -4 }}
+              style={{ gridColumn: 'span 5', background: '#FDF1ED', borderRadius: 20, padding: 28, display: 'flex', flexDirection: 'column' }}
+            >
+              <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: 16 }}>Weekly premium</p>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 8 }}>
+                <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 72, fontWeight: 800, color: '#0F0F0F', letterSpacing: -3, lineHeight: 1 }}>₹49</span>
+                <span style={{ fontSize: 16, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>/week</span>
+              </div>
+              <p style={{ fontSize: 14, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', margin: '0 0 20px', flex: 1, lineHeight: 1.6 }}>
+                Behavior-based pricing. Active workers get up to 15% discount.
+              </p>
+              <div style={{ background: 'white', borderRadius: 12, padding: '12px 14px' }}>
+                <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: '0 0 4px' }}>Coverage cap</p>
+                <p style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 24, fontWeight: 800, color: '#D97757', margin: 0 }}>₹600 / week</p>
+              </div>
+            </motion.div>
+
+            {/* Bottom row — 3 trigger cards */}
             {[
-              { step: '01', title: 'Sign up with your phone', desc: 'Google login or OTP — no documents, no paperwork. Done in 2 minutes.', icon: Phone },
-              { step: '02', title: 'Set your delivery zone', desc: 'We detect your location and geofence a 5km coverage radius around your zone.', icon: MapPin },
-              { step: '03', title: 'Pay ₹49–69/week', desc: 'Weekly premium based on your zone flood risk and delivery reliability score.', icon: ShieldCheck },
-              { step: '04', title: 'Get paid automatically', desc: 'When a trigger fires, we verify you were working and UPI credit hits within 2 hours.', icon: Zap },
-            ].map((item, i) => {
-              const Icon = item.icon
-              return (
-                <div key={i} style={{ display: 'flex', gap: 20, paddingBottom: 32, position: 'relative' }}>
-                  {i < 3 && <div style={{ position: 'absolute', left: 19, top: 44, bottom: 0, width: 1, background: '#E4E4E7' }} />}
-                  <div style={{ width: 40, height: 40, borderRadius: 999, background: '#FDF1ED', border: '2px solid #D97757', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}>
-                    <Icon size={16} color="#D97757" />
-                  </div>
-                  <div style={{ paddingTop: 8 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '1px', margin: '0 0 4px' }}>STEP {item.step}</p>
-                    <h3 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 18, fontWeight: 700, color: '#0F0F0F', margin: '0 0 8px' }}>{item.title}</h3>
-                    <p style={{ fontSize: 14, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', lineHeight: 1.6, margin: 0 }}>{item.desc}</p>
-                  </div>
-                </div>
-              )
-            })}
+              { icon: '🌊', title: 'IMD Flood Alerts',    desc: 'Official govt source. Red/Orange alert in your zone = 100% payout.',                    bg: '#EFF8FF', iconBg: '#DBEAFE' },
+              { icon: '📱', title: 'Platform Outages',    desc: 'Zepto down? Swiggy offline? Dual-verified via Downdetector + status API.',              bg: '#FFFAEB', iconBg: '#FEF3C7' },
+              { icon: '🚫', title: 'Govt Curfews',        desc: 'Section 144 in your area. District admin API + news verification.',                      bg: '#F0FDF4', iconBg: '#DCFCE7' },
+            ].map((card, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                whileHover={{ y: -4 }}
+                style={{ gridColumn: 'span 4', background: card.bg, borderRadius: 20, padding: 24 }}
+              >
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: card.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, marginBottom: 16 }}>{card.icon}</div>
+                <h3 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 18, fontWeight: 700, color: '#0F0F0F', marginBottom: 8 }}>{card.title}</h3>
+                <p style={{ fontSize: 13, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', margin: 0, lineHeight: 1.5 }}>{card.desc}</p>
+              </motion.div>
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* FOR WORKERS */}
-        <section id="for-workers" style={{ padding: 'clamp(60px, 8vw, 100px) max(20px, 8vw)', maxWidth: 1100, margin: '0 auto' }}>
+      {/* ── HOW IT WORKS — 5 steps ── */}
+      <section id="how-it-works" style={{ background: '#FAFAFA', padding: 'clamp(80px,10vw,120px) max(24px,8vw)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 64 }}>
+            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(32px,5vw,52px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1.5 }}>
+              From sign-up to payout<br />in minutes.
+            </h2>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 0, position: 'relative' }}>
+            {/* Connector line */}
+            <div className="hidden md:block" style={{ position: 'absolute', top: 40, left: '10%', right: '10%', height: 1, background: 'linear-gradient(90deg, #D97757, #B85C3A)', zIndex: 0 }} />
+
+            {[
+              { step: '01', emoji: '📱', title: 'Sign up',     desc: 'Google login. No documents. 2 minutes.' },
+              { step: '02', emoji: '📍', title: 'Set your zone', desc: 'GPS auto-detects your delivery area.' },
+              { step: '03', emoji: '💳', title: 'Pay ₹49/week', desc: 'UPI auto-debit every Sunday.' },
+              { step: '04', emoji: '🤖', title: 'We monitor',  desc: 'AI checks IMD + platforms 24/7.' },
+              { step: '05', emoji: '⚡', title: 'Auto-payout', desc: '₹600 to UPI in under 2 hours.' },
+            ].map((step, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.12 }}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 16px 32px', position: 'relative', zIndex: 1 }}
+              >
+                <div style={{ width: 80, height: 80, borderRadius: 999, background: 'white', border: '2px solid #D97757', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, marginBottom: 20, boxShadow: '0 4px 24px rgba(217,119,87,0.15)' }}>
+                  {step.emoji}
+                </div>
+                <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '2px', margin: '0 0 6px' }}>STEP {step.step}</p>
+                <h3 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 18, fontWeight: 700, color: '#0F0F0F', margin: '0 0 8px' }}>{step.title}</h3>
+                <p style={{ fontSize: 13, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', margin: 0, lineHeight: 1.5 }}>{step.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── LIVE INTELLIGENCE — dual news carousel ── */}
+      <section style={{ padding: 'clamp(60px,8vw,80px) 0', background: 'white', overflow: 'hidden' }}>
+        <div style={{ textAlign: 'center', marginBottom: 36, padding: '0 max(24px,5vw)' }}>
+          <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#9B9B9B', letterSpacing: '3px', textTransform: 'uppercase', margin: '0 0 8px' }}>
+            Live disruption intelligence
+          </p>
+          <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(24px,4vw,36px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1, margin: 0 }}>
+            We never miss an event
+          </h2>
+        </div>
+        <NewsRow items={AI_NEWS} direction={-1} />
+        <NewsRow items={[...AI_NEWS].reverse()} direction={1} />
+      </section>
+
+      {/* ── PRICING ── */}
+      <section id="pricing" style={{ padding: 'clamp(80px,10vw,120px) max(24px,8vw)', background: '#FAFAFA' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
-            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1 }}>Built for the way you work</h2>
+            <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>Pricing</p>
+            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(28px,4vw,44px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1, marginBottom: 12 }}>
+              Simple, weekly pricing
+            </h2>
+            <p style={{ fontSize: 16, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', maxWidth: 440, margin: '0 auto' }}>
+              No annual lock-in. Cancel any week. Premium adjusts automatically as your risk score improves.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, alignItems: 'stretch' }}>
+            {PLANS.map((plan) => (
+              <motion.div
+                key={plan.name}
+                whileHover={{ y: -4 }}
+                style={{
+                  background: 'white', borderRadius: 20, padding: 28,
+                  border: plan.popular ? '2px solid #D97757' : '1px solid #F4F4F5',
+                  boxShadow: plan.popular ? '0 8px 40px rgba(217,119,87,0.15)' : '0 2px 16px rgba(0,0,0,0.06)',
+                  position: 'relative', display: 'flex', flexDirection: 'column',
+                }}
+              >
+                {plan.popular && (
+                  <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#D97757,#B85C3A)', color: 'white', fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', padding: '4px 14px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                    Most popular
+                  </div>
+                )}
+                <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#9B9B9B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>{plan.name}</p>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
+                  <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 48, fontWeight: 800, color: '#0F0F0F', letterSpacing: -2 }}>₹{plan.price}</span>
+                  <span style={{ fontSize: 14, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>/week</span>
+                </div>
+                <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: '0 0 20px' }}>{plan.zone} · ₹600/week cap</p>
+                <div style={{ height: 1, background: '#F4F4F5', margin: '0 0 20px' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
+                  {plan.features.map(f => (
+                    <div key={f} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <div style={{ width: 18, height: 18, borderRadius: 999, background: plan.popular ? '#FDF1ED' : '#ECFDF3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                        <span style={{ fontSize: 10, color: plan.popular ? '#D97757' : '#12B76A' }}>✓</span>
+                      </div>
+                      <span style={{ fontSize: 13, fontFamily: 'Inter, sans-serif', color: '#0F0F0F', lineHeight: 1.4 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <motion.button
+                  onClick={() => navigate('/register')}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  style={{ width: '100%', marginTop: 24, padding: '13px', borderRadius: 10, border: plan.popular ? 'none' : '1.5px solid #E4E4E7', background: plan.popular ? 'linear-gradient(135deg,#D97757,#B85C3A)' : 'white', color: plan.popular ? 'white' : '#0F0F0F', fontSize: 14, fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', boxShadow: plan.popular ? '0 4px 16px rgba(217,119,87,0.35)' : 'none' }}
+                >
+                  {plan.cta}
+                </motion.button>
+              </motion.div>
+            ))}
+          </div>
+          <p style={{ textAlign: 'center', fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginTop: 24 }}>
+            Prices vary by zone flood risk and worker risk score. ₹49 is minimum for low-risk zones.
+          </p>
+        </div>
+      </section>
+
+      {/* ── FOR WORKERS ── */}
+      <section id="workers" style={{ padding: 'clamp(60px,8vw,100px) max(24px,8vw)', background: 'white' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(28px,4vw,40px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1 }}>
+              Built for the way you work
+            </h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
             {[
               { emoji: '📍', title: 'Zone-based coverage', desc: '5km radius monitoring. Your area, your coverage.' },
-              { emoji: '💸', title: 'UPI instant credit', desc: 'Payout straight to your UPI. No bank forms.' },
+              { emoji: '💸', title: 'UPI instant credit',  desc: 'Payout straight to your UPI. No bank forms.' },
               { emoji: '🤖', title: 'AI fraud protection', desc: 'Honest workers never punished. Fraud caught automatically.' },
-              { emoji: '📊', title: 'Risk score rewards', desc: 'Consistent workers get lower premiums. Up to 15% off.' },
-              { emoji: '🔔', title: 'Advance warnings', desc: 'AI predicts floods 24h early. Coverage extends automatically.' },
-              { emoji: '❌', title: 'Zero paperwork', desc: 'No forms, no documents, no calls. Ever.' },
+              { emoji: '📊', title: 'Risk score rewards',  desc: 'Consistent workers get lower premiums. Up to 15% off.' },
+              { emoji: '🔔', title: 'Advance warnings',    desc: 'AI predicts floods 24h early. Coverage extends automatically.' },
+              { emoji: '❌', title: 'Zero paperwork',      desc: 'No forms, no documents, no calls. Ever.' },
             ].map((item, i) => (
-              <motion.div key={i} whileHover={{ y: -2 }} style={{ background: 'white', borderRadius: 14, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.05)', border: '1px solid #F4F4F5' }}>
+              <motion.div key={i} whileHover={{ y: -2 }} style={{ background: '#FAFAFA', borderRadius: 14, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.05)', border: '1px solid #F4F4F5' }}>
                 <span style={{ fontSize: 28, display: 'block', marginBottom: 12 }}>{item.emoji}</span>
                 <h3 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16, fontWeight: 700, color: '#0F0F0F', marginBottom: 6 }}>{item.title}</h3>
                 <p style={{ fontSize: 13, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', lineHeight: 1.5, margin: 0 }}>{item.desc}</p>
               </motion.div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* CTA */}
-        <section style={{ padding: 'clamp(60px, 8vw, 100px) max(20px, 8vw)', textAlign: 'center' }}>
-          <motion.div whileHover={{ scale: 1.01 }} style={{ maxWidth: 640, margin: '0 auto', background: 'white', borderRadius: 24, padding: 'clamp(40px, 6vw, 64px)', boxShadow: '0 8px 48px rgba(0,0,0,0.1)', border: '1px solid #F4F4F5' }}>
-            <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(24px, 4vw, 36px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1, marginBottom: 16 }}>Start your protection today</h2>
-            <p style={{ fontSize: 16, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', marginBottom: 32, lineHeight: 1.5 }}>Join thousands of delivery workers already protected by GuidePay. From ₹49/week.</p>
-            <motion.button onClick={() => navigate('/login')} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}
-              style={{ padding: '16px 36px', borderRadius: 12, border: 'none', background: '#D97757', color: 'white', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(217,119,87,0.4)' }}>
-              Get protected — ₹49/week <ArrowRight size={18} />
-            </motion.button>
-            <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginTop: 16 }}>No commitment · Cancel anytime · UPI payment</p>
-          </motion.div>
-        </section>
+      {/* ── CTA ── */}
+      <section style={{ padding: 'clamp(60px,8vw,100px) max(24px,8vw)', textAlign: 'center', background: '#FAFAFA' }}>
+        <motion.div
+          whileHover={{ scale: 1.01 }}
+          style={{ maxWidth: 640, margin: '0 auto', background: 'white', borderRadius: 24, padding: 'clamp(40px,6vw,64px)', boxShadow: '0 8px 48px rgba(0,0,0,0.1)', border: '1px solid #F4F4F5' }}
+        >
+          <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 'clamp(24px,4vw,36px)', fontWeight: 800, color: '#0F0F0F', letterSpacing: -1, marginBottom: 16 }}>
+            Start your protection today
+          </h2>
+          <p style={{ fontSize: 16, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', marginBottom: 32, lineHeight: 1.5 }}>
+            Join thousands of delivery workers already protected by GuidePay. From ₹49/week.
+          </p>
+          <motion.button
+            onClick={() => navigate('/register')}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            style={{ padding: '16px 36px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg, #D97757, #B85C3A)', color: 'white', fontSize: 16, fontWeight: 700, fontFamily: 'Inter, sans-serif', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(217,119,87,0.4)' }}
+          >
+            Get protected — ₹49/week <ArrowRight size={18} />
+          </motion.button>
+          <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginTop: 16 }}>No commitment · Cancel anytime · UPI payment</p>
+        </motion.div>
+      </section>
 
-        {/* FOOTER */}
-        <footer style={{ borderTop: '1px solid #F4F4F5', padding: 'clamp(32px, 5vw, 48px) max(20px, 5vw)', background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(8px)' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ShieldCheck size={18} color="#D97757" />
-              <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16, fontWeight: 700, color: '#0F0F0F' }}>GuidePay</span>
-              <span style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>· Team SentinelX · KL University</span>
-            </div>
-            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
-              {['Privacy Policy', 'Terms of Service', 'Contact'].map(link => (
-                <a key={link} href={link === 'Privacy Policy' ? '/privacy' : link === 'Terms of Service' ? '/terms' : '#'}
-                  style={{ fontSize: 13, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', textDecoration: 'none' }}>{link}</a>
-              ))}
-            </div>
-            <p style={{ fontSize: 12, color: '#C4C4C4', fontFamily: 'Inter, sans-serif', margin: 0 }}>© 2026 GuidePay · Guidewire DEVTrails 2026</p>
-          </div>
-        </footer>
-      </div>
+      <LandingFooter />
     </div>
   )
 }

@@ -29,7 +29,7 @@ function TimelineStep({ step, isLast }) {
     <div className={`relative flex gap-4 ${isLast ? '' : 'pb-5'}`}>
       {/* Vertical line */}
       {!isLast && (
-        <div className="absolute left-[8px] top-5 bottom-0 w-px bg-grey-200" />
+        <div className="absolute left-[8px] top-5 bottom-0 w-px" style={{ background: 'var(--border)' }} />
       )}
 
       {/* Dot */}
@@ -47,16 +47,16 @@ function TimelineStep({ step, isLast }) {
             />
           </div>
         ) : (
-          <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-grey-300 bg-white" />
+          <div className="w-[18px] h-[18px] rounded-full border-[1.5px]" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} />
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className={`text-[14px] font-semibold font-body ${step.status === 'pending' ? 'text-[#9B9B9B]' : 'text-[#0F0F0F]'}`}>
+        <p className="text-[14px] font-semibold font-body" style={{ color: step.status === 'pending' ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
           {step.label}
         </p>
-        <p className="text-[13px] text-[#6B6B6B] font-body mt-0.5">{step.detail}</p>
+        <p className="text-[13px] font-body mt-0.5" style={{ color: 'var(--text-secondary)' }}>{step.detail}</p>
 
         {/* Animated dots for active */}
         {step.status === 'active' && (
@@ -104,7 +104,8 @@ export default function ClaimStatus() {
 
   return (
     <motion.div
-      className="min-h-screen bg-white pb-24"
+      className="min-h-screen pb-24"
+      style={{ background: 'var(--bg-primary)' }}
       variants={pageVariants}
       initial="initial"
       animate="animate"
@@ -118,14 +119,14 @@ export default function ClaimStatus() {
 
       <div className="px-4 mt-4 flex flex-col gap-4">
         {/* Amount card */}
-        <div className="bg-white rounded-card shadow-card p-5">
-          <p className="text-[11px] font-semibold font-body text-[#9B9B9B] tracking-[1px] uppercase">
+        <div className="rounded-card shadow-card p-5" style={{ background: 'var(--bg-card)' }}>
+          <p className="text-[11px] font-semibold font-body tracking-[1px] uppercase" style={{ color: 'var(--text-tertiary)' }}>
             {c.type} ALERT — {c.zone?.split(',')[0]?.toUpperCase()}
           </p>
-          <div className="font-display font-extrabold text-[56px] text-[#0F0F0F] tracking-[-2px] leading-none mt-1">
+          <div className="font-display font-extrabold text-[56px] tracking-[-2px] leading-none mt-1" style={{ color: 'var(--text-primary)' }}>
             ₹{c.amount}
           </div>
-          <p className="text-[13px] text-[#6B6B6B] font-body mt-1">
+          <p className="text-[13px] font-body mt-1" style={{ color: 'var(--text-secondary)' }}>
             {new Date(c.triggeredAt).toLocaleString('en-IN', {
               day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
             })}
@@ -134,7 +135,7 @@ export default function ClaimStatus() {
 
         {/* Timeline */}
         <div>
-          <p className="text-[14px] font-semibold font-body text-[#0F0F0F] mb-4">
+          <p className="text-[14px] font-semibold font-body mb-4" style={{ color: 'var(--text-primary)' }}>
             Verification steps
           </p>
           <div className="pl-0">
@@ -145,17 +146,17 @@ export default function ClaimStatus() {
         </div>
 
         {/* Fraud detail - expandable */}
-        <div className="bg-white rounded-card shadow-card overflow-hidden">
+        <div className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
           <button
             onClick={() => setFraudExpanded(!fraudExpanded)}
             className="w-full flex items-center justify-between px-4 py-3.5"
           >
-            <span className="text-[14px] font-medium font-body text-[#0F0F0F]">
+            <span className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
               Fraud verification
             </span>
             {fraudExpanded
-              ? <ChevronUp size={16} className="text-grey-400" />
-              : <ChevronDown size={16} className="text-grey-400" />
+              ? <ChevronUp size={16} style={{ color: 'var(--text-tertiary)' }} />
+              : <ChevronDown size={16} style={{ color: 'var(--text-tertiary)' }} />
             }
           </button>
 
@@ -170,17 +171,18 @@ export default function ClaimStatus() {
                 {FRAUD_CHECKS.map((check, i) => (
                   <div
                     key={check.label}
-                    className="flex items-center justify-between px-4 py-2.5 border-t border-grey-50"
+                    className="flex items-center justify-between px-4 py-2.5"
+                    style={{ borderTop: '1px solid var(--border-light)' }}
                   >
                     <div className="flex items-center gap-2">
                       <CheckCircle2 size={14} className="text-success flex-shrink-0" />
-                      <span className="text-[13px] text-[#6B6B6B] font-body">{check.label}</span>
+                      <span className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>{check.label}</span>
                     </div>
-                    <span className="text-[13px] font-body text-[#6B6B6B]">{check.result}</span>
+                    <span className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>{check.result}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-grey-50">
-                  <span className="text-[13px] font-body text-[#6B6B6B]">Fraud score</span>
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
+                  <span className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>Fraud score</span>
                   <span className="text-[13px] font-semibold font-body text-success">
                     {c.fraudScore} — Auto approved
                   </span>

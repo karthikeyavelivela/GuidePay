@@ -1,248 +1,387 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldCheck, ArrowLeft, ArrowRight, User, Calendar } from 'lucide-react'
-import Button from '../../components/ui/Button'
+import { useNavigate } from 'react-router-dom'
+import { ShieldCheck } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 
-const PLATFORMS = [
-  { id: 'swiggy',   label: 'Swiggy',  emoji: '🍔' },
-  { id: 'zomato',   label: 'Zomato',  emoji: '🍕' },
-  { id: 'zepto',    label: 'Zepto',   emoji: '⚡' },
-  { id: 'blinkit',  label: 'Blinkit', emoji: '🛒' },
+const STEPS = [
+  { id: 1, label: 'Account' },
+  { id: 2, label: 'Coverage' },
+  { id: 3, label: 'Payment' },
 ]
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-const YEARS = Array.from({ length: 6 }, (_, i) => (2024 - i).toString())
+const labelStyle = {
+  display: 'block', fontSize: 13, fontWeight: 500,
+  fontFamily: 'Inter, sans-serif', color: '#6B6B6B', marginBottom: 6,
+}
 
-const pageVariants = {
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { opacity: 0, y: -12, transition: { duration: 0.15 } },
+const inputStyle = {
+  width: '100%', padding: '0 14px', height: 52,
+  border: '1.5px solid #E4E4E7', borderRadius: 12,
+  fontSize: 15, fontFamily: 'Inter, sans-serif', color: '#0F0F0F',
+  outline: 'none', background: 'white', boxSizing: 'border-box',
 }
 
 export default function Register() {
   const navigate = useNavigate()
   const { login } = useWorkerStore()
   const [step, setStep] = useState(1)
-  const [name, setName] = useState('')
-  const [platforms, setPlatforms] = useState([])
-  const [month, setMonth] = useState('')
-  const [year, setYear] = useState('')
-  const [errors, setErrors] = useState({})
+  const [form, setForm] = useState({
+    name: '', phone: '', email: '', dob: '',
+    platforms: [], zone: '', city: '',
+    experience: '', avgDailyIncome: '', upiId: '',
+  })
 
-  const togglePlatform = (id) => {
-    setPlatforms(prev =>
-      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
-    )
-  }
+  const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
-  const validateStep1 = () => {
-    const e = {}
-    if (!name.trim() || name.trim().length < 2) e.name = 'Enter your full name'
-    if (platforms.length === 0) e.platforms = 'Select at least one platform'
-    setErrors(e)
-    return Object.keys(e).length === 0
+  const canProceed = () => {
+    if (step === 1) return form.name.trim().length >= 2 && form.phone.length === 10
+    if (step === 2) return form.platforms.length > 0 && form.city
+    if (step === 3) return form.upiId.trim().length > 3
+    return true
   }
 
   const handleNext = () => {
-    if (step === 1 && validateStep1()) setStep(2)
-  }
+    if (step < 3) {
+      setStep(step + 1)
+    } else {
+      const doLogin = () => {
+        login({
+          name: form.name || 'Ravi Kumar',
+          phone: `+91${form.phone}`,
+          email: form.email,
+          zone: form.zone || 'kondapur-hyderabad',
+          riskScore: 0.82,
+          riskTier: 'LOW',
+          premium: 58,
+          coverageCap: 600,
+          policyStatus: 'ACTIVE',
+          platforms: form.platforms,
+        })
+        navigate('/payment-success')
+      }
 
-  const handleFinish = () => {
-    login({
-      name: name.trim(),
-      phone: '+919876543210',
-      zone: 'kondapur-hyderabad',
-      riskScore: 0.82,
-      riskTier: 'LOW',
-      premium: 58,
-      coverageCap: 600,
-      policyStatus: 'ACTIVE',
-      platforms,
-    })
-    navigate('/risk-score')
+      if (window.Razorpay) {
+        const rzp = new window.Razorpay({
+          key: import.meta.env.VITE_RAZORPAY_KEY || 'rzp_test_demo',
+          amount: 4900,
+          currency: 'INR',
+          name: 'GuidePay',
+          description: 'First Week Income Protection',
+          handler: doLogin,
+          prefill: { name: form.name, email: form.email, contact: `+91${form.phone}` },
+          theme: { color: '#D97757' },
+        })
+        rzp.open()
+      } else {
+        doLogin()
+      }
+    }
   }
 
   return (
-    <motion.div
-      className="min-h-screen flex flex-col"
-      style={{ background: 'var(--bg-primary)' }}
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      {/* Header */}
+    <div style={{
+      minHeight: '100vh', background: '#FAFAFA',
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', padding: '24px 16px 80px',
+    }}>
+      {/* Logo */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 12,
-        padding: '16px 20px', borderBottom: '1px solid var(--border-light)',
+        display: 'flex', alignItems: 'center', gap: 8,
+        width: '100%', maxWidth: 480, margin: '0 auto 32px',
       }}>
-        <button
-          onClick={() => step === 1 ? navigate('/login') : setStep(1)}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' }}
-        >
-          <ArrowLeft size={20} style={{ color: 'var(--text-primary)' }} />
-        </button>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ShieldCheck size={20} style={{ color: 'var(--brand)' }} />
-          <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontWeight: 700, fontSize: 17, color: 'var(--text-primary)' }}>
-            GuidePay
-          </span>
-        </div>
-        <div style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif' }}>
-          Step {step} of 2
-        </div>
+        <ShieldCheck size={20} color="#D97757" />
+        <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 16, fontWeight: 800, color: '#0F0F0F' }}>
+          GuidePay
+        </span>
       </div>
 
-      {/* Progress */}
-      <div style={{ height: 3, background: 'var(--bg-tertiary)' }}>
-        <motion.div
-          style={{ height: '100%', background: 'var(--brand)', borderRadius: 999 }}
-          animate={{ width: step === 1 ? '50%' : '100%' }}
-          transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-        />
-      </div>
+      <div style={{ width: '100%', maxWidth: 480 }}>
+        {/* Step indicator */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
+          {STEPS.map(s => (
+            <div key={s.id} style={{ flex: 1 }}>
+              <div style={{
+                height: 3, borderRadius: 999,
+                background: step >= s.id ? '#D97757' : '#E4E4E7',
+                marginBottom: 8, transition: 'background 0.3s',
+              }} />
+              <p style={{
+                fontSize: 11, fontFamily: 'Inter, sans-serif',
+                fontWeight: step === s.id ? 600 : 400,
+                color: step >= s.id ? '#D97757' : '#9B9B9B', margin: 0,
+              }}>
+                {s.label}
+              </p>
+            </div>
+          ))}
+        </div>
 
-      <div style={{ flex: 1, padding: '32px 20px 24px' }}>
+        {/* Heading */}
+        <h1 style={{
+          fontFamily: 'Bricolage Grotesque, sans-serif',
+          fontSize: 26, fontWeight: 800, color: '#0F0F0F', marginBottom: 4,
+        }}>
+          {step === 1 && 'Create your account'}
+          {step === 2 && 'Set up your coverage'}
+          {step === 3 && 'Complete payment'}
+        </h1>
+        <p style={{ fontSize: 14, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', marginBottom: 24 }}>
+          {step === 1 && 'Basic details to get you protected'}
+          {step === 2 && 'Tell us about your delivery work'}
+          {step === 3 && 'Start your first week of protection'}
+        </p>
+
+        {/* Step content */}
         <AnimatePresence mode="wait">
-          {step === 1 && (
-            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-              <h1 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
-                Your details
-              </h1>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', marginBottom: 28, lineHeight: 1.5 }}>
-                Tell us a bit about yourself to set up your coverage.
-              </p>
-
-              {/* Name */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', marginBottom: 6 }}>
-                  Full name
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <User size={16} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-tertiary)' }} />
-                  <input
-                    type="text"
-                    placeholder="Ravi Kumar"
-                    value={name}
-                    onChange={e => { setName(e.target.value); setErrors(p => ({ ...p, name: '' })) }}
-                    style={{
-                      width: '100%', height: 52, paddingLeft: 44, paddingRight: 16,
-                      borderRadius: 12, border: errors.name ? '1.5px solid var(--danger)' : '1.5px solid var(--border)',
-                      background: 'var(--bg-primary)', color: 'var(--text-primary)',
-                      fontSize: 15, fontFamily: 'Inter, sans-serif', outline: 'none', boxSizing: 'border-box',
-                    }}
-                  />
-                </div>
-                {errors.name && <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4, fontFamily: 'Inter, sans-serif' }}>{errors.name}</p>}
-              </div>
-
-              {/* Platforms */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', marginBottom: 10 }}>
-                  Which platforms do you deliver for?
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {PLATFORMS.map(p => {
-                    const active = platforms.includes(p.id)
-                    return (
-                      <motion.button
-                        key={p.id}
-                        onClick={() => togglePlatform(p.id)}
-                        whileTap={{ scale: 0.96 }}
-                        style={{
-                          height: 56, borderRadius: 12, border: active ? '2px solid var(--brand)' : '1.5px solid var(--border)',
-                          background: active ? 'var(--brand-light)' : 'var(--bg-primary)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          cursor: 'pointer', fontSize: 15, fontFamily: 'Inter, sans-serif',
-                          fontWeight: active ? 600 : 400, color: active ? 'var(--brand)' : 'var(--text-primary)',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <span>{p.emoji}</span> {p.label}
-                      </motion.button>
-                    )
-                  })}
-                </div>
-                {errors.platforms && <p style={{ fontSize: 12, color: 'var(--danger)', marginTop: 4, fontFamily: 'Inter, sans-serif' }}>{errors.platforms}</p>}
-              </div>
-
-              {/* Start date */}
-              <div style={{ marginBottom: 32 }}>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', marginBottom: 6 }}>
-                  When did you start delivering? (optional)
-                </label>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <select value={month} onChange={e => setMonth(e.target.value)}
-                    style={{ flex: 1, height: 48, borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-primary)', color: month ? 'var(--text-primary)' : 'var(--text-tertiary)', fontSize: 14, fontFamily: 'Inter, sans-serif', padding: '0 12px', outline: 'none' }}>
-                    <option value="">Month</option>
-                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <select value={year} onChange={e => setYear(e.target.value)}
-                    style={{ flex: 1, height: 48, borderRadius: 10, border: '1.5px solid var(--border)', background: 'var(--bg-primary)', color: year ? 'var(--text-primary)' : 'var(--text-tertiary)', fontSize: 14, fontFamily: 'Inter, sans-serif', padding: '0 12px', outline: 'none' }}>
-                    <option value="">Year</option>
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <Button onClick={handleNext} fullWidth>
-                Next — Set your zone <ArrowRight size={16} />
-              </Button>
-            </motion.div>
-          )}
-
-          {step === 2 && (
-            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }}>
-              <h1 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 26, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
-                Your delivery zone
-              </h1>
-              <p style={{ fontSize: 14, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', marginBottom: 28, lineHeight: 1.5 }}>
-                We'll monitor this area for flood alerts and outages.
-              </p>
-
-              {/* Zone placeholder — ZoneSelect logic embedded here */}
-              <div style={{
-                height: 180, borderRadius: 16, background: 'var(--bg-secondary)',
-                border: '1.5px solid var(--border)', display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 24,
-              }}>
-                <span style={{ fontSize: 32 }}>📍</span>
-                <p style={{ fontSize: 14, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', margin: 0, fontWeight: 500 }}>
-                  Kondapur, Hyderabad
-                </p>
-                <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-                  Auto-detected · 5km coverage radius
-                </p>
-              </div>
-
-              <div style={{
-                background: 'var(--success-light)', borderRadius: 12, padding: '12px 16px',
-                display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28,
-                border: '1px solid rgba(18,183,106,0.2)',
-              }}>
-                <ShieldCheck size={18} style={{ color: 'var(--success)', flexShrink: 0 }} />
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            {step === 1 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--success)', fontFamily: 'Inter, sans-serif', margin: 0 }}>Zone confirmed</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', margin: 0 }}>Weekly premium from ₹58 · Flood + Outage + Curfew covered</p>
+                  <label style={labelStyle}>Full name</label>
+                  <input style={inputStyle} placeholder="As on your Aadhaar"
+                    value={form.name} onChange={e => update('name', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Mobile number</label>
+                  <div style={{
+                    display: 'flex', borderRadius: 12,
+                    border: '1.5px solid #E4E4E7', overflow: 'hidden', background: 'white',
+                  }}>
+                    <div style={{
+                      padding: '0 14px', height: 52, display: 'flex', alignItems: 'center',
+                      background: '#F7F7F8', borderRight: '1px solid #E4E4E7',
+                      fontSize: 15, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F',
+                    }}>
+                      +91
+                    </div>
+                    <input
+                      style={{ flex: 1, padding: '0 14px', border: 'none', outline: 'none', fontSize: 15, fontFamily: 'Inter, sans-serif', height: 52, background: 'transparent' }}
+                      placeholder="98765 43210" type="tel" maxLength={10}
+                      value={form.phone}
+                      onChange={e => update('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Email address</label>
+                  <input style={inputStyle} placeholder="ravi@example.com" type="email"
+                    value={form.email} onChange={e => update('email', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Date of birth</label>
+                  <input style={inputStyle} type="date"
+                    value={form.dob} onChange={e => update('dob', e.target.value)} />
+                  <p style={{ fontSize: 11, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginTop: 4 }}>
+                    Must be 18+ to get coverage
+                  </p>
+                </div>
+                <div>
+                  <label style={labelStyle}>Average daily income (₹)</label>
+                  <input style={inputStyle} placeholder="e.g. 800" type="number"
+                    value={form.avgDailyIncome} onChange={e => update('avgDailyIncome', e.target.value)} />
+                  <p style={{ fontSize: 11, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginTop: 4 }}>
+                    Used to calculate your coverage cap accurately
+                  </p>
+                </div>
+                <div>
+                  <label style={labelStyle}>How long have you been delivering?</label>
+                  <select style={inputStyle} value={form.experience} onChange={e => update('experience', e.target.value)}>
+                    <option value="">Select experience</option>
+                    <option value="0-3">Less than 3 months</option>
+                    <option value="3-6">3–6 months</option>
+                    <option value="6-12">6–12 months</option>
+                    <option value="1-2">1–2 years</option>
+                    <option value="2+">2+ years</option>
+                  </select>
                 </div>
               </div>
+            )}
 
-              <Button onClick={handleFinish} fullWidth>
-                Get my risk score →
-              </Button>
-            </motion.div>
-          )}
+            {step === 2 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div>
+                  <label style={labelStyle}>Which platforms do you deliver for?</label>
+                  <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginBottom: 12 }}>
+                    Select all that apply
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    {[
+                      { id: 'zepto',   name: 'Zepto',   emoji: '🟢', sub: 'Q-commerce' },
+                      { id: 'swiggy',  name: 'Swiggy',  emoji: '🟠', sub: 'Food delivery' },
+                      { id: 'blinkit', name: 'Blinkit', emoji: '🔴', sub: 'Q-commerce' },
+                      { id: 'amazon',  name: 'Amazon',  emoji: '🔵', sub: 'E-commerce' },
+                    ].map(p => {
+                      const selected = form.platforms.includes(p.id)
+                      return (
+                        <motion.button
+                          key={p.id}
+                          onClick={() => update('platforms', selected
+                            ? form.platforms.filter(x => x !== p.id)
+                            : [...form.platforms, p.id]
+                          )}
+                          whileTap={{ scale: 0.96 }}
+                          style={{
+                            padding: 14, borderRadius: 12,
+                            border: selected ? '1.5px solid #D97757' : '1.5px solid #E4E4E7',
+                            background: selected ? '#FDF1ED' : 'white',
+                            cursor: 'pointer', textAlign: 'left',
+                            display: 'flex', alignItems: 'center', gap: 10,
+                          }}
+                        >
+                          <span style={{ fontSize: 20 }}>{p.emoji}</span>
+                          <div>
+                            <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: selected ? '#B85C3A' : '#0F0F0F', margin: 0 }}>
+                              {p.name}
+                            </p>
+                            <p style={{ fontSize: 11, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                              {p.sub}
+                            </p>
+                          </div>
+                          {selected && <span style={{ marginLeft: 'auto', fontSize: 14, color: '#D97757' }}>✓</span>}
+                        </motion.button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Your delivery city</label>
+                  <select style={inputStyle} value={form.city} onChange={e => update('city', e.target.value)}>
+                    <option value="">Select your city</option>
+                    <option value="hyderabad">Hyderabad</option>
+                    <option value="mumbai">Mumbai</option>
+                    <option value="bengaluru">Bengaluru</option>
+                    <option value="chennai">Chennai</option>
+                    <option value="delhi">Delhi</option>
+                    <option value="pune">Pune</option>
+                    <option value="kolkata">Kolkata</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Primary delivery area / zone</label>
+                  <input style={inputStyle} placeholder="e.g. Kondapur, Banjara Hills..."
+                    value={form.zone} onChange={e => update('zone', e.target.value)} />
+                  <p style={{ fontSize: 11, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginTop: 4 }}>
+                    We'll geofence a 5km radius around your zone
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{
+                  background: '#FDF1ED', borderRadius: 14, padding: 16,
+                  border: '1px solid rgba(217,119,87,0.2)',
+                }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: '#D97757', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 10px' }}>
+                    Your coverage summary
+                  </p>
+                  {[
+                    { label: 'Name',              value: form.name || 'Your name' },
+                    { label: 'City',              value: form.city || 'Your city' },
+                    { label: 'Platforms',         value: form.platforms.join(', ') || 'None selected' },
+                    { label: 'Estimated premium', value: '₹49–69/week' },
+                    { label: 'Coverage cap',      value: '₹600/week' },
+                  ].map(row => (
+                    <div key={row.label} style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      padding: '6px 0', borderBottom: '1px solid rgba(217,119,87,0.1)',
+                    }}>
+                      <span style={{ fontSize: 12, color: '#B85C3A', fontFamily: 'Inter, sans-serif' }}>{row.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F' }}>{row.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <label style={labelStyle}>UPI ID for payouts</label>
+                  <input style={inputStyle} placeholder="ravi@okaxis or 98765@paytm"
+                    value={form.upiId} onChange={e => update('upiId', e.target.value)} />
+                  <p style={{ fontSize: 11, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', marginTop: 4 }}>
+                    Payouts are credited directly to this UPI ID
+                  </p>
+                </div>
+
+                <div style={{
+                  background: '#ECFDF3', borderRadius: 12, padding: 14,
+                  border: '1px solid rgba(18,183,106,0.2)',
+                  display: 'flex', gap: 10, alignItems: 'flex-start',
+                }}>
+                  <span style={{ fontSize: 16 }}>🔒</span>
+                  <div>
+                    <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#065F46', margin: '0 0 2px' }}>
+                      Secure payment via Razorpay
+                    </p>
+                    <p style={{ fontSize: 12, color: '#065F46', fontFamily: 'Inter, sans-serif', opacity: 0.8, margin: 0 }}>
+                      Your premium is auto-debited every Sunday. Cancel anytime from Profile.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ padding: 14, borderRadius: 12, border: '1px solid #E4E4E7', background: 'white' }}>
+                  <p style={{ fontSize: 12, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', margin: 0, lineHeight: 1.5 }}>
+                    By continuing, you agree to our{' '}
+                    <a href="/terms" style={{ color: '#D97757' }}>Terms of Service</a>
+                    {' '}and{' '}
+                    <a href="/privacy" style={{ color: '#D97757' }}>Privacy Policy</a>.
+                    Coverage begins immediately after payment.
+                  </p>
+                </div>
+              </div>
+            )}
+          </motion.div>
         </AnimatePresence>
 
-        <p style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', marginTop: 20 }}>
+        {/* Navigation */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
+          {step > 1 && (
+            <motion.button
+              onClick={() => setStep(step - 1)}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                padding: '13px 20px', borderRadius: 10,
+                border: '1.5px solid #E4E4E7', background: 'white',
+                fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                color: '#0F0F0F', cursor: 'pointer',
+              }}
+            >
+              ← Back
+            </motion.button>
+          )}
+          <motion.button
+            onClick={handleNext}
+            disabled={!canProceed()}
+            whileTap={canProceed() ? { scale: 0.97 } : {}}
+            style={{
+              flex: 1, padding: '13px', borderRadius: 10, border: 'none',
+              background: canProceed() ? 'linear-gradient(135deg, #D97757, #B85C3A)' : '#E4E4E7',
+              color: canProceed() ? 'white' : '#9B9B9B',
+              fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+              cursor: canProceed() ? 'pointer' : 'not-allowed',
+              boxShadow: canProceed() ? '0 4px 16px rgba(217,119,87,0.35)' : 'none',
+              transition: 'all 0.2s',
+            }}
+          >
+            {step < 3 ? 'Continue →' : 'Pay & Get Protected →'}
+          </motion.button>
+        </div>
+
+        <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>
           Already have an account?{' '}
-          <span onClick={() => navigate('/login')} style={{ color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }}>
+          <span onClick={() => navigate('/login')} style={{ color: '#D97757', fontWeight: 600, cursor: 'pointer' }}>
             Sign in
           </span>
         </p>
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -10,6 +10,7 @@ import ChatWidget from '../../components/chat/ChatWidget'
 import ThemeToggle from '../../components/ui/ThemeToggle'
 import { useWorkerStore } from '../../store/workerStore'
 import { useThemeStore } from '../../store/themeStore'
+import { PROFILE_BACKGROUNDS } from '../../components/profile/ProfileBgOptions'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -17,17 +18,10 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
 }
 
-const BG_OPTIONS = [
-  { id: 'default', label: 'Orange' },
-  { id: 'city', label: 'City', gif: 'https://i.pinimg.com/originals/4a/01/59/4a01599692eaa47afc113c5a3b043ed8.gif' },
-  { id: 'motion', label: 'Motion', gif: 'https://media1.tenor.com/m/PRUR2VCFT_EAAAAC/rickshaw-bike.gif' },
-  { id: 'rain', label: 'Rain', gif: 'https://i.pinimg.com/originals/c2/29/0d/c2290de20311e9b3dccd962b0074fdc9.gif' },
-]
-
 export default function Profile() {
   const navigate = useNavigate()
   const { worker, logout } = useWorkerStore()
-  const profileBg = useWorkerStore(s => s.profileBg) || 'default'
+  const profileBg = useWorkerStore(s => s.profileBg) || 'gradient'
   const setProfileBg = useWorkerStore(s => s.setProfileBg)
   const { isDark } = useThemeStore()
   const [photo, setPhoto] = useState(worker?.photo || null)
@@ -56,7 +50,7 @@ export default function Profile() {
 
   const handleLogout = () => {
     logout()
-    navigate('/')
+    navigate('/login')
   }
 
   const SECTIONS = [
@@ -103,83 +97,91 @@ export default function Profile() {
       animate="animate"
       exit="exit"
     >
-      {/* Header with GIF or gradient background */}
-      <div style={{ position: 'relative', height: 200, overflow: 'hidden', flexShrink: 0 }}>
-        {profileBg === 'default' ? (
-          <motion.div
-            style={{ position: 'absolute', inset: 0 }}
-            animate={{
-              background: [
-                'linear-gradient(135deg, #D97757 0%, #B85C3A 100%)',
-                'linear-gradient(135deg, #E08867 0%, #D97757 100%)',
-                'linear-gradient(135deg, #D97757 0%, #B85C3A 100%)',
-              ]
-            }}
-            transition={{ duration: 6, repeat: Infinity }}
-          />
-        ) : (
-          <>
-            <img
-              key={profileBg}
-              src={BG_OPTIONS.find(b => b.id === profileBg)?.gif}
-              alt="profile background"
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-            />
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} />
-          </>
-        )}
+      {/* Header with GIF or animated gradient background */}
+      {(() => {
+        const active = PROFILE_BACKGROUNDS.find(b => b.id === profileBg) || PROFILE_BACKGROUNDS[0]
+        return (
+          <div style={{ position: 'relative', height: 200, overflow: 'hidden', background: '#1a1a1a' }}>
+            {active.type === 'gradient' ? (
+              <motion.div
+                style={{ position: 'absolute', inset: 0 }}
+                animate={{
+                  background: [
+                    'linear-gradient(135deg, #D97757 0%, #7C3AED 100%)',
+                    'linear-gradient(135deg, #B85C3A 0%, #D97757 100%)',
+                    'linear-gradient(135deg, #D97757 0%, #7C3AED 100%)',
+                  ],
+                }}
+                transition={{ duration: 6, repeat: Infinity }}
+              />
+            ) : (
+              <img
+                key={active.id}
+                src={active.url}
+                alt="profile background"
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0,
+                  width: '100%', height: '100%',
+                  objectFit: 'cover', display: 'block',
+                }}
+              />
+            )}
 
-        {/* Floating icons — only on gradient */}
-        {profileBg === 'default' && ['🛵', '📦', '🌧️', '⚡', '🛡️'].map((icon, i) => (
-          <motion.div
-            key={i}
-            className="absolute text-2xl opacity-20"
-            style={{ left: `${10 + i * 18}%`, top: `${20 + (i % 2) * 30}%` }}
-            animate={{ y: [0, -10, 0], rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 3 + i * 0.5, repeat: Infinity, delay: i * 0.4 }}
-          >
-            {icon}
-          </motion.div>
-        ))}
+            {/* Dark overlay for text readability */}
+            <div style={{
+              position: 'absolute', inset: 0,
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.5) 100%)',
+            }} />
 
-        {/* Back + title */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
-          >
-            <ArrowLeft size={20} color="white" />
-          </button>
-          <span className="text-white font-display font-semibold text-[17px]">Profile</span>
-          <div style={{ width: 36 }} />
-        </div>
+            {/* Back + title */}
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
+              >
+                <ArrowLeft size={20} color="white" />
+              </button>
+              <span className="text-white font-display font-semibold text-[17px]">Profile</span>
+              <div style={{ width: 36 }} />
+            </div>
 
-        {/* BG picker */}
-        <div style={{ position: 'absolute', bottom: 12, right: 12, display: 'flex', gap: 6, zIndex: 10 }}>
-          {BG_OPTIONS.map(opt => (
-            <motion.button
-              key={opt.id}
-              onClick={() => setProfileBg(opt.id)}
-              whileTap={{ scale: 0.9 }}
-              style={{
-                padding: '5px 11px',
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 600,
-                fontFamily: 'Inter, sans-serif',
-                border: profileBg === opt.id ? '2px solid white' : '1px solid rgba(255,255,255,0.5)',
-                background: profileBg === opt.id ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.25)',
-                color: 'white',
-                cursor: 'pointer',
-                backdropFilter: 'blur(6px)',
-                transition: 'all 0.2s',
-              }}
-            >
-              {opt.label}
-            </motion.button>
-          ))}
-        </div>
-      </div>
+            {/* Background picker */}
+            <div style={{
+              position: 'absolute', bottom: 12, right: 12,
+              display: 'flex', gap: 6, zIndex: 10,
+            }}>
+              {PROFILE_BACKGROUNDS.map(opt => (
+                <motion.button
+                  key={opt.id}
+                  onClick={() => setProfileBg(opt.id)}
+                  whileTap={{ scale: 0.9 }}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: 'Inter',
+                    border: profileBg === opt.id
+                      ? '2px solid #FFFFFF'
+                      : '1px solid rgba(255,255,255,0.4)',
+                    background: profileBg === opt.id
+                      ? 'rgba(255,255,255,0.25)'
+                      : 'rgba(0,0,0,0.3)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {opt.label}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Photo + name — overlaps header */}
       <div className="px-4" style={{ marginTop: -44, position: 'relative', zIndex: 10 }}>
