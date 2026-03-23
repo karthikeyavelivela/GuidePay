@@ -28,6 +28,7 @@ const fadeUp = {
 export default function Dashboard() {
   const navigate = useNavigate()
   const worker = useWorkerStore((s) => s.worker)
+  const activePolicy = useWorkerStore((s) => s.activePolicy)
   const payouts = useClaimStore((s) => s.payouts)
   const w = worker || {
     name: 'Ravi Kumar', riskScore: 0.82, riskTier: 'LOW',
@@ -99,6 +100,45 @@ export default function Dashboard() {
       </div>
 
       <motion.div variants={stagger} animate="animate" className="px-4 mt-3 flex flex-col gap-3">
+        {/* Buy coverage CTA — shown for new users without active policy */}
+        {!activePolicy && (
+          <motion.div variants={fadeUp}>
+            <div
+              className="rounded-card p-5"
+              style={{
+                background: 'linear-gradient(135deg, #D97757, #B85C3A)',
+                boxShadow: '0 8px 32px rgba(217,119,87,0.35)',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span style={{ fontSize: 24 }}>🛡️</span>
+                <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: 'rgba(255,255,255,0.8)', letterSpacing: '1.5px', textTransform: 'uppercase', margin: 0 }}>
+                  No active coverage
+                </p>
+              </div>
+              <h2 style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 26, fontWeight: 800, color: 'white', margin: '0 0 8px', letterSpacing: -0.5 }}>
+                Get protected for ₹49/week
+              </h2>
+              <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.8)', fontFamily: 'Inter, sans-serif', margin: '0 0 18px', lineHeight: 1.5 }}>
+                Floods, outages, curfews — auto-paid to your UPI in under 2 hours.
+              </p>
+              <motion.button
+                onClick={() => navigate('/coverage')}
+                whileTap={{ scale: 0.97 }}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 10, border: 'none',
+                  background: 'white', color: '#D97757',
+                  fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                  cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                }}
+              >
+                View coverage plans →
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+
         {/* Policy card */}
         <motion.div variants={fadeUp}>
           <div className="rounded-card p-5" style={{ background: 'var(--bg-card)', boxShadow: '0 10px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04)' }}>
@@ -216,7 +256,7 @@ export default function Dashboard() {
         <motion.div variants={fadeUp}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>Recent payouts</p>
-            <button className="text-[13px] text-brand font-semibold font-body">See all</button>
+            <button className="text-[13px] text-brand font-semibold font-body" onClick={() => navigate('/claims')}>See all</button>
           </div>
           <div className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
             {payouts.slice(0, 2).map((payout, i) => (

@@ -32,7 +32,7 @@ export const LandingNav = () => {
           display: 'flex',
           alignItems: 'center',
           padding: '0 max(24px, 5vw)',
-          background: scrolled ? 'rgba(255,255,255,0.94)' : 'transparent',
+          background: scrolled ? 'rgba(255, 255, 255, 1)' : 'transparent',
           backdropFilter: scrolled ? 'blur(20px)' : 'none',
           WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
           borderBottom: scrolled ? '1px solid rgba(0,0,0,0.06)' : 'none',

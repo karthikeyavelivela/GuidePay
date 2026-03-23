@@ -24,7 +24,7 @@ const inputStyle = {
 
 export default function Register() {
   const navigate = useNavigate()
-  const { login } = useWorkerStore()
+  const { login, setActivePolicy } = useWorkerStore()
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
     name: '', phone: '', email: '', dob: '',
@@ -58,6 +58,7 @@ export default function Register() {
           policyStatus: 'ACTIVE',
           platforms: form.platforms,
         })
+        setActivePolicy(true)
         navigate('/payment-success')
       }
 

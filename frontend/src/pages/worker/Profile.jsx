@@ -117,7 +117,7 @@ export default function Profile() {
             ) : (
               <img
                 key={active.id}
-                src={active.url}
+                src={active.src}
                 alt="profile background"
                 style={{
                   position: 'absolute',

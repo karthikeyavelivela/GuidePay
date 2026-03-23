@@ -10,7 +10,7 @@ import { NotificationBell } from '../ui/NotificationBell'
 
 const NAV_ITEMS = [
   { id: 'home',     label: 'Home',     icon: Home,      path: '/dashboard' },
-  { id: 'coverage', label: 'Coverage', icon: Shield,    path: '/premium' },
+  { id: 'coverage', label: 'Coverage', icon: Shield,    path: '/coverage' },
   { id: 'claims',   label: 'Claims',   icon: FileCheck, path: '/claims' },
   { id: 'forecast', label: 'Forecast', icon: TrendingUp,path: '/forecast' },
   { id: 'profile',  label: 'Profile',  icon: User,      path: '/profile' },
@@ -21,14 +21,13 @@ function Sidebar({ onClose }) {
   const location = useLocation()
 
   return (
-    <aside
+    <div
       className="flex flex-col h-full"
       style={{
         width: 240,
         background: 'var(--bg-card)',
         borderRight: '1px solid var(--border-light)',
         padding: '24px 12px',
-        flexShrink: 0,
       }}
     >
       <div className="flex items-center gap-2 px-3 mb-8">
@@ -45,8 +44,10 @@ function Sidebar({ onClose }) {
 
       <nav className="flex flex-col gap-1">
         {NAV_ITEMS.map((item) => {
-          const active = location.pathname === item.path ||
-            (item.path === '/claims' && location.pathname.startsWith('/claim'))
+          const active =
+            location.pathname === item.path ||
+            (item.id === 'coverage' && (location.pathname === '/coverage' || location.pathname === '/premium')) ||
+            (item.id === 'claims' && location.pathname.startsWith('/claim'))
           const Icon = item.icon
           return (
             <motion.button
@@ -78,7 +79,7 @@ function Sidebar({ onClose }) {
           GuidePay v1.0 · Phase 2
         </p>
       </div>
-    </aside>
+    </div>
   )
 }
 
@@ -90,11 +91,20 @@ export default function WorkerLayout() {
   const pageTitle = location.pathname.replace('/', '') || 'Dashboard'
 
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--bg-secondary)' }}>
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex flex-col sticky top-0 h-screen">
+    <div className="min-h-screen" style={{ background: 'var(--bg-secondary)' }}>
+
+      {/* Desktop sidebar — fixed position */}
+      <aside
+        className="hidden lg:flex flex-col"
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, bottom: 0,
+          width: 240,
+          zIndex: 20,
+        }}
+      >
         <Sidebar />
-      </div>
+      </aside>
 
       {/* Mobile drawer */}
       {drawerOpen && (
@@ -116,8 +126,11 @@ export default function WorkerLayout() {
         </>
       )}
 
-      {/* Main content */}
-      <main className="flex-1 min-h-screen" style={{ overflowX: 'hidden' }}>
+      {/* Main content — offset by sidebar width on desktop */}
+      <main
+        className="min-h-screen lg:ml-[240px]"
+        style={{ overflowX: 'hidden' }}
+      >
         {/* Mobile topbar */}
         <div
           className="lg:hidden sticky top-0 z-30 flex items-center justify-between px-4 h-14"

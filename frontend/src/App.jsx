@@ -51,7 +51,9 @@ function getNearestCity(lat, lng) {
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useWorkerStore((s) => s.isAuthenticated)
+  const onboarded = useWorkerStore((s) => s.onboarded)
   if (!isAuthenticated) return <Navigate to="/login" replace />
+  if (!onboarded) return <Navigate to="/onboarding" replace />
   return children
 }
 

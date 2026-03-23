@@ -58,7 +58,8 @@ export default function Login() {
       // Firebase not configured — use mock
       const { login } = useWorkerStore.getState()
       login(null)
-      navigate('/dashboard')
+      const { onboarded } = useWorkerStore.getState()
+      navigate(onboarded ? '/dashboard' : '/onboarding')
     } finally {
       setGoogleLoading(false)
     }

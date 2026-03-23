@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { ArrowRight } from 'lucide-react'
 import { useWorkerStore } from '../store/workerStore'
 
 // ── Count-up hook ─────────────────────────────────────────────────────
@@ -119,6 +120,50 @@ const ScoreVisual = () => (
   </motion.div>
 )
 
+const PagesVisual = () => {
+  const tabs = [
+    { icon: '🏠', label: 'Home',     color: '#D97757' },
+    { icon: '🛡️', label: 'Coverage', color: '#2E90FA' },
+    { icon: '📋', label: 'Claims',   color: '#12B76A' },
+    { icon: '📊', label: 'Forecast', color: '#7C3AED' },
+    { icon: '👤', label: 'Profile',  color: '#F79009' },
+  ]
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.3 }}
+      style={{ marginTop: 24 }}
+    >
+      <div style={{ background: '#F4F4F5', borderRadius: 16, padding: '16px 8px', display: 'flex', justifyContent: 'space-around' }}>
+        {tabs.map((tab, i) => (
+          <motion.div
+            key={i}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.1 + i * 0.08, type: 'spring', stiffness: 250 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}
+          >
+            <div style={{
+              width: 48, height: 48, borderRadius: 14,
+              background: `${tab.color}18`,
+              border: `1.5px solid ${tab.color}30`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22,
+            }}>
+              {tab.icon}
+            </div>
+            <p style={{ fontSize: 10, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: tab.color, margin: 0 }}>{tab.label}</p>
+          </motion.div>
+        ))}
+      </div>
+      <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', textAlign: 'center', marginTop: 12 }}>
+        Swipe between tabs to navigate your dashboard
+      </p>
+    </motion.div>
+  )
+}
+
 // ── Tour slides ───────────────────────────────────────────────────────
 const TOUR_STEPS = [
   {
@@ -182,8 +227,9 @@ const TOUR_STEPS = [
     accent: '#D97757',
     title: 'Your Dashboard',
     headline: 'Everything in one place.',
-    body: 'Your dashboard shows active coverage, zone status, AI flood forecasts, and recent payouts. Check the Forecast tab for tomorrow\'s risk before you go out.',
-    action: 'Take me there →',
+    body: 'Your dashboard shows active coverage, zone status, AI flood forecasts, and recent payouts. Use the tabs below to navigate all features.',
+    visual: 'pages',
+    action: 'Take me there',
     last: true,
   },
 ]
@@ -206,10 +252,15 @@ export default function Onboarding() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'white', display: 'flex', flexDirection: 'column' }}>
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9998,
+      background: 'white',
+      display: 'flex', flexDirection: 'column',
+      overflowY: 'auto',
+    }}>
 
       {/* Progress bar */}
-      <div style={{ height: 3, background: '#F4F4F5' }}>
+      <div style={{ height: 3, background: '#F4F4F5', flexShrink: 0 }}>
         <motion.div
           animate={{ width: `${((step + 1) / TOUR_STEPS.length) * 100}%` }}
           transition={{ duration: 0.3 }}
@@ -218,7 +269,7 @@ export default function Onboarding() {
       </div>
 
       {/* Skip */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '14px 20px', flexShrink: 0 }}>
         <button
           onClick={finish}
           style={{ background: 'none', border: 'none', fontSize: 14, fontFamily: 'Inter, sans-serif', fontWeight: 500, color: '#9B9B9B', cursor: 'pointer' }}
@@ -273,12 +324,13 @@ export default function Onboarding() {
             {current.visual === 'verification' && <VerificationVisual />}
             {current.visual === 'payout'       && <PayoutVisual />}
             {current.visual === 'score'        && <ScoreVisual />}
+            {current.visual === 'pages'        && <PagesVisual />}
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Bottom controls */}
-      <div style={{ padding: '20px 24px 44px', display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
+      <div style={{ padding: '20px 24px 44px', display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center', flexShrink: 0 }}>
         {/* Dots */}
         <div style={{ display: 'flex', gap: 6 }}>
           {TOUR_STEPS.map((_, i) => (
@@ -306,9 +358,11 @@ export default function Onboarding() {
             color: 'white', fontSize: 16, fontWeight: 700,
             fontFamily: 'Inter, sans-serif', cursor: 'pointer',
             boxShadow: `0 4px 20px ${current.accent}40`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
           {current.action}
+          {current.last && <ArrowRight size={18} />}
         </motion.button>
       </div>
     </div>

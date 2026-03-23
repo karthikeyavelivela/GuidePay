@@ -9,8 +9,9 @@ export const useWorkerStore = create(
       isAuthenticated: false,
       phone: '',
       onboarded: false,
+      activePolicy: false,
       detectedCity: null,
-      profileBg: 'default',
+      profileBg: 'gradient',
 
       setPhone: (phone) => set({ phone }),
 
@@ -21,7 +22,9 @@ export const useWorkerStore = create(
         isAuthenticated: true,
       }),
 
-      setOnboarded: () => set({ onboarded: true }),
+      setOnboarded: (val = true) => set({ onboarded: val }),
+
+      setActivePolicy: (val) => set({ activePolicy: val }),
 
       updateWorker: (data) => set((state) => ({
         worker: { ...state.worker, ...data },
@@ -34,8 +37,9 @@ export const useWorkerStore = create(
         isAuthenticated: false,
         phone: '',
         onboarded: false,
+        activePolicy: false,
         detectedCity: null,
-        profileBg: 'default',
+        profileBg: 'gradient',
       }),
     }),
     { name: 'gp-worker' }

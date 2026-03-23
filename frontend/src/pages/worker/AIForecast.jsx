@@ -7,6 +7,7 @@ import Button from '../../components/ui/Button'
 import BottomNav from '../../components/ui/BottomNav'
 import ChatWidget from '../../components/chat/ChatWidget'
 import { MOCK_FORECAST } from '../../services/mockData'
+import IndiaCalendar from '../../components/forecast/IndiaCalendar'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -319,13 +320,21 @@ export default function AIForecast() {
 
         {/* Auto-extend chip */}
         <div
-          className="inline-flex items-center gap-2 rounded-pill px-3.5 py-2"
+          className="inline-flex items-center gap-2 rounded-pill px-3.5 py-2 mb-4"
           style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border)' }}
         >
           <ShieldCheck size={14} style={{ color: 'var(--brand)' }} />
           <span className="text-[13px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
             Coverage auto-extended for tomorrow
           </span>
+        </div>
+
+        {/* ── INDIA CALENDAR ── */}
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            India holiday & flood calendar
+          </p>
+          <IndiaCalendar />
         </div>
       </div>
 
