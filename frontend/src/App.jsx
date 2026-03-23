@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useThemeStore } from './store/themeStore'
 import { useWorkerStore } from './store/workerStore'
 import LoadingScreen from './components/ui/LoadingScreen'
@@ -17,6 +16,7 @@ import ZoneSelect from './pages/worker/ZoneSelect'
 import RiskScore from './pages/worker/RiskScore'
 import AIForecast from './pages/worker/AIForecast'
 import Premium from './pages/worker/Premium'
+import Coverage from './pages/worker/Coverage'
 import Dashboard from './pages/worker/Dashboard'
 import ClaimStatus from './pages/worker/ClaimStatus'
 import PayoutSuccess from './pages/worker/PayoutSuccess'
@@ -51,9 +51,7 @@ function getNearestCity(lat, lng) {
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useWorkerStore((s) => s.isAuthenticated)
-  const onboarded = useWorkerStore((s) => s.onboarded)
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  if (!onboarded) return <Navigate to="/onboarding" replace />
   return children
 }
 
@@ -64,10 +62,8 @@ function PublicRoute({ children }) {
 }
 
 function AppRoutes() {
-  const location = useLocation()
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+    <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -75,6 +71,10 @@ function AppRoutes() {
         <Route path="/otp" element={<PublicRoute><OTP /></PublicRoute>} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/onboarding" element={<Onboarding />} />
+
+        {/* Legal — accessible always */}
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
 
         {/* Protected worker routes — nested under WorkerLayout */}
         <Route
@@ -88,7 +88,7 @@ function AppRoutes() {
           <Route path="/risk-score"     element={<RiskScore />} />
           <Route path="/forecast"       element={<AIForecast />} />
           <Route path="/premium"        element={<Premium />} />
-          <Route path="/coverage"       element={<Premium />} />
+          <Route path="/coverage"       element={<Coverage />} />
           <Route path="/dashboard"      element={<Dashboard />} />
           <Route path="/claim/:id"      element={<ClaimStatus />} />
           <Route path="/payout-success" element={<PayoutSuccess />} />
@@ -102,14 +102,9 @@ function AppRoutes() {
         <Route path="/admin/claims"    element={<ClaimsQueue />} />
         <Route path="/admin/analytics" element={<Analytics />} />
 
-        {/* Legal — public */}
-        <Route path="/terms"   element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
-
         {/* Catch all */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </AnimatePresence>
   )
 }
 
@@ -122,8 +117,6 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
   }, [isDark])
 
-  // The LoadingScreen calls onComplete when language scramble finishes
-  // We also detect location in the background
   useEffect(() => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
@@ -144,6 +137,11 @@ export default function App() {
   return (
     <BrowserRouter>
       <AnimatedBackground />
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <AppRoutes />
     </BrowserRouter>
   )

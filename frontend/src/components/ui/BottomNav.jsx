@@ -4,8 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 
 const tabs = [
   { id: 'home',     label: 'Home',     icon: Home,       path: '/dashboard' },
-  { id: 'coverage', label: 'Cover',    icon: Shield,     path: '/premium' },
-  { id: 'claims',   label: 'Claims',   icon: FileCheck,  path: '/claim/cl-001' },
+  { id: 'coverage', label: 'Cover',    icon: Shield,     path: '/coverage' },
+  { id: 'claims',   label: 'Claims',   icon: FileCheck,  path: '/claims' },
   { id: 'forecast', label: 'Forecast', icon: TrendingUp, path: '/forecast' },
   { id: 'profile',  label: 'Profile',  icon: User,       path: '/profile' },
 ]
@@ -26,11 +26,13 @@ export default function BottomNav() {
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const active = location.pathname === tab.path ||
-            (tab.path === '/claim/cl-001' && location.pathname.startsWith('/claim'))
+            (tab.id === 'claims' && location.pathname.startsWith('/claim')) ||
+            (tab.id === 'coverage' && location.pathname === '/premium')
           const Icon = tab.icon
           return (
             <motion.button
               key={tab.id}
+              id={`nav-${tab.id}`}
               onClick={() => navigate(tab.path)}
               className="flex flex-col items-center justify-center flex-1 h-full gap-0.5 bg-transparent border-none cursor-pointer"
               whileTap={{ scale: 0.88 }}

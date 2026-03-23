@@ -1,62 +1,114 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import TopBar from '../components/ui/TopBar'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
 
-const pageVariants = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
-}
+const TERMS_SECTIONS = [
+  {
+    title: '1. What GuidePay covers',
+    content: `GuidePay provides parametric income insurance for platform-based delivery workers in India. Coverage is activated automatically when any of these trigger events occur in your registered delivery zone:
 
-const SECTIONS = [
-  {
-    title: 'What GuidePay does',
-    content: `GuidePay is a parametric income insurance platform for gig delivery workers in India. Unlike traditional insurance, GuidePay automatically pays you when predefined trigger events occur — such as IMD flood alerts, platform outages, or government curfews — without requiring you to file a claim.\n\nPayouts are processed within 2 hours of a confirmed event. You do not need to do anything. GuidePay monitors your zone continuously and verifies events automatically.`,
+• IMD Flood or Heavy Rain Alert (Orange/Red level)
+• Platform Application Outage (Zepto, Swiggy, Blinkit, Amazon) lasting more than 2 hours
+• Government-issued Curfew or Section 144 orders
+
+Coverage is strictly limited to income loss during these events. Health, accident, vehicle repair, and voluntary work stoppages are explicitly excluded.`,
   },
   {
-    title: 'Your coverage',
-    content: `GuidePay covers income lost during three types of events:\n\n1. Flood alerts: IMD Red or Orange alerts for your zone. Pays 100% (up to ₹600/week).\n2. Platform outages: Verified outages on Zepto, Swiggy, Blinkit, or Amazon. Pays 75% (up to ₹450/week).\n3. Government curfews: Official curfew orders in your city. Pays 100% (up to ₹600/week).\n\nNOT covered: Health issues, vehicle repairs, accidents, personal decisions not to work, air quality events, or situations where platforms continue to operate.`,
+    title: '2. What is NOT covered',
+    content: `The following are explicitly excluded:
+• Health issues, illness, or medical emergencies
+• Vehicle breakdowns, repairs, or accidents
+• Situations where you choose not to work
+• Air quality (AQI) events — platforms do not halt operations during pollution
+• Income loss from reasons within your control
+• Claims where you were not actively delivering in the 6 hours before the trigger event`,
   },
   {
-    title: 'Premium payments',
-    content: `Your weekly premium is auto-debited every Sunday via UPI. Coverage runs Monday to Sunday. You will receive a notification 24 hours before each deduction.\n\nPremiums are calculated based on: base rate (₹49) × zone flood risk × your reliability score. Workers with consistent activity and low fraud scores receive automatic discounts.\n\nCancellation: You may cancel at any time from Profile → Manage Coverage. Coverage ends at the close of your current week. No cancellation fee applies. Refunds are not available for the current week.`,
+    title: '3. Premium & Payments',
+    content: `Your weekly premium (₹49–69) is automatically debited from your registered UPI ID every Sunday. Coverage runs Monday 00:00 to Sunday 23:59.
+
+If premium payment fails, coverage pauses until payment is successful. There are no grace periods.
+
+You may cancel anytime from your Profile page. Cancellation takes effect at the end of the current coverage week. No refunds for partial weeks.`,
   },
   {
-    title: 'Fraud prevention',
-    content: `GuidePay uses an automated fraud detection system that checks: GPS location, last delivery activity, zone-wide worker correlation, device fingerprinting, and claim history.\n\nA fraud score of 0.0–0.3 results in automatic approval. Scores of 0.3–0.7 require a single in-app location confirmation tap. Scores above 0.7 result in manual review within 4 hours.\n\nWorkers suspended for fraud will not receive refunds for the current period. Repeated fraud results in permanent account suspension.`,
+    title: '4. Payout Process',
+    content: `When a trigger event is detected:
+1. We verify you were actively delivering (last order within 6 hours of event)
+2. We run fraud detection (7-signal check)
+3. We confirm event via multi-worker correlation
+4. Payout is sent to your UPI within 2 hours
+
+Payout amounts:
+• Flood Alert: 100% of weekly coverage cap (₹600)
+• Platform Outage: 75% of cap (₹450)
+• Curfew: 100% of cap (₹600)
+
+Claims may be flagged for manual review if fraud signals exceed threshold. Resolution within 24 hours.`,
   },
   {
-    title: 'Data we collect',
-    content: `GuidePay collects: your mobile number, UPI ID, GPS location (during active coverage), delivery activity timestamps, device information, and claim history.\n\nLocation data is only collected when your coverage is active. We do not share your data with employers or delivery platforms. Data is stored securely on Indian servers in compliance with DPDP Act 2023.`,
+    title: '5. Fraud Prevention',
+    content: `GuidePay uses a 7-signal fraud detection system including GPS verification, activity checks, multi-worker correlation, and device consistency.
+
+Workers found to have submitted fraudulent claims will have their accounts suspended permanently.
+
+Honest workers are never penalised for network connectivity issues during genuine events.`,
   },
   {
-    title: 'Your rights',
-    content: `You may: cancel your coverage at any time, request deletion of your account and data, download a copy of your policy documents, and request a review of any claim decision.\n\nTo exercise these rights, contact us at guidepay@sentinelx.in. We will respond within 7 business days.`,
+    title: '6. Data & Privacy',
+    content: `We collect: mobile number, GPS location (zone-level only), delivery activity timestamps, and device identifiers.
+
+We do NOT collect: specific delivery addresses, customer information, or personal financial data beyond UPI ID for payouts.
+
+Your data is never sold to third parties. See our Privacy Policy for full details.`,
   },
   {
-    title: 'Contact us',
-    content: `Email: guidepay@sentinelx.in\nTeam SentinelX · KL University\n\nFor urgent issues during an active event, use the in-app support chat. Response time: under 30 minutes during active events.`,
+    title: '7. Governing Law',
+    content: `These terms are governed by the laws of India. Any disputes shall be subject to the jurisdiction of courts in Vijayawada, Andhra Pradesh.
+
+GuidePay is a product of Team SentinelX, built as part of Guidewire DEVTrails 2026. This is a prototype product and not currently regulated by IRDAI. Full regulatory compliance is being pursued through the IRDAI Regulatory Sandbox.`,
   },
 ]
 
-function AccordionItem({ section, index }) {
+const AccordionItem = ({ section, index }) => {
   const [open, setOpen] = useState(index === 0)
-
   return (
-    <div style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <button
+    <div style={{
+      borderBottom: '1px solid var(--border-light)',
+    }}>
+      <motion.button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-4 text-left"
+        whileTap={{ opacity: 0.7 }}
+        style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '16px 0',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          gap: 12,
+        }}
       >
-        <span className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>
+        <span style={{
+          fontSize: 15, fontWeight: 600,
+          fontFamily: 'Inter',
+          color: 'var(--text-primary)',
+          lineHeight: 1.4,
+        }}>
           {section.title}
         </span>
-        {open
-          ? <ChevronUp size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-          : <ChevronDown size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-        }
-      </button>
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ flexShrink: 0 }}
+        >
+          <ChevronDown size={18} color="var(--text-tertiary)" />
+        </motion.div>
+      </motion.button>
 
       <AnimatePresence>
         {open && (
@@ -67,17 +119,14 @@ function AccordionItem({ section, index }) {
             transition={{ duration: 0.2 }}
             style={{ overflow: 'hidden' }}
           >
-            <div className="px-4 pb-4">
-              {section.content.split('\n').map((para, i) => (
-                <p
-                  key={i}
-                  className="text-[14px] font-body leading-relaxed"
-                  style={{ color: 'var(--text-secondary)', marginTop: i > 0 ? 8 : 0 }}
-                >
-                  {para}
-                </p>
-              ))}
-            </div>
+            <p style={{
+              fontSize: 14, color: 'var(--text-secondary)',
+              fontFamily: 'Inter', lineHeight: 1.8,
+              margin: '0 0 16px',
+              whiteSpace: 'pre-line',
+            }}>
+              {section.content}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -85,43 +134,104 @@ function AccordionItem({ section, index }) {
   )
 }
 
-export default function Terms() {
+const Terms = () => {
+  const navigate = useNavigate()
   return (
-    <motion.div
-      className="min-h-screen pb-10"
-      style={{ background: 'var(--bg-primary)' }}
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      <TopBar title="Terms of Service" showBack />
-
-      {/* Header card */}
-      <div
-        className="mx-4 mt-4 rounded-card px-4 py-3 mb-4"
-        style={{
-          background: 'var(--brand-light)',
-          borderLeft: '3px solid var(--brand)',
-        }}
-      >
-        <p className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
-          By using GuidePay, you agree to these terms.
-        </p>
-        <p className="text-[12px] font-body mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Last updated: March 2026
-        </p>
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--bg-secondary)',
+    }}>
+      {/* TopBar */}
+      <div style={{
+        background: 'var(--bg-card)',
+        borderBottom: '1px solid var(--border-light)',
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        position: 'sticky', top: 0, zIndex: 50,
+      }}>
+        <motion.button
+          onClick={() => navigate(-1)}
+          whileTap={{ scale: 0.9 }}
+          style={{
+            background: 'none', border: 'none',
+            cursor: 'pointer', padding: 0,
+            display: 'flex',
+          }}
+        >
+          <ArrowLeft size={22} color="var(--text-primary)" />
+        </motion.button>
+        <h1 style={{
+          fontFamily: 'Bricolage Grotesque',
+          fontSize: 18, fontWeight: 800,
+          color: 'var(--text-primary)', margin: 0,
+        }}>
+          Terms of Service
+        </h1>
       </div>
 
-      {/* Accordion sections */}
-      <div
-        className="mx-4 rounded-card overflow-hidden"
-        style={{ background: 'var(--bg-primary)', boxShadow: 'var(--shadow-card)' }}
-      >
-        {SECTIONS.map((section, i) => (
-          <AccordionItem key={section.title} section={section} index={i} />
-        ))}
+      <div style={{ padding: '16px 16px 80px' }}>
+        {/* Header card */}
+        <div style={{
+          background: '#FDF1ED',
+          border: '1px solid rgba(217,119,87,0.2)',
+          borderRadius: 14,
+          padding: '14px 16px',
+          marginBottom: 20,
+        }}>
+          <p style={{
+            fontSize: 13, fontFamily: 'Inter',
+            color: '#B85C3A', margin: '0 0 4px',
+            fontWeight: 600,
+          }}>
+            Last updated: March 2026
+          </p>
+          <p style={{
+            fontSize: 13, fontFamily: 'Inter',
+            color: '#B85C3A', margin: 0, lineHeight: 1.5,
+            opacity: 0.8,
+          }}>
+            By using GuidePay, you agree to these terms.
+            Read them carefully before activating coverage.
+          </p>
+        </div>
+
+        {/* Accordion sections */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 14,
+          padding: '0 16px',
+          border: '1px solid var(--border)',
+        }}>
+          {TERMS_SECTIONS.map((section, i) => (
+            <AccordionItem
+              key={i}
+              section={section}
+              index={i}
+            />
+          ))}
+        </div>
+
+        <p style={{
+          textAlign: 'center',
+          fontSize: 12,
+          color: 'var(--text-tertiary)',
+          fontFamily: 'Inter',
+          marginTop: 20,
+          lineHeight: 1.5,
+        }}>
+          Questions? Contact us at{' '}
+          <a
+            href="mailto:guidepay@sentinelx.in"
+            style={{ color: '#D97757' }}
+          >
+            guidepay@sentinelx.in
+          </a>
+        </p>
       </div>
-    </motion.div>
+    </div>
   )
 }
+
+export default Terms

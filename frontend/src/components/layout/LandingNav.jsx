@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldCheck, Menu, X, ChevronDown } from 'lucide-react'
+import { ShieldCheck, Menu, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const NAV_LINKS = [
   { label: 'How it works', href: '#how-it-works' },
-  { label: 'Coverage',     href: '#coverage' },
-  { label: 'Pricing',      href: '#pricing' },
-  { label: 'For workers',  href: '#workers' },
+  { label: 'Coverage', href: '#coverage' },
+  { label: 'Pricing', href: '#pricing' },
+  { label: 'For workers', href: '#workers' },
 ]
 
 export const LandingNav = () => {
@@ -16,143 +16,192 @@ export const LandingNav = () => {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 50)
-    window.addEventListener('scroll', fn)
+    const fn = () => setScrolled(window.scrollY > 60)
+    window.addEventListener('scroll', fn, { passive: true })
     return () => window.removeEventListener('scroll', fn)
   }, [])
 
   return (
     <>
-      <motion.nav
-        style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0,
-          zIndex: 500,
-          height: 64,
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 max(24px, 5vw)',
-          background: scrolled ? 'rgba(255, 255, 255, 1)' : 'transparent',
-          backdropFilter: scrolled ? 'blur(20px)' : 'none',
-          WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
-          borderBottom: scrolled ? '1px solid rgba(0,0,0,0.06)' : 'none',
-          transition: 'all 0.3s ease',
-        }}
-      >
-        {/* LEFT: Logo */}
-        <motion.div
-          onClick={() => navigate('/')}
-          whileTap={{ scale: 0.97 }}
+      {/* NAVBAR WRAPPER — full width fixed */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 500,
+        display: 'flex',
+        justifyContent: 'center',
+        padding: scrolled ? '12px 20px' : '20px 20px',
+        transition: 'padding 0.3s ease',
+        pointerEvents: 'none',
+      }}>
+        {/* PILL NAV — centered, not full width */}
+        <motion.nav
           style={{
-            display: 'flex', alignItems: 'center',
-            gap: 10, cursor: 'pointer', flexShrink: 0,
+            pointerEvents: 'all',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            maxWidth: 900,
+            width: '100%',
+            height: 52,
+            padding: '0 8px 0 16px',
+            borderRadius: 999,
+            // GLASSMORPHISM — always, not just after scroll
+            background: scrolled
+              ? 'rgba(255,255,255,0.18)'
+              : 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: scrolled
+              ? '1px solid rgba(255,255,255,0.35)'
+              : '1px solid rgba(255,255,255,0.2)',
+            boxShadow: scrolled
+              ? '0 8px 32px rgba(0,0,0,0.12)'
+              : '0 4px 16px rgba(0,0,0,0.08)',
+            transition: 'all 0.3s ease',
           }}
         >
-          <div style={{
-            width: 34, height: 34, borderRadius: 10,
-            background: scrolled
-              ? 'linear-gradient(135deg, #D97757, #B85C3A)'
-              : 'rgba(255,255,255,0.2)',
-            backdropFilter: scrolled ? 'none' : 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            border: scrolled ? 'none' : '1px solid rgba(255,255,255,0.3)',
-          }}>
-            <ShieldCheck size={18} color="white" />
-          </div>
-          <span style={{
-            fontFamily: 'Bricolage Grotesque, sans-serif',
-            fontSize: 19, fontWeight: 800,
-            letterSpacing: -0.5,
-            color: scrolled ? '#0F0F0F' : 'white',
-          }}>
-            GuidePay
-          </span>
-        </motion.div>
+          {/* LEFT: Logo */}
+          <motion.div
+            onClick={() => navigate('/')}
+            whileTap={{ scale: 0.96 }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <div style={{
+              width: 30, height: 30,
+              borderRadius: 8,
+              background: 'rgba(255,255,255,0.25)',
+              border: '1px solid rgba(255,255,255,0.4)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <ShieldCheck size={16} color="white" />
+            </div>
+            <span style={{
+              fontFamily: 'Bricolage Grotesque',
+              fontSize: 17, fontWeight: 800,
+              color: 'white',
+              textShadow: '0 1px 4px rgba(0,0,0,0.2)',
+              letterSpacing: -0.3,
+            }}>
+              GuidePay
+            </span>
+          </motion.div>
 
-        {/* CENTER: Nav links */}
-        <div
-          className="hidden md:flex"
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', gap: 2 }}
-        >
-          {NAV_LINKS.map(link => (
-            <motion.a
-              key={link.label}
-              href={link.href}
-              whileHover={{
-                background: scrolled ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.15)',
-              }}
+          {/* CENTER: Nav links — desktop */}
+          <div
+            className="hidden md:flex"
+            style={{
+              alignItems: 'center',
+              gap: 0,
+              flex: 1,
+              justifyContent: 'center',
+            }}
+          >
+            {NAV_LINKS.map(link => (
+              <motion.a
+                key={link.label}
+                href={link.href}
+                whileHover={{
+                  background: 'rgba(255,255,255,0.15)',
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: 999,
+                  fontSize: 13,
+                  fontFamily: 'Inter',
+                  fontWeight: 500,
+                  color: 'rgba(255,255,255,0.9)',
+                  textDecoration: 'none',
+                  transition: 'background 0.15s',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {link.label}
+              </motion.a>
+            ))}
+          </div>
+
+          {/* RIGHT: CTAs */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            flexShrink: 0,
+          }}>
+            <motion.button
+              onClick={() => navigate('/login')}
+              className="hidden md:block"
+              whileTap={{ scale: 0.96 }}
               style={{
-                padding: '7px 14px', borderRadius: 8,
-                fontSize: 14, fontFamily: 'Inter, sans-serif',
-                fontWeight: 500,
-                color: scrolled ? '#0F0F0F' : 'rgba(255,255,255,0.9)',
-                textDecoration: 'none', transition: 'color 0.2s',
+                padding: '7px 14px',
+                borderRadius: 999,
+                border: '1px solid rgba(255,255,255,0.3)',
+                background: 'transparent',
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: 'Inter',
+                color: 'rgba(255,255,255,0.9)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
-              {link.label}
-            </motion.a>
-          ))}
-        </div>
+              Sign in
+            </motion.button>
 
-        {/* RIGHT: CTAs */}
-        <div style={{
-          display: 'flex', alignItems: 'center',
-          gap: 8, flexShrink: 0, marginLeft: 'auto',
-        }}>
-          <motion.button
-            onClick={() => navigate('/login')}
-            className="hidden md:block"
-            whileTap={{ scale: 0.97 }}
-            style={{
-              padding: '8px 16px', borderRadius: 8,
-              border: scrolled
-                ? '1px solid #E4E4E7'
-                : '1px solid rgba(255,255,255,0.3)',
-              background: 'transparent',
-              fontSize: 14, fontWeight: 600,
-              fontFamily: 'Inter, sans-serif',
-              color: scrolled ? '#0F0F0F' : 'white',
-              cursor: 'pointer',
-            }}
-          >
-            Sign in
-          </motion.button>
+            <motion.button
+              onClick={() => navigate('/register')}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.96 }}
+              style={{
+                padding: '8px 16px',
+                borderRadius: 999,
+                border: 'none',
+                background: 'white',
+                fontSize: 13,
+                fontWeight: 700,
+                fontFamily: 'Inter',
+                color: '#D97757',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+              }}
+            >
+              Get protected →
+            </motion.button>
 
-          <motion.button
-            onClick={() => navigate('/register')}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              padding: '9px 20px', borderRadius: 8, border: 'none',
-              background: scrolled
-                ? 'linear-gradient(135deg, #D97757, #B85C3A)'
-                : 'rgba(255,255,255,0.95)',
-              fontSize: 14, fontWeight: 700,
-              fontFamily: 'Inter, sans-serif',
-              color: scrolled ? 'white' : '#D97757',
-              cursor: 'pointer',
-              boxShadow: scrolled
-                ? '0 2px 12px rgba(217,119,87,0.3)'
-                : '0 2px 12px rgba(0,0,0,0.15)',
-            }}
-          >
-            Get protected →
-          </motion.button>
-
-          <motion.button
-            className="md:hidden"
-            onClick={() => setMobileOpen(true)}
-            style={{
-              background: 'none', border: 'none',
-              cursor: 'pointer',
-              color: scrolled ? '#0F0F0F' : 'white',
-            }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <Menu size={24} />
-          </motion.button>
-        </div>
-      </motion.nav>
+            {/* Mobile hamburger */}
+            <motion.button
+              className="md:hidden"
+              onClick={() => setMobileOpen(true)}
+              whileTap={{ scale: 0.9 }}
+              style={{
+                background: 'rgba(255,255,255,0.15)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: 999,
+                width: 36, height: 36,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Menu size={18} color="white" />
+            </motion.button>
+          </div>
+        </motion.nav>
+      </div>
 
       {/* MOBILE DRAWER */}
       <AnimatePresence>
@@ -162,37 +211,62 @@ export const LandingNav = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 600 }}
               onClick={() => setMobileOpen(false)}
+              style={{
+                position: 'fixed', inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 600,
+                backdropFilter: 'blur(4px)',
+              }}
             />
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 35 }}
+              transition={{
+                type: 'spring', stiffness: 300, damping: 35
+              }}
               style={{
-                position: 'fixed', top: 0, right: 0, bottom: 0,
-                width: 280, background: 'white', zIndex: 700,
-                padding: 20, display: 'flex', flexDirection: 'column',
+                position: 'fixed',
+                top: 0, right: 0, bottom: 0,
+                width: 280,
+                background: 'rgba(15,15,15,0.95)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                zIndex: 700,
+                padding: 20,
+                display: 'flex',
+                flexDirection: 'column',
               }}
             >
               <div style={{
-                display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center', marginBottom: 32,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 32,
               }}>
-                <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 18, fontWeight: 800, color: '#0F0F0F' }}>
+                <span style={{
+                  fontFamily: 'Bricolage Grotesque',
+                  fontSize: 18, fontWeight: 800,
+                  color: 'white',
+                }}>
                   GuidePay
                 </span>
                 <motion.button
                   onClick={() => setMobileOpen(false)}
-                  style={{
-                    background: '#F7F7F8', border: 'none', borderRadius: 999,
-                    width: 32, height: 32, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}
                   whileTap={{ scale: 0.9 }}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: 'none',
+                    borderRadius: 999,
+                    width: 32, height: 32,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
                 >
-                  <X size={16} />
+                  <X size={16} color="white" />
                 </motion.button>
               </div>
 
@@ -203,36 +277,57 @@ export const LandingNav = () => {
                   onClick={() => setMobileOpen(false)}
                   style={{
                     padding: '14px 0',
-                    borderBottom: '1px solid #F4F4F5',
-                    fontSize: 16, fontWeight: 600,
-                    fontFamily: 'Inter, sans-serif',
-                    color: '#0F0F0F', textDecoration: 'none', display: 'block',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    fontSize: 16,
+                    fontWeight: 600,
+                    fontFamily: 'Inter',
+                    color: 'rgba(255,255,255,0.85)',
+                    textDecoration: 'none',
+                    display: 'block',
                   }}
                 >
                   {link.label}
                 </a>
               ))}
 
-              <div style={{ marginTop: 'auto', gap: 10, display: 'flex', flexDirection: 'column' }}>
+              <div style={{
+                marginTop: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}>
                 <motion.button
-                  onClick={() => { navigate('/login'); setMobileOpen(false) }}
+                  onClick={() => {
+                    navigate('/login')
+                    setMobileOpen(false)
+                  }}
                   whileTap={{ scale: 0.97 }}
                   style={{
-                    width: '100%', padding: '13px', borderRadius: 10,
-                    border: '1.5px solid #E4E4E7', background: 'white',
-                    fontSize: 15, fontWeight: 600, fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+                    width: '100%', padding: '13px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    background: 'transparent',
+                    fontSize: 15, fontWeight: 600,
+                    fontFamily: 'Inter',
+                    color: 'white', cursor: 'pointer',
                   }}
                 >
                   Sign in
                 </motion.button>
                 <motion.button
-                  onClick={() => { navigate('/register'); setMobileOpen(false) }}
+                  onClick={() => {
+                    navigate('/register')
+                    setMobileOpen(false)
+                  }}
                   whileTap={{ scale: 0.97 }}
                   style={{
-                    width: '100%', padding: '13px', borderRadius: 10, border: 'none',
-                    background: 'linear-gradient(135deg, #D97757, #B85C3A)',
-                    color: 'white', fontSize: 15, fontWeight: 700,
-                    fontFamily: 'Inter, sans-serif', cursor: 'pointer',
+                    width: '100%', padding: '13px',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: 'white',
+                    fontSize: 15, fontWeight: 700,
+                    fontFamily: 'Inter',
+                    color: '#D97757', cursor: 'pointer',
                   }}
                 >
                   Get protected →

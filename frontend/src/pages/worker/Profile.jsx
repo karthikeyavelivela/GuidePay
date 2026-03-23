@@ -1,43 +1,37 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   Camera, MapPin, ChevronRight, Moon, Sun,
-  LogOut, Shield, FileText, Bell, Globe, ArrowLeft,
+  Shield, FileText, Bell, Globe, ArrowLeft,
 } from 'lucide-react'
-import BottomNav from '../../components/ui/BottomNav'
-import ChatWidget from '../../components/chat/ChatWidget'
 import ThemeToggle from '../../components/ui/ThemeToggle'
 import { useWorkerStore } from '../../store/workerStore'
 import { useThemeStore } from '../../store/themeStore'
 import { PROFILE_BACKGROUNDS } from '../../components/profile/ProfileBgOptions'
 
-const pageVariants = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
-}
-
 export default function Profile() {
   const navigate = useNavigate()
   const { worker, logout } = useWorkerStore()
-  const profileBg = useWorkerStore(s => s.profileBg) || 'gradient'
+  const profileBg = useWorkerStore(s => s.profileBg) || 'plain'
   const setProfileBg = useWorkerStore(s => s.setProfileBg)
   const { isDark } = useThemeStore()
-  const [photo, setPhoto] = useState(worker?.photo || null)
-  const [uploading, setUploading] = useState(false)
+  const [photo, setPhoto] = useState(worker?.photoURL || null)
   const fileRef = useRef()
 
   const w = worker || {
     name: 'Ravi Kumar',
-    phone: '+919876543210',
-    zone: 'kondapur-hyderabad',
+    phone: '98765 43210',
+    city: 'Kondapur, Hyderabad',
     riskScore: 0.82,
-    riskTier: 'LOW',
-    premium: 58,
   }
-  const firstName = w.name?.split(' ')[0] || 'Ravi'
-  const initials = `${w.name?.split(' ')[0]?.[0] || 'R'}${w.name?.split(' ')[1]?.[0] || 'K'}`
+
+  const initials = (w.name || 'Ravi Kumar')
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2)
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0]
@@ -45,282 +39,442 @@ export default function Profile() {
     const reader = new FileReader()
     reader.onload = (ev) => setPhoto(ev.target.result)
     reader.readAsDataURL(file)
-    // TODO: upload to Firebase Storage
   }
 
-  const handleLogout = () => {
+  const handleSignOut = () => {
     logout()
     navigate('/login')
   }
+
+  const activeBg = PROFILE_BACKGROUNDS.find(g => g.id === profileBg) || PROFILE_BACKGROUNDS[0]
+  const isGif = activeBg.type === 'gif'
+  // For plain mode, use theme colors; for GIF mode, use white text on dark overlay
+  const textPrimary = isGif ? 'white' : 'var(--text-primary)'
+  const textSecondary = isGif ? 'rgba(255,255,255,0.8)' : 'var(--text-secondary)'
+  const textTertiary = isGif ? 'rgba(255,255,255,0.6)' : 'var(--text-tertiary)'
+  const textMuted = isGif ? 'rgba(255,255,255,0.5)' : 'var(--text-tertiary)'
+  const cardBg = isGif ? 'rgba(255,255,255,0.12)' : 'var(--bg-card)'
+  const cardBorder = isGif ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-light)'
+  const iconBg = isGif ? 'rgba(255,255,255,0.15)' : 'var(--bg-secondary)'
+  const iconColor = isGif ? 'white' : 'var(--text-secondary)'
+  const pageBg = isGif ? 'transparent' : 'var(--bg-secondary)'
+  const avatarBg = isGif ? 'rgba(255,255,255,0.25)' : 'var(--brand)'
+  const avatarBorder = isGif ? '3px solid white' : '3px solid var(--bg-primary)'
 
   const SECTIONS = [
     {
       title: 'Coverage',
       items: [
-        { icon: Shield,   label: 'My coverage plan',  sub: 'Active · ₹600/week',     path: '/premium' },
-        { icon: Bell,     label: 'Notifications',      sub: 'Alerts & reminders' },
-        { icon: FileText, label: 'Policy documents',   sub: 'View & download' },
+        { icon: Shield, label: 'My coverage plan', sub: 'Active · ₹600/week', action: () => navigate('/coverage') },
+        { icon: Bell, label: 'Notifications', sub: 'Manage alerts' },
       ],
     },
     {
-      title: 'Preferences',
+      title: 'App',
       items: [
+        {
+          icon: isDark ? Sun : Moon,
+          label: 'Dark mode',
+          right: <ThemeToggle />,
+        },
         {
           icon: Globe,
           label: 'Language',
           sub: 'English',
-          right: <span className="text-[12px] font-body" style={{ color: 'var(--text-tertiary)' }}>EN ▾</span>,
-        },
-        {
-          icon: isDark ? Sun : Moon,
-          label: 'Dark mode',
-          sub: isDark ? 'On' : 'Off',
-          right: <ThemeToggle />,
+          right: (
+            <span style={{
+              fontSize: 12,
+              color: textTertiary,
+              fontFamily: 'Inter',
+            }}>EN ▾</span>
+          ),
         },
       ],
     },
     {
       title: 'Legal',
       items: [
-        { icon: FileText, label: 'Terms of Service',  path: '/terms' },
-        { icon: Shield,   label: 'Privacy Policy',    path: '/privacy' },
+        { icon: FileText, label: 'Terms of Service', action: () => navigate('/terms') },
+        { icon: Shield, label: 'Privacy Policy', action: () => navigate('/privacy') },
       ],
     },
   ]
 
   return (
-    <motion.div
-      className="min-h-screen pb-24"
-      style={{ background: 'var(--bg-secondary)' }}
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      {/* Header with GIF or animated gradient background */}
-      {(() => {
-        const active = PROFILE_BACKGROUNDS.find(b => b.id === profileBg) || PROFILE_BACKGROUNDS[0]
-        return (
-          <div style={{ position: 'relative', height: 200, overflow: 'hidden', background: '#1a1a1a' }}>
-            {active.type === 'gradient' ? (
-              <motion.div
-                style={{ position: 'absolute', inset: 0 }}
-                animate={{
-                  background: [
-                    'linear-gradient(135deg, #D97757 0%, #7C3AED 100%)',
-                    'linear-gradient(135deg, #B85C3A 0%, #D97757 100%)',
-                    'linear-gradient(135deg, #D97757 0%, #7C3AED 100%)',
-                  ],
-                }}
-                transition={{ duration: 6, repeat: Infinity }}
-              />
-            ) : (
-              <img
-                key={active.id}
-                src={active.src}
-                alt="profile background"
+    <div style={{
+      minHeight: '100vh',
+      paddingBottom: 100,
+      position: 'relative',
+      overflow: 'hidden',
+      background: pageBg,
+    }}>
+
+      {/* FULL PAGE BACKGROUND — only for GIF mode */}
+      {isGif && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+        }}>
+          <img
+            key={activeBg.id}
+            src={activeBg.src}
+            alt=""
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              position: 'absolute',
+              inset: 0,
+            }}
+          />
+          {/* Overlay for readability */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+          }} />
+        </div>
+      )}
+
+      {/* CONTENT — above background */}
+      <div style={{
+        position: 'relative',
+        zIndex: 1,
+      }}>
+
+        {/* TOPBAR */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '16px 16px 0',
+        }}>
+          <button
+            onClick={() => navigate(-1)}
+            style={{
+              background: isGif ? 'rgba(255,255,255,0.2)' : 'var(--bg-card)',
+              border: isGif ? '1px solid rgba(255,255,255,0.3)' : '1px solid var(--border-light)',
+              borderRadius: 999,
+              width: 36, height: 36,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: isGif ? 'blur(8px)' : 'none',
+            }}
+          >
+            <ArrowLeft size={18} color={isGif ? 'white' : 'var(--text-primary)'} />
+          </button>
+
+          <span style={{
+            fontFamily: 'Bricolage Grotesque',
+            fontSize: 17, fontWeight: 700,
+            color: textPrimary,
+            textShadow: isGif ? '0 1px 4px rgba(0,0,0,0.3)' : 'none',
+          }}>
+            Profile
+          </span>
+
+          {/* BG PICKER */}
+          <div style={{
+            display: 'flex',
+            gap: 5,
+          }}>
+            {PROFILE_BACKGROUNDS.map(opt => (
+              <motion.button
+                key={opt.id}
+                onClick={() => setProfileBg(opt.id)}
+                whileTap={{ scale: 0.9 }}
                 style={{
-                  position: 'absolute',
-                  top: 0, left: 0,
-                  width: '100%', height: '100%',
-                  objectFit: 'cover', display: 'block',
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  fontFamily: 'Inter',
+                  border: profileBg === opt.id
+                    ? isGif ? '2px solid white' : '2px solid var(--brand)'
+                    : isGif ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--border)',
+                  background: profileBg === opt.id
+                    ? isGif ? 'rgba(255,255,255,0.3)' : 'var(--brand-light)'
+                    : isGif ? 'rgba(0,0,0,0.25)' : 'var(--bg-card)',
+                  color: isGif ? 'white' : profileBg === opt.id ? 'var(--brand)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  backdropFilter: isGif ? 'blur(8px)' : 'none',
                 }}
-              />
-            )}
-
-            {/* Dark overlay for text readability */}
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.5) 100%)',
-            }} />
-
-            {/* Back + title */}
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4">
-              <button
-                onClick={() => navigate(-1)}
-                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
               >
-                <ArrowLeft size={20} color="white" />
-              </button>
-              <span className="text-white font-display font-semibold text-[17px]">Profile</span>
-              <div style={{ width: 36 }} />
-            </div>
-
-            {/* Background picker */}
-            <div style={{
-              position: 'absolute', bottom: 12, right: 12,
-              display: 'flex', gap: 6, zIndex: 10,
-            }}>
-              {PROFILE_BACKGROUNDS.map(opt => (
-                <motion.button
-                  key={opt.id}
-                  onClick={() => setProfileBg(opt.id)}
-                  whileTap={{ scale: 0.9 }}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 999,
-                    fontSize: 11,
-                    fontWeight: 600,
-                    fontFamily: 'Inter',
-                    border: profileBg === opt.id
-                      ? '2px solid #FFFFFF'
-                      : '1px solid rgba(255,255,255,0.4)',
-                    background: profileBg === opt.id
-                      ? 'rgba(255,255,255,0.25)'
-                      : 'rgba(0,0,0,0.3)',
-                    color: 'white',
-                    cursor: 'pointer',
-                    backdropFilter: 'blur(8px)',
-                    WebkitBackdropFilter: 'blur(8px)',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {opt.label}
-                </motion.button>
-              ))}
-            </div>
+                {opt.label}
+              </motion.button>
+            ))}
           </div>
-        )
-      })()}
+        </div>
 
-      {/* Photo + name — overlaps header */}
-      <div className="px-4" style={{ marginTop: -44, position: 'relative', zIndex: 10 }}>
-        <div className="flex items-end gap-4 mb-4">
-          {/* Photo circle */}
-          <div className="relative flex-shrink-0">
-            <div
-              className="rounded-full overflow-hidden flex items-center justify-center"
-              style={{
-                width: 88, height: 88,
-                background: 'var(--brand)',
-                border: '4px solid var(--bg-primary)',
-                boxShadow: 'var(--shadow-md)',
-              }}
-            >
+        {/* AVATAR + NAME */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '28px 16px 24px',
+          textAlign: 'center',
+        }}>
+          {/* Avatar with photo upload */}
+          <div style={{ position: 'relative', marginBottom: 14 }}>
+            <div style={{
+              width: 88, height: 88,
+              borderRadius: 999,
+              background: avatarBg,
+              backdropFilter: isGif ? 'blur(8px)' : 'none',
+              border: avatarBorder,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}>
               {photo ? (
-                <img src={photo} className="w-full h-full object-cover" alt="Profile" />
+                <img
+                  src={photo}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                />
               ) : (
-                <span className="font-display font-bold text-[28px] text-white">{initials}</span>
-              )}
-              {uploading && (
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full">
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                </div>
+                <span style={{
+                  fontFamily: 'Bricolage Grotesque',
+                  fontSize: 32, fontWeight: 800,
+                  color: 'white',
+                  textShadow: isGif ? '0 1px 4px rgba(0,0,0,0.2)' : 'none',
+                }}>
+                  {initials}
+                </span>
               )}
             </div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center"
-              style={{ background: 'var(--bg-primary)', border: '2px solid var(--bg-primary)', boxShadow: 'var(--shadow-sm)' }}
-            >
-              <Camera size={14} style={{ color: 'var(--brand)' }} />
-            </button>
+
+            {/* Camera icon */}
             <input
               ref={fileRef}
               type="file"
               accept="image/*"
-              capture="user"
-              className="hidden"
+              id="photo-upload"
+              style={{ display: 'none' }}
               onChange={handlePhotoChange}
             />
+            <label
+              htmlFor="photo-upload"
+              style={{
+                position: 'absolute',
+                bottom: 0, right: 0,
+                width: 28, height: 28,
+                borderRadius: 999,
+                background: isGif ? 'white' : 'var(--bg-card)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                border: isGif ? 'none' : '1px solid var(--border-light)',
+              }}
+            >
+              <Camera size={14} color="#D97757" />
+            </label>
           </div>
 
-          {/* Name + zone */}
-          <div className="pb-1">
-            <h2 className="font-display font-bold text-[20px]" style={{ color: 'var(--text-primary)' }}>
-              {w.name}
-            </h2>
-            <div className="flex items-center gap-1 mt-0.5">
-              <MapPin size={12} style={{ color: 'var(--text-tertiary)' }} />
-              <span className="text-[12px] font-body" style={{ color: 'var(--text-tertiary)' }}>
-                Kondapur, Hyderabad
-              </span>
-            </div>
+          {/* NAME */}
+          <h2 style={{
+            fontFamily: 'Bricolage Grotesque',
+            fontSize: 24, fontWeight: 800,
+            color: textPrimary,
+            margin: '0 0 4px',
+            textShadow: isGif ? '0 2px 8px rgba(0,0,0,0.4)' : 'none',
+            letterSpacing: -0.5,
+          }}>
+            {w.name || 'Ravi Kumar'}
+          </h2>
+
+          {/* Zone */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            marginBottom: 6,
+          }}>
+            <MapPin size={12} color={textSecondary} />
+            <span style={{
+              fontSize: 13, fontFamily: 'Inter',
+              color: textSecondary,
+            }}>
+              {w.city || 'Kondapur, Hyderabad'}
+            </span>
+          </div>
+
+          {/* Phone */}
+          <span style={{
+            fontSize: 13, fontFamily: 'Inter',
+            color: textTertiary,
+          }}>
+            +91 {w.phone || '98765 43210'}
+          </span>
+
+          {/* Stats row */}
+          <div style={{
+            display: 'flex',
+            gap: 1,
+            marginTop: 20,
+            background: cardBg,
+            backdropFilter: isGif ? 'blur(12px)' : 'none',
+            border: cardBorder,
+            borderRadius: 16,
+            overflow: 'hidden',
+            width: '100%',
+            maxWidth: 320,
+          }}>
+            {[
+              { label: 'Protected', value: '₹1,200' },
+              { label: 'Payouts', value: '3' },
+              { label: 'Risk score', value: '0.82' },
+            ].map((stat, i) => (
+              <div key={i} style={{
+                flex: 1,
+                padding: '14px 8px',
+                textAlign: 'center',
+                borderRight: i < 2
+                  ? isGif ? '1px solid rgba(255,255,255,0.15)' : '1px solid var(--border-light)'
+                  : 'none',
+              }}>
+                <p style={{
+                  fontFamily: 'Bricolage Grotesque',
+                  fontSize: 18, fontWeight: 800,
+                  color: textPrimary, margin: '0 0 2px',
+                }}>
+                  {stat.value}
+                </p>
+                <p style={{
+                  fontSize: 10, fontFamily: 'Inter',
+                  color: textTertiary,
+                  margin: 0, fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}>
+                  {stat.label}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {[
-            { label: 'Protected',  value: '₹1,200', sub: 'This month',  color: 'var(--brand)' },
-            { label: 'Payouts',    value: '3',       sub: 'Total',       color: 'var(--text-primary)' },
-            { label: 'Risk score', value: '0.82',    sub: 'Low risk',    color: 'var(--success)' },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="rounded-xl p-3 text-center"
-              style={{ background: 'var(--bg-primary)', boxShadow: 'var(--shadow-card)' }}
-            >
-              <p className="font-display font-bold text-[18px]" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-[11px] font-body mt-0.5" style={{ color: 'var(--text-tertiary)' }}>{s.label}</p>
+        {/* SETTINGS SECTIONS */}
+        <div style={{ padding: '0 16px' }}>
+          {SECTIONS.map(section => (
+            <div key={section.title} style={{ marginBottom: 16 }}>
+              <p style={{
+                fontSize: 11, fontWeight: 700,
+                fontFamily: 'Inter',
+                color: textMuted,
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                margin: '0 4px 8px',
+              }}>
+                {section.title}
+              </p>
+              <div style={{
+                background: cardBg,
+                backdropFilter: isGif ? 'blur(16px)' : 'none',
+                border: cardBorder,
+                borderRadius: 14,
+                overflow: 'hidden',
+              }}>
+                {section.items.map((item, i) => {
+                  const Icon = item.icon
+                  return (
+                    <motion.div
+                      key={i}
+                      onClick={item.action}
+                      whileTap={{ opacity: 0.7 }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '14px 16px',
+                        borderBottom: i < section.items.length - 1
+                          ? isGif ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-light)'
+                          : 'none',
+                        cursor: item.action ? 'pointer' : 'default',
+                      }}
+                    >
+                      <div style={{
+                        width: 36, height: 36,
+                        borderRadius: 10,
+                        background: iconBg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                      }}>
+                        <Icon size={17} color={iconColor} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{
+                          fontSize: 14, fontWeight: 600,
+                          fontFamily: 'Inter',
+                          color: textPrimary, margin: 0,
+                        }}>
+                          {item.label}
+                        </p>
+                        {item.sub && (
+                          <p style={{
+                            fontSize: 12, fontFamily: 'Inter',
+                            color: textTertiary,
+                            margin: '2px 0 0',
+                          }}>
+                            {item.sub}
+                          </p>
+                        )}
+                      </div>
+                      {item.right || (
+                        item.action && (
+                          <ChevronRight size={16}
+                            color={isGif ? 'rgba(255,255,255,0.4)' : 'var(--text-disabled)'} />
+                        )
+                      )}
+                    </motion.div>
+                  )
+                })}
+              </div>
             </div>
           ))}
-        </div>
 
-        {/* Sections */}
-        {SECTIONS.map((section) => (
-          <div key={section.title} className="mb-3">
-            <p
-              className="text-[11px] font-semibold font-body uppercase tracking-wider mb-1.5 px-1"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              {section.title}
-            </p>
-            <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-primary)', boxShadow: 'var(--shadow-card)' }}>
-              {section.items.map((item, i, arr) => {
-                const Icon = item.icon
-                return (
-                  <motion.div
-                    key={item.label}
-                    className="flex items-center gap-3 px-4 py-3.5 cursor-pointer"
-                    style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border-light)' : 'none' }}
-                    whileTap={{ opacity: 0.7 }}
-                    onClick={() => item.path && navigate(item.path)}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ background: 'var(--bg-secondary)' }}
-                    >
-                      <Icon size={16} style={{ color: 'var(--text-secondary)' }} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
-                        {item.label}
-                      </p>
-                      {item.sub && (
-                        <p className="text-[12px] font-body mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                          {item.sub}
-                        </p>
-                      )}
-                    </div>
-                    {item.right ?? <ChevronRight size={16} style={{ color: 'var(--text-disabled)' }} />}
-                  </motion.div>
-                )
-              })}
-            </div>
-          </div>
-        ))}
-
-        {/* Sign out */}
-        <motion.button
-          className="w-full mt-1 py-3.5 rounded-xl flex items-center justify-center gap-2"
-          style={{ background: 'var(--danger-light)', border: '1px solid transparent' }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleLogout}
-        >
-          <LogOut size={16} style={{ color: 'var(--danger)' }} />
-          <span className="text-[14px] font-semibold font-body" style={{ color: 'var(--danger)' }}>
+          {/* Sign out */}
+          <motion.button
+            onClick={handleSignOut}
+            whileTap={{ scale: 0.97 }}
+            style={{
+              width: '100%',
+              padding: '14px',
+              borderRadius: 12,
+              border: '1px solid rgba(240,68,56,0.4)',
+              background: 'rgba(240,68,56,0.15)',
+              color: '#FF6B6B',
+              fontSize: 14, fontWeight: 700,
+              fontFamily: 'Inter', cursor: 'pointer',
+              marginBottom: 16,
+              backdropFilter: isGif ? 'blur(8px)' : 'none',
+            }}
+          >
             Sign out
-          </span>
-        </motion.button>
+          </motion.button>
 
-        <p className="text-center text-[12px] font-body mt-5 mb-2" style={{ color: 'var(--text-disabled)' }}>
-          GuidePay v1.0 · Team SentinelX · KL University
-        </p>
+          <p style={{
+            textAlign: 'center',
+            fontSize: 11,
+            color: textMuted,
+            fontFamily: 'Inter',
+            paddingBottom: 20,
+          }}>
+            GuidePay v2.0 · Team SentinelX · KL University
+          </p>
+        </div>
       </div>
-
-      <ChatWidget />
-      <BottomNav />
-    </motion.div>
+    </div>
   )
 }

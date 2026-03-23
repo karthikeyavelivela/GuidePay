@@ -1,246 +1,439 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-const MONTHS = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+// All Indian holidays and festivals 2026
+const HOLIDAYS = {
+  '2026-01-01': { name: "New Year's Day", emoji: '🎉', type: 'public', risk: 'low' },
+  '2026-01-14': { name: 'Makar Sankranti', emoji: '🪁', type: 'festival', risk: 'medium', note: 'Order surge · Zone delays' },
+  '2026-01-23': { name: 'Netaji Jayanti', emoji: '🇮🇳', type: 'public', risk: 'low' },
+  '2026-01-26': { name: 'Republic Day', emoji: '🇮🇳', type: 'national', risk: 'high', note: 'Road closures · Possible restrictions' },
+  '2026-02-14': { name: "Valentine's Day", emoji: '💝', type: 'informal', risk: 'low', note: 'High order surge' },
+  '2026-02-26': { name: 'Maha Shivratri', emoji: '🙏', type: 'festival', risk: 'low' },
+  '2026-03-20': { name: 'Holi', emoji: '🌈', type: 'festival', risk: 'high', note: 'Major disruption · Platform slowdowns · Street closures' },
+  '2026-03-30': { name: 'Eid ul-Fitr', emoji: '🌙', type: 'festival', risk: 'medium', note: 'High order volume · Traffic delays' },
+  '2026-04-02': { name: 'Ram Navami', emoji: '🏹', type: 'festival', risk: 'low' },
+  '2026-04-03': { name: 'Good Friday', emoji: '✝️', type: 'public', risk: 'low' },
+  '2026-04-05': { name: 'Easter Sunday', emoji: '🐣', type: 'festival', risk: 'low' },
+  '2026-04-14': { name: 'Ambedkar Jayanti / Tamil New Year', emoji: '📘', type: 'public', risk: 'medium', note: 'Processions in some cities' },
+  '2026-05-01': { name: 'Labour Day', emoji: '✊', type: 'public', risk: 'medium', note: 'Platform worker protests possible' },
+  '2026-05-09': { name: 'Rabindra Jayanti', emoji: '🎶', type: 'regional', risk: 'low' },
+  '2026-06-07': { name: 'Eid ul-Adha', emoji: '🐑', type: 'festival', risk: 'medium', note: 'High demand · Route delays' },
+  '2026-06-15': { name: 'Monsoon begins', emoji: '🌧️', type: 'weather', risk: 'high', note: 'Flood season starts · Ensure coverage active' },
+  '2026-07-05': { name: 'Muharram', emoji: '🌙', type: 'festival', risk: 'medium' },
+  '2026-07-15': { name: 'Peak monsoon', emoji: '⛈️', type: 'weather', risk: 'high', note: 'Highest flood risk · IMD alerts likely' },
+  '2026-08-15': { name: 'Independence Day', emoji: '🇮🇳', type: 'national', risk: 'high', note: 'Security restrictions · Road closures' },
+  '2026-08-22': { name: 'Raksha Bandhan', emoji: '🧡', type: 'festival', risk: 'low', note: 'Order surge' },
+  '2026-08-29': { name: 'Janmashtami', emoji: '🪈', type: 'festival', risk: 'medium', note: 'Dahi Handi events · Route delays' },
+  '2026-09-17': { name: 'Ganesh Chaturthi', emoji: '🐘', type: 'festival', risk: 'high', note: 'Massive disruption Mumbai/Pune · 10 days of events' },
+  '2026-10-02': { name: 'Gandhi Jayanti', emoji: '🕊️', type: 'national', risk: 'low' },
+  '2026-10-15': { name: 'Navratri begins', emoji: '🪔', type: 'festival', risk: 'medium', note: '9 day festival · Varied disruptions' },
+  '2026-10-20': { name: 'Dussehra', emoji: '🏹', type: 'festival', risk: 'high', note: 'Major processions · Traffic jams · Platform surge' },
+  '2026-10-28': { name: 'Diwali', emoji: '🪔', type: 'festival', risk: 'high', note: 'Highest demand day · Air quality warnings · Possible disruptions' },
+  '2026-10-30': { name: 'Govardhan Puja', emoji: '🌼', type: 'festival', risk: 'low' },
+  '2026-11-02': { name: 'Bhai Dooj', emoji: '💛', type: 'festival', risk: 'low' },
+  '2026-11-09': { name: 'Guru Nanak Jayanti', emoji: '🙏', type: 'festival', risk: 'medium', note: 'Processions in North India' },
+  '2026-12-25': { name: 'Christmas', emoji: '🎄', type: 'public', risk: 'low', note: 'High order surge expected' },
+  '2026-12-31': { name: "New Year's Eve", emoji: '🎆', type: 'informal', risk: 'medium', note: 'Very high order volume · Late night surge' },
+}
+
+const MONSOON_RISK = {
+  5: 'low',
+  6: 'high',
+  7: 'high',
+  8: 'high',
+  9: 'medium',
+  10: 'low',
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April',
+  'May', 'June', 'July', 'August',
+  'September', 'October', 'November', 'December'
 ]
 
-const INDIA_HOLIDAYS_2026 = [
-  { date: '2026-01-14', name: 'Makar Sankranti', type: 'holiday' },
-  { date: '2026-01-26', name: 'Republic Day', type: 'holiday' },
-  { date: '2026-02-26', name: 'Maha Shivratri', type: 'holiday' },
-  { date: '2026-03-18', name: 'Holi', type: 'holiday' },
-  { date: '2026-04-02', name: 'Ram Navami', type: 'holiday' },
-  { date: '2026-04-14', name: 'Dr. Ambedkar Jayanti', type: 'holiday' },
-  { date: '2026-04-23', name: 'Eid ul-Fitr', type: 'holiday' },
-  { date: '2026-05-01', name: 'Labour Day', type: 'holiday' },
-  { date: '2026-06-01', name: 'Monsoon begins', type: 'monsoon' },
-  { date: '2026-06-15', name: 'Pre-monsoon risk', type: 'risk' },
-  { date: '2026-07-01', name: 'Peak flood season', type: 'risk' },
-  { date: '2026-07-15', name: 'High flood alert', type: 'risk' },
-  { date: '2026-07-30', name: 'Eid ul-Adha', type: 'holiday' },
-  { date: '2026-08-15', name: 'Independence Day', type: 'holiday' },
-  { date: '2026-08-20', name: 'Peak monsoon', type: 'monsoon' },
-  { date: '2026-09-01', name: 'Monsoon peak zone', type: 'risk' },
-  { date: '2026-09-20', name: 'Monsoon withdrawal begins', type: 'monsoon' },
-  { date: '2026-10-02', name: 'Gandhi Jayanti', type: 'holiday' },
-  { date: '2026-10-20', name: 'Dussehra', type: 'holiday' },
-  { date: '2026-11-04', name: 'Diwali', type: 'holiday' },
-  { date: '2026-11-15', name: 'Northeast monsoon', type: 'monsoon' },
-  { date: '2026-12-25', name: 'Christmas', type: 'holiday' },
-]
-
-const TYPE_COLORS = {
-  holiday: { dot: '#D97757', bg: '#FDF1ED', text: '#B85C3A' },
-  monsoon: { dot: '#2E90FA', bg: '#EFF8FF', text: '#1A6FD4' },
-  risk:    { dot: '#F04438', bg: '#FEF3F2', text: '#C01048' },
+const RISK_COLOR = {
+  high: '#F04438',
+  medium: '#F79009',
+  low: '#12B76A',
+  weather: '#2E90FA',
 }
 
-const TYPE_LABELS = {
-  holiday: 'National Holiday',
-  monsoon: 'Monsoon Event',
-  risk:    'Flood Risk',
-}
-
-function getDaysInMonth(year, month) {
-  return new Date(year, month + 1, 0).getDate()
-}
-
-function getFirstDayOfMonth(year, month) {
-  return new Date(year, month, 1).getDay()
-}
-
-export default function IndiaCalendar() {
-  const today = new Date()
-  const [viewYear, setViewYear] = useState(today.getFullYear())
-  const [viewMonth, setViewMonth] = useState(today.getMonth())
+export const IndiaCalendar = () => {
+  const now = new Date()
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth())
   const [selected, setSelected] = useState(null)
 
-  const daysInMonth = getDaysInMonth(viewYear, viewMonth)
-  const firstDay = getFirstDayOfMonth(viewYear, viewMonth)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const firstDayOfWeek = new Date(year, month, 1).getDay()
 
-  const holidayMap = {}
-  INDIA_HOLIDAYS_2026.forEach(h => {
-    const d = new Date(h.date)
-    if (d.getFullYear() === viewYear && d.getMonth() === viewMonth) {
-      holidayMap[d.getDate()] = h
-    }
-  })
-
-  const prevMonth = () => {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11) }
-    else setViewMonth(m => m - 1)
-    setSelected(null)
+  const getKey = (day) => {
+    const m = String(month + 1).padStart(2, '0')
+    const d = String(day).padStart(2, '0')
+    return `${year}-${m}-${d}`
   }
 
-  const nextMonth = () => {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0) }
-    else setViewMonth(m => m + 1)
-    setSelected(null)
-  }
-
+  const getEvent = (day) => HOLIDAYS[getKey(day)]
   const isToday = (day) =>
-    day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear()
+    day === now.getDate() &&
+    month === now.getMonth() &&
+    year === now.getFullYear()
 
-  const cells = []
-  for (let i = 0; i < firstDay; i++) cells.push(null)
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+  const monsoonRisk = MONSOON_RISK[month + 1]
 
-  const upcomingEvents = INDIA_HOLIDAYS_2026
-    .filter(h => new Date(h.date) >= today)
-    .slice(0, 3)
+  const prev = () => {
+    if (month === 0) { setMonth(11); setYear(y => y - 1) }
+    else setMonth(m => m - 1)
+    setSelected(null)
+  }
+
+  const next = () => {
+    if (month === 11) { setMonth(0); setYear(y => y + 1) }
+    else setMonth(m => m + 1)
+    setSelected(null)
+  }
+
+  const selectedEvent = selected ? getEvent(selected) : null
+
+  // Count events this month
+  const monthEvents = Object.entries(HOLIDAYS).filter(
+    ([key]) => key.startsWith(
+      `${year}-${String(month + 1).padStart(2, '0')}`
+    )
+  )
 
   return (
-    <div style={{ borderRadius: 16, background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
-      {/* Header */}
+    <div style={{
+      background: 'var(--bg-card)',
+      borderRadius: 16,
+      border: '1px solid var(--border)',
+      overflow: 'hidden',
+    }}>
+      {/* Monsoon warning banner */}
+      {monsoonRisk === 'high' && (
+        <div style={{
+          background: 'rgba(240,68,56,0.08)',
+          borderBottom: '1px solid rgba(240,68,56,0.15)',
+          padding: '10px 16px',
+          display: 'flex',
+          gap: 8, alignItems: 'center',
+        }}>
+          <span style={{ fontSize: 16 }}>🌧️</span>
+          <div>
+            <p style={{
+              fontSize: 12, fontWeight: 700,
+              fontFamily: 'Inter', color: '#F04438',
+              margin: 0,
+            }}>
+              Monsoon season — high flood risk
+            </p>
+            <p style={{
+              fontSize: 11, color: 'var(--text-tertiary)',
+              fontFamily: 'Inter', margin: 0,
+            }}>
+              Ensure your coverage is active this month
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Calendar header */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
         padding: '14px 16px',
         borderBottom: '1px solid var(--border-light)',
       }}>
-        <button onClick={prevMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary)' }}>
-          <ChevronLeft size={18} />
-        </button>
+        <motion.button
+          onClick={prev}
+          whileTap={{ scale: 0.85 }}
+          style={{
+            background: 'var(--bg-secondary)',
+            border: 'none',
+            borderRadius: 999,
+            width: 32, height: 32,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ChevronLeft size={16} color="var(--text-secondary)" />
+        </motion.button>
+
         <div style={{ textAlign: 'center' }}>
-          <p style={{ fontSize: 15, fontWeight: 700, fontFamily: 'Bricolage Grotesque, sans-serif', color: 'var(--text-primary)', margin: 0 }}>
-            {MONTHS[viewMonth]} {viewYear}
+          <p style={{
+            fontFamily: 'Bricolage Grotesque',
+            fontSize: 16, fontWeight: 800,
+            color: 'var(--text-primary)', margin: 0,
+          }}>
+            {MONTH_NAMES[month]} {year}
           </p>
-          <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', margin: '2px 0 0' }}>
-            India Holiday & Flood Calendar
-          </p>
+          {monthEvents.length > 0 && (
+            <p style={{
+              fontSize: 11, color: 'var(--text-tertiary)',
+              fontFamily: 'Inter', margin: '2px 0 0',
+            }}>
+              {monthEvents.length} events this month
+            </p>
+          )}
         </div>
-        <button onClick={nextMonth} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-secondary)' }}>
-          <ChevronRight size={18} />
-        </button>
+
+        <motion.button
+          onClick={next}
+          whileTap={{ scale: 0.85 }}
+          style={{
+            background: 'var(--bg-secondary)',
+            border: 'none',
+            borderRadius: 999,
+            width: 32, height: 32,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ChevronRight size={16} color="var(--text-secondary)" />
+        </motion.button>
       </div>
 
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 12, padding: '8px 16px', borderBottom: '1px solid var(--border-light)' }}>
-        {Object.entries(TYPE_COLORS).map(([type, col]) => (
-          <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 7, height: 7, borderRadius: 999, background: col.dot }} />
-            <span style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif' }}>{TYPE_LABELS[type]}</span>
-          </div>
-        ))}
-      </div>
-
-      {/* Weekday labels */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', padding: '8px 12px 4px' }}>
-        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-          <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: 'var(--text-tertiary)' }}>
+      {/* Day headers */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(7, 1fr)',
+        padding: '8px 12px 2px',
+      }}>
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+          <div key={d} style={{
+            textAlign: 'center',
+            fontSize: 10,
+            fontFamily: 'Inter',
+            fontWeight: 600,
+            color: 'var(--text-tertiary)',
+            padding: '4px 0',
+          }}>
             {d}
           </div>
         ))}
       </div>
 
-      {/* Calendar grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, padding: '0 12px 12px' }}>
-        {cells.map((day, i) => {
-          if (!day) return <div key={`e-${i}`} />
-          const event = holidayMap[day]
-          const col = event ? TYPE_COLORS[event.type] : null
-          const isSelected = selected === day
-          const _isToday = isToday(day)
-          return (
-            <motion.button
-              key={day}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setSelected(isSelected ? null : day)}
-              style={{
-                position: 'relative',
-                height: 36, borderRadius: 8,
-                border: isSelected ? `1.5px solid ${col?.dot || 'var(--brand)'}` : '1px solid transparent',
-                background: isSelected ? (col?.bg || 'var(--brand-light)') : _isToday ? 'var(--brand)' : event ? `${col.dot}12` : 'transparent',
-                cursor: event ? 'pointer' : 'default',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <span style={{
-                fontSize: 12, fontFamily: 'Inter, sans-serif',
-                fontWeight: _isToday ? 700 : event ? 600 : 400,
-                color: _isToday ? 'white' : isSelected && col ? col.text : event ? col.dot : 'var(--text-primary)',
-              }}>
-                {day}
-              </span>
-              {event && (
-                <div style={{
-                  position: 'absolute', bottom: 3,
-                  width: 4, height: 4, borderRadius: 999,
-                  background: col.dot,
-                }} />
-              )}
-            </motion.button>
-          )
-        })}
+      {/* Date grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(7, 1fr)',
+        padding: '0 8px 8px',
+        gap: 1,
+      }}>
+        {/* Blank cells */}
+        {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+          <div key={`blank-${i}`} style={{ height: 44 }} />
+        ))}
+
+        {/* Day cells */}
+        {Array.from({ length: daysInMonth }, (_, i) => i + 1)
+          .map(day => {
+            const event = getEvent(day)
+            const today = isToday(day)
+            const sel = selected === day
+
+            return (
+              <motion.button
+                key={day}
+                onClick={() => setSelected(sel ? null : day)}
+                whileTap={{ scale: 0.88 }}
+                style={{
+                  height: 44,
+                  borderRadius: 10,
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 2,
+                  background: sel
+                    ? '#FDF1ED'
+                    : today
+                      ? '#D97757'
+                      : 'transparent',
+                  position: 'relative',
+                }}
+              >
+                <span style={{
+                  fontSize: 13,
+                  fontFamily: 'Inter',
+                  fontWeight: today ? 700 : 400,
+                  color: today ? 'white'
+                    : sel ? '#D97757'
+                      : 'var(--text-primary)',
+                  lineHeight: 1,
+                }}>
+                  {day}
+                </span>
+
+                {/* Event indicator dot */}
+                {event && (
+                  <div style={{
+                    width: 4, height: 4,
+                    borderRadius: 999,
+                    background: today
+                      ? 'rgba(255,255,255,0.8)'
+                      : RISK_COLOR[event.risk] || '#D97757',
+                    flexShrink: 0,
+                  }} />
+                )}
+
+                {/* Emoji for high-risk days */}
+                {event && event.risk === 'high' && !today && (
+                  <span style={{
+                    fontSize: 7,
+                    lineHeight: 1,
+                    position: 'absolute',
+                    top: 3,
+                    right: 3,
+                  }}>
+                    ⚠️
+                  </span>
+                )}
+              </motion.button>
+            )
+          })}
       </div>
 
       {/* Selected event detail */}
-      {selected && holidayMap[selected] && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          style={{
-            margin: '0 12px 12px',
-            background: TYPE_COLORS[holidayMap[selected].type].bg,
-            borderRadius: 10,
-            padding: '10px 14px',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}
-        >
-          <div style={{
-            width: 8, height: 8, borderRadius: 999, flexShrink: 0,
-            background: TYPE_COLORS[holidayMap[selected].type].dot,
-          }} />
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: TYPE_COLORS[holidayMap[selected].type].text, margin: '0 0 2px' }}>
-              {holidayMap[selected].name}
-            </p>
-            <p style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-              {TYPE_LABELS[holidayMap[selected].type]} · {MONTHS[viewMonth]} {selected}
-            </p>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Upcoming events */}
-      <div style={{ borderTop: '1px solid var(--border-light)', padding: '12px 16px' }}>
-        <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 10px' }}>
-          Upcoming events
-        </p>
-        {upcomingEvents.map((ev, i) => {
-          const d = new Date(ev.date)
-          const col = TYPE_COLORS[ev.type]
-          return (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              paddingBottom: i < upcomingEvents.length - 1 ? 10 : 0,
-              marginBottom: i < upcomingEvents.length - 1 ? 10 : 0,
-              borderBottom: i < upcomingEvents.length - 1 ? '1px solid var(--border-light)' : 'none',
+      <AnimatePresence>
+        {selected && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div style={{
+              padding: '14px 16px',
+              borderTop: '1px solid var(--border-light)',
+              background: 'var(--bg-secondary)',
             }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: col.bg,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <span style={{ fontSize: 13, fontWeight: 800, fontFamily: 'Bricolage Grotesque, sans-serif', color: col.dot, lineHeight: 1 }}>{d.getDate()}</span>
-                <span style={{ fontSize: 8, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: col.dot }}>{MONTHS[d.getMonth()]}</span>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: 'var(--text-primary)', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {ev.name}
+              {selectedEvent ? (
+                <div style={{
+                  display: 'flex',
+                  gap: 12,
+                  alignItems: 'flex-start',
+                }}>
+                  <div style={{
+                    width: 44, height: 44,
+                    borderRadius: 12,
+                    background: `${RISK_COLOR[selectedEvent.risk] || '#D97757'}15`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 22,
+                    flexShrink: 0,
+                  }}>
+                    {selectedEvent.emoji}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <p style={{
+                      fontSize: 14, fontWeight: 700,
+                      fontFamily: 'Inter',
+                      color: 'var(--text-primary)',
+                      margin: '0 0 3px',
+                    }}>
+                      {selectedEvent.name}
+                    </p>
+                    {selectedEvent.note && (
+                      <p style={{
+                        fontSize: 12, fontFamily: 'Inter',
+                        color: RISK_COLOR[selectedEvent.risk],
+                        fontWeight: 600,
+                        margin: '0 0 4px',
+                      }}>
+                        ⚠ {selectedEvent.note}
+                      </p>
+                    )}
+                    <div style={{
+                      display: 'flex',
+                      gap: 6,
+                      flexWrap: 'wrap',
+                    }}>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        fontFamily: 'Inter',
+                        color: RISK_COLOR[selectedEvent.risk],
+                        background: `${RISK_COLOR[selectedEvent.risk]}15`,
+                        padding: '3px 8px',
+                        borderRadius: 999,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                      }}>
+                        {selectedEvent.risk} risk
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 600,
+                        fontFamily: 'Inter',
+                        color: 'var(--text-tertiary)',
+                        background: 'var(--bg-tertiary, #F4F4F5)',
+                        padding: '3px 8px',
+                        borderRadius: 999,
+                        textTransform: 'capitalize',
+                      }}>
+                        {selectedEvent.type}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p style={{
+                  fontSize: 13,
+                  color: 'var(--text-tertiary)',
+                  fontFamily: 'Inter', margin: 0,
+                }}>
+                  {MONTH_NAMES[month]} {selected} — No events scheduled
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-                  {TYPE_LABELS[ev.type]}
-                </p>
-              </div>
-              <div style={{ width: 6, height: 6, borderRadius: 999, background: col.dot, flexShrink: 0 }} />
+              )}
             </div>
-          )
-        })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Legend */}
+      <div style={{
+        display: 'flex',
+        gap: 12,
+        padding: '10px 16px',
+        borderTop: '1px solid var(--border-light)',
+        flexWrap: 'wrap',
+      }}>
+        {[
+          { color: '#F04438', label: 'High disruption risk' },
+          { color: '#F79009', label: 'Medium risk' },
+          { color: '#12B76A', label: 'Low risk' },
+        ].map(l => (
+          <div key={l.label} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+          }}>
+            <div style={{
+              width: 6, height: 6,
+              borderRadius: 999,
+              background: l.color,
+            }} />
+            <span style={{
+              fontSize: 10,
+              fontFamily: 'Inter',
+              color: 'var(--text-tertiary)',
+            }}>
+              {l.label}
+            </span>
+          </div>
+        ))}
       </div>
     </div>
   )
 }
+
+export default IndiaCalendar

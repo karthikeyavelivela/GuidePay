@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bell, AlertTriangle, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import BottomNav from '../../components/ui/BottomNav'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import LiveDot from '../../components/ui/LiveDot'
 import ChatWidget from '../../components/chat/ChatWidget'
+import { AppTour } from '../../components/tour/AppTour'
 import { useWorkerStore } from '../../store/workerStore'
 import { useClaimStore } from '../../store/claimStore'
 import { formatINR } from '../../utils/formatters'
@@ -37,9 +38,9 @@ export default function Dashboard() {
   }
 
   const [showAlert, setShowAlert] = useState(false)
+  const [showTour, setShowTour] = useState(false)
 
   useEffect(() => {
-    // Show alert banner for high risk — simulate forecast check
     const timer = setTimeout(() => setShowAlert(true), 800)
     return () => clearTimeout(timer)
   }, [])
@@ -85,16 +86,13 @@ export default function Dashboard() {
             <p className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>{greeting()} 👋</p>
             <h1 className="font-display font-bold text-[24px] mt-0.5" style={{ color: 'var(--text-primary)' }}>{firstName}</h1>
           </div>
-          <div className="flex items-center gap-3">
-            <button className="relative w-10 h-10 flex items-center justify-center">
-              <Bell size={22} style={{ color: 'var(--text-primary)' }} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand rounded-full" />
-            </button>
-            <div className="w-9 h-9 rounded-full bg-brand flex items-center justify-center">
-              <span className="font-display font-bold text-[13px] text-white">
-                {firstName[0]}{w.name?.split(' ')[1]?.[0] || 'K'}
-              </span>
-            </div>
+          <div
+            className="w-9 h-9 rounded-full bg-brand flex items-center justify-center cursor-pointer"
+            onClick={() => navigate('/profile')}
+          >
+            <span className="font-display font-bold text-[13px] text-white">
+              {firstName[0]}{w.name?.split(' ')[1]?.[0] || 'K'}
+            </span>
           </div>
         </div>
       </div>
@@ -141,7 +139,7 @@ export default function Dashboard() {
 
         {/* Policy card */}
         <motion.div variants={fadeUp}>
-          <div className="rounded-card p-5" style={{ background: 'var(--bg-card)', boxShadow: '0 10px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04)' }}>
+          <div id="policy-hero-card" className="rounded-card p-5" style={{ background: 'var(--bg-card)', boxShadow: '0 10px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04)' }}>
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <LiveDot status="active" />
@@ -177,6 +175,7 @@ export default function Dashboard() {
         <AnimatePresence>
           {showAlert && (
             <motion.div
+              id="alert-banner"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -224,12 +223,12 @@ export default function Dashboard() {
         {/* Zone status */}
         <motion.div variants={fadeUp}>
           <p className="text-[14px] font-semibold font-body mb-2" style={{ color: 'var(--text-primary)' }}>Zone status</p>
-          <div className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
+          <div id="zone-status-card" className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
             {[
-              { icon: '🌊', label: 'Flood alert',  badge: 'Clear',      variant: 'success' },
-              { icon: '📱', label: 'Zepto',         badge: 'Normal',     variant: 'success' },
-              { icon: '🚫', label: 'Curfew',        badge: 'None',       variant: 'success' },
-              { icon: '🤖', label: 'Tomorrow',      badge: '78% risk',   variant: 'warning' },
+              { icon: '🌊', label: 'Flood alert', badge: 'Clear', variant: 'success' },
+              { icon: '📱', label: 'Zepto', badge: 'Normal', variant: 'success' },
+              { icon: '🚫', label: 'Curfew', badge: 'None', variant: 'success' },
+              { icon: '🤖', label: 'Tomorrow', badge: '78% risk', variant: 'warning' },
             ].map((row, i, arr) => (
               <div
                 key={row.label}
@@ -291,6 +290,39 @@ export default function Dashboard() {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Tour button — floating above chat button */}
+      <motion.button
+        id="tour-btn"
+        onClick={() => setShowTour(true)}
+        whileHover={{ scale: 1.08 }}
+        whileTap={{ scale: 0.92 }}
+        style={{
+          position: 'fixed',
+          bottom: 148,
+          right: 16,
+          zIndex: 90,
+          width: 44, height: 44,
+          borderRadius: 999,
+          background: '#0F0F0F',
+          border: '2px solid rgba(255,255,255,0.1)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+        }}
+        title="Take app tour"
+      >
+        <span style={{ fontSize: 18 }}>🗺️</span>
+      </motion.button>
+
+      {/* Tour overlay */}
+      <AnimatePresence>
+        {showTour && (
+          <AppTour onClose={() => setShowTour(false)} />
+        )}
+      </AnimatePresence>
 
       <ChatWidget />
       <BottomNav />

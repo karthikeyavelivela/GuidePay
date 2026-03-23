@@ -91,7 +91,7 @@ export default function WorkerLayout() {
   const pageTitle = location.pathname.replace('/', '') || 'Dashboard'
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-secondary)' }}>
+    <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
 
       {/* Desktop sidebar — fixed position */}
       <aside
@@ -198,7 +198,7 @@ export default function WorkerLayout() {
         </div>
 
         {/* Page content via Outlet */}
-        <div className="max-w-3xl mx-auto lg:px-6 lg:py-6 pb-20">
+        <div style={{ minHeight: 'calc(100vh - 60px)' }} className="max-w-3xl mx-auto lg:px-6 lg:py-4 pb-20">
           <Outlet />
         </div>
       </main>

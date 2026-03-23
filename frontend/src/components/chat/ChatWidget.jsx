@@ -22,6 +22,7 @@ export const ChatWidget = () => {
     <>
       {/* FLOATING BUTTON */}
       <motion.button
+        id="chat-btn"
         onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',

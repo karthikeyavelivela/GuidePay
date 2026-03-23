@@ -11,7 +11,7 @@ export const useWorkerStore = create(
       onboarded: false,
       activePolicy: false,
       detectedCity: null,
-      profileBg: 'gradient',
+      profileBg: 'plain',
 
       setPhone: (phone) => set({ phone }),
 
@@ -39,7 +39,7 @@ export const useWorkerStore = create(
         onboarded: false,
         activePolicy: false,
         detectedCity: null,
-        profileBg: 'gradient',
+        profileBg: 'plain',
       }),
     }),
     { name: 'gp-worker' }

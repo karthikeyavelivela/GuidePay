@@ -1,62 +1,140 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp } from 'lucide-react'
-import TopBar from '../components/ui/TopBar'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
 
-const pageVariants = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
-}
+const PRIVACY_SECTIONS = [
+  {
+    title: '1. Information We Collect',
+    content: `We collect only the minimum data necessary to provide income protection:
 
-const SECTIONS = [
-  {
-    title: 'What data we collect',
-    content: `GuidePay collects the following data to provide you with income protection:\n\n• Mobile number and UPI ID (for authentication and payouts)\n• GPS location coordinates (only while coverage is active, to verify you are in your declared zone)\n• Delivery activity timestamps (last order time, to verify you were working)\n• Device information (model, OS, to prevent fraud)\n• Claim history (to calculate your risk score and detect patterns)`,
+• Mobile number — used for login, OTP verification, and account identification
+• GPS location — zone-level only (5km radius), used to verify delivery activity and detect trigger events
+• Delivery activity timestamps — last order time, used to verify active work status during claims
+• Device identifiers — used for fraud prevention and account security
+• UPI ID — used exclusively for sending payouts
+
+We do NOT collect:
+• Specific delivery addresses or routes
+• Customer information
+• Personal financial data beyond UPI ID
+• Browsing history or app usage outside GuidePay`,
   },
   {
-    title: 'How we use your data',
-    content: `Your data is used exclusively to:\n\n• Verify your identity and prevent fraud\n• Detect trigger events in your zone automatically\n• Confirm you were working at the time of an event\n• Calculate your personalised premium and risk score\n• Process payouts to your UPI\n\nWe do not use your data for advertising, and we do not sell your data to third parties.`,
+    title: '2. How We Use Your Data',
+    content: `Your data is used for:
+
+• Verifying your delivery activity during trigger events
+• Processing and sending payouts to your UPI
+• Calculating your risk score (based on zone flood history and activity patterns)
+• Detecting and preventing fraudulent claims
+• Sending you alerts about weather events and coverage status
+• Improving our trigger detection algorithms
+
+We never use your data for advertising, marketing to third parties, or any purpose unrelated to your income protection.`,
   },
   {
-    title: 'Who we share data with',
-    content: `We share minimal data with:\n\n• Razorpay: Payment processing (UPI transfers). They receive only your UPI ID and transaction amount.\n• Firebase (Google): Authentication and secure data storage.\n• IMD and platform status APIs: To verify event triggers. We send zone identifiers only, never personal data.\n\nWe do not share your data with delivery platforms (Zepto, Swiggy, Blinkit, Amazon).`,
+    title: '3. Data Sharing',
+    content: `We share your data only in these specific situations:
+
+• Payment processors — UPI ID and transaction details for payout processing
+• Weather data providers — Your zone (not exact location) to provide accurate forecasts
+• Fraud prevention — Anonymized activity patterns for multi-worker correlation
+
+We NEVER:
+• Sell your data to advertisers or data brokers
+• Share your personal information with your delivery platform employer
+• Provide individual data to government agencies without a court order
+• Transfer data outside India`,
   },
   {
-    title: 'Data storage and security',
-    content: `All data is stored on Indian servers compliant with DPDP Act 2023. We use AES-256 encryption for data at rest and TLS 1.3 for data in transit.\n\nGPS data is retained for 30 days after each coverage period and then automatically deleted. Claim and payout records are retained for 3 years as required by insurance regulations.`,
+    title: '4. Data Storage & Security',
+    content: `• All data is encrypted at rest and in transit (AES-256, TLS 1.3)
+• Data is stored on servers located in India
+• Access to personal data is restricted to authorized team members only
+• We conduct regular security audits
+• GPS data older than 90 days is automatically deleted
+• Activity logs older than 1 year are anonymized
+
+We follow CERT-In guidelines for data breach notification.`,
   },
   {
-    title: 'Your rights',
-    content: `Under DPDP Act 2023, you have the right to:\n\n• Access: Request a copy of all data we hold about you\n• Correction: Fix any inaccurate data\n• Deletion: Request deletion of your account and data (within 30 days)\n• Portability: Download your data in a machine-readable format\n• Objection: Object to specific types of data processing\n\nTo exercise any right, contact guidepay@sentinelx.in.`,
+    title: '5. Your Rights',
+    content: `You have the right to:
+
+• Access — Request a copy of all data we hold about you
+• Correction — Update or correct your personal information
+• Deletion — Request permanent deletion of your account and data
+• Portability — Receive your data in a machine-readable format
+• Objection — Object to specific data processing activities
+• Withdrawal — Withdraw consent at any time (coverage will cease)
+
+To exercise any of these rights, contact us at guidepay@sentinelx.in. We respond within 72 hours.`,
   },
   {
-    title: 'Cookies and tracking',
-    content: `GuidePay uses minimal local storage (on your device) to save your session and preferences. We do not use advertising cookies or third-party trackers.\n\nThe app stores: authentication token, zone selection, premium history, and theme preference. This data never leaves your device unless required for a specific transaction.`,
+    title: '6. Cookies & Analytics',
+    content: `GuidePay uses minimal cookies:
+
+• Session cookie — keeps you logged in (essential, cannot be disabled)
+• Preference cookie — stores your theme and language settings
+• Analytics — anonymous usage statistics to improve the app (can be disabled)
+
+We do not use tracking cookies, advertising cookies, or cross-site tracking of any kind.`,
   },
   {
-    title: 'Contact',
-    content: `Privacy Officer: guidepay@sentinelx.in\nTeam SentinelX · KL University\n\nFor data deletion requests, include "Data Deletion Request" in the subject line. We process all requests within 30 days.`,
+    title: '7. Changes to Privacy Policy',
+    content: `We may update this policy from time to time. When we do:
+
+• We will notify you in-app at least 7 days before changes take effect
+• Significant changes will require your explicit consent
+• You can always access the current version from your Profile page
+• Previous versions are available upon request
+
+This policy was last updated in March 2026.
+
+For questions or concerns, contact our Data Protection Officer at guidepay@sentinelx.in.`,
   },
 ]
 
-function AccordionItem({ section, index }) {
+const AccordionItem = ({ section, index }) => {
   const [open, setOpen] = useState(index === 0)
-
   return (
-    <div style={{ borderBottom: '1px solid var(--border-light)' }}>
-      <button
+    <div style={{
+      borderBottom: '1px solid var(--border-light)',
+    }}>
+      <motion.button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-4 text-left"
+        whileTap={{ opacity: 0.7 }}
+        style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '16px 0',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          gap: 12,
+        }}
       >
-        <span className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>
+        <span style={{
+          fontSize: 15, fontWeight: 600,
+          fontFamily: 'Inter',
+          color: 'var(--text-primary)',
+          lineHeight: 1.4,
+        }}>
           {section.title}
         </span>
-        {open
-          ? <ChevronUp size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-          : <ChevronDown size={16} style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-        }
-      </button>
+        <motion.div
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ flexShrink: 0 }}
+        >
+          <ChevronDown size={18} color="var(--text-tertiary)" />
+        </motion.div>
+      </motion.button>
+
       <AnimatePresence>
         {open && (
           <motion.div
@@ -66,17 +144,14 @@ function AccordionItem({ section, index }) {
             transition={{ duration: 0.2 }}
             style={{ overflow: 'hidden' }}
           >
-            <div className="px-4 pb-4">
-              {section.content.split('\n').map((para, i) => (
-                <p
-                  key={i}
-                  className="text-[14px] font-body leading-relaxed"
-                  style={{ color: 'var(--text-secondary)', marginTop: i > 0 ? 8 : 0 }}
-                >
-                  {para}
-                </p>
-              ))}
-            </div>
+            <p style={{
+              fontSize: 14, color: 'var(--text-secondary)',
+              fontFamily: 'Inter', lineHeight: 1.8,
+              margin: '0 0 16px',
+              whiteSpace: 'pre-line',
+            }}>
+              {section.content}
+            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -84,38 +159,104 @@ function AccordionItem({ section, index }) {
   )
 }
 
-export default function Privacy() {
+const Privacy = () => {
+  const navigate = useNavigate()
   return (
-    <motion.div
-      className="min-h-screen pb-10"
-      style={{ background: 'var(--bg-primary)' }}
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      <TopBar title="Privacy Policy" showBack />
-
-      <div
-        className="mx-4 mt-4 rounded-card px-4 py-3 mb-4"
-        style={{ background: 'var(--brand-light)', borderLeft: '3px solid var(--brand)' }}
-      >
-        <p className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
-          GuidePay takes your privacy seriously.
-        </p>
-        <p className="text-[12px] font-body mt-1" style={{ color: 'var(--text-tertiary)' }}>
-          Last updated: March 2026 · DPDP Act 2023 compliant
-        </p>
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--bg-secondary)',
+    }}>
+      {/* TopBar */}
+      <div style={{
+        background: 'var(--bg-card)',
+        borderBottom: '1px solid var(--border-light)',
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        position: 'sticky', top: 0, zIndex: 50,
+      }}>
+        <motion.button
+          onClick={() => navigate(-1)}
+          whileTap={{ scale: 0.9 }}
+          style={{
+            background: 'none', border: 'none',
+            cursor: 'pointer', padding: 0,
+            display: 'flex',
+          }}
+        >
+          <ArrowLeft size={22} color="var(--text-primary)" />
+        </motion.button>
+        <h1 style={{
+          fontFamily: 'Bricolage Grotesque',
+          fontSize: 18, fontWeight: 800,
+          color: 'var(--text-primary)', margin: 0,
+        }}>
+          Privacy Policy
+        </h1>
       </div>
 
-      <div
-        className="mx-4 rounded-card overflow-hidden"
-        style={{ background: 'var(--bg-primary)', boxShadow: 'var(--shadow-card)' }}
-      >
-        {SECTIONS.map((section, i) => (
-          <AccordionItem key={section.title} section={section} index={i} />
-        ))}
+      <div style={{ padding: '16px 16px 80px' }}>
+        {/* Header card */}
+        <div style={{
+          background: '#FDF1ED',
+          border: '1px solid rgba(217,119,87,0.2)',
+          borderRadius: 14,
+          padding: '14px 16px',
+          marginBottom: 20,
+        }}>
+          <p style={{
+            fontSize: 13, fontFamily: 'Inter',
+            color: '#B85C3A', margin: '0 0 4px',
+            fontWeight: 600,
+          }}>
+            Last updated: March 2026
+          </p>
+          <p style={{
+            fontSize: 13, fontFamily: 'Inter',
+            color: '#B85C3A', margin: 0, lineHeight: 1.5,
+            opacity: 0.8,
+          }}>
+            Your privacy matters. We collect only what's necessary
+            to protect your income. Read how below.
+          </p>
+        </div>
+
+        {/* Accordion sections */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 14,
+          padding: '0 16px',
+          border: '1px solid var(--border)',
+        }}>
+          {PRIVACY_SECTIONS.map((section, i) => (
+            <AccordionItem
+              key={i}
+              section={section}
+              index={i}
+            />
+          ))}
+        </div>
+
+        <p style={{
+          textAlign: 'center',
+          fontSize: 12,
+          color: 'var(--text-tertiary)',
+          fontFamily: 'Inter',
+          marginTop: 20,
+          lineHeight: 1.5,
+        }}>
+          Questions about your data? Contact us at{' '}
+          <a
+            href="mailto:guidepay@sentinelx.in"
+            style={{ color: '#D97757' }}
+          >
+            guidepay@sentinelx.in
+          </a>
+        </p>
       </div>
-    </motion.div>
+    </div>
   )
 }
+
+export default Privacy
