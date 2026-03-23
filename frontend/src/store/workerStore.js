@@ -12,7 +12,9 @@ export const useWorkerStore = create(
       activePolicy: false,
       detectedCity: null,
       profileBg: 'plain',
+      showTour: false,
 
+      setShowTour: (val) => set({ showTour: val }),
       setPhone: (phone) => set({ phone }),
 
       setDetectedCity: (city) => set({ detectedCity: city }),

@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
-import BottomNav from '../../components/ui/BottomNav'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import LiveDot from '../../components/ui/LiveDot'
 import ChatWidget from '../../components/chat/ChatWidget'
-import { AppTour } from '../../components/tour/AppTour'
 import { useWorkerStore } from '../../store/workerStore'
 import { useClaimStore } from '../../store/claimStore'
 import { formatINR } from '../../utils/formatters'
@@ -30,6 +28,9 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const worker = useWorkerStore((s) => s.worker)
   const activePolicy = useWorkerStore((s) => s.activePolicy)
+  const onboarded = useWorkerStore((s) => s.onboarded)
+  const setOnboarded = useWorkerStore((s) => s.setOnboarded)
+  const setShowTour = useWorkerStore((s) => s.setShowTour)
   const payouts = useClaimStore((s) => s.payouts)
   const w = worker || {
     name: 'Ravi Kumar', riskScore: 0.82, riskTier: 'LOW',
@@ -38,12 +39,20 @@ export default function Dashboard() {
   }
 
   const [showAlert, setShowAlert] = useState(false)
-  const [showTour, setShowTour] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(false)
 
   useEffect(() => {
     const timer = setTimeout(() => setShowAlert(true), 800)
     return () => clearTimeout(timer)
   }, [])
+
+  // Show welcome modal for first-time users
+  useEffect(() => {
+    if (!onboarded) {
+      const t = setTimeout(() => setShowWelcome(true), 500)
+      return () => clearTimeout(t)
+    }
+  }, [onboarded])
 
   useEffect(() => {
     if (showAlert && Notification.permission === 'granted') {
@@ -98,7 +107,7 @@ export default function Dashboard() {
       </div>
 
       <motion.div variants={stagger} animate="animate" className="px-4 mt-3 flex flex-col gap-3">
-        {/* Buy coverage CTA — shown for new users without active policy */}
+        {/* Buy coverage CTA */}
         {!activePolicy && (
           <motion.div variants={fadeUp}>
             <div
@@ -317,15 +326,122 @@ export default function Dashboard() {
         <span style={{ fontSize: 18 }}>🗺️</span>
       </motion.button>
 
-      {/* Tour overlay */}
+      <ChatWidget />
+
+      {/* Welcome modal for first-time users */}
       <AnimatePresence>
-        {showTour && (
-          <AppTour onClose={() => setShowTour(false)} />
+        {showWelcome && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => { setShowWelcome(false); setOnboarded(true) }}
+              style={{
+                position: 'fixed', inset: 0,
+                background: 'rgba(0,0,0,0.5)',
+                zIndex: 9000,
+                backdropFilter: 'blur(4px)',
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              style={{
+                position: 'fixed',
+                zIndex: 9001,
+                bottom: 24, left: 16, right: 16,
+                maxWidth: 380,
+                margin: '0 auto',
+                background: 'white',
+                borderRadius: 20,
+                padding: 24,
+                boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🛡️</div>
+              <h2 style={{
+                fontFamily: 'Bricolage Grotesque',
+                fontSize: 22, fontWeight: 800,
+                color: '#0F0F0F', margin: '0 0 8px',
+              }}>
+                Welcome to GuidePay!
+              </h2>
+              <p style={{
+                fontSize: 14, fontFamily: 'Inter',
+                color: '#6B6B6B', lineHeight: 1.6,
+                margin: '0 0 6px',
+              }}>
+                Hey {firstName} 👋 You're all set up!
+              </p>
+              <p style={{
+                fontSize: 13, fontFamily: 'Inter',
+                color: '#9B9B9B', lineHeight: 1.5,
+                margin: '0 0 20px',
+              }}>
+                Income protection for floods, outages, and curfews. Get covered for as low as ₹49/week.
+              </p>
+
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 8,
+              }}>
+                <motion.button
+                  onClick={() => {
+                    setShowWelcome(false)
+                    setOnboarded(true)
+                    navigate('/coverage')
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                  style={{
+                    width: '100%', padding: '13px',
+                    borderRadius: 12, border: 'none',
+                    background: 'linear-gradient(135deg, #D97757, #B85C3A)',
+                    color: 'white', fontSize: 15,
+                    fontWeight: 700, fontFamily: 'Inter',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 16px rgba(217,119,87,0.35)',
+                  }}
+                >
+                  View coverage plans →
+                </motion.button>
+                <motion.button
+                  onClick={() => {
+                    setShowWelcome(false)
+                    setOnboarded(true)
+                    setShowTour(true)
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                  style={{
+                    width: '100%', padding: '12px',
+                    borderRadius: 12,
+                    border: '1px solid #E4E4E7',
+                    background: 'white',
+                    color: '#0F0F0F', fontSize: 14,
+                    fontWeight: 600, fontFamily: 'Inter',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Take a quick tour 🗺️
+                </motion.button>
+                <button
+                  onClick={() => { setShowWelcome(false); setOnboarded(true) }}
+                  style={{
+                    background: 'none', border: 'none',
+                    color: '#9B9B9B', fontSize: 13,
+                    fontFamily: 'Inter', cursor: 'pointer',
+                    padding: '6px',
+                  }}
+                >
+                  Skip for now
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
-
-      <ChatWidget />
-      <BottomNav />
     </motion.div>
   )
 }

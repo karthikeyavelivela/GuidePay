@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { ShieldCheck, Download, Share2, CheckCircle, ArrowRight } from 'lucide-react'
+import { ShieldCheck, Download, Share2, CheckCircle, ArrowRight, ArrowLeft, Home } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 
 export default function PaymentSuccess() {
@@ -24,9 +24,56 @@ export default function PaymentSuccess() {
     <div style={{
       minHeight: '100vh', background: 'var(--bg-secondary)',
       display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '24px 16px',
+      alignItems: 'center',
+      padding: '0 16px 24px',
     }}>
+      {/* Top bar with back button */}
+      <div style={{
+        width: '100%',
+        maxWidth: 440,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 0',
+        position: 'sticky',
+        top: 0,
+        background: 'var(--bg-secondary)',
+        zIndex: 10,
+      }}>
+        <motion.button
+          onClick={() => navigate('/dashboard')}
+          whileTap={{ scale: 0.9 }}
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-light)',
+            borderRadius: 10,
+            width: 40, height: 40,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ArrowLeft size={18} style={{ color: 'var(--text-primary)' }} />
+        </motion.button>
+        <motion.button
+          onClick={() => navigate('/dashboard')}
+          whileTap={{ scale: 0.9 }}
+          style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-light)',
+            borderRadius: 10,
+            width: 40, height: 40,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Home size={18} style={{ color: 'var(--text-primary)' }} />
+        </motion.button>
+      </div>
+
       <div style={{ width: '100%', maxWidth: 440 }}>
 
         {/* Success animation */}

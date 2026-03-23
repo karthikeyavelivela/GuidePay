@@ -1,77 +1,139 @@
-import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
-import { X, ArrowRight, ArrowLeft } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { X, ArrowRight, ArrowLeft, ChevronRight } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 const TOUR_STEPS = [
   {
     id: 'welcome',
     target: null,
+    page: '/dashboard',
     title: 'Welcome to GuidePay! 👋',
-    body: 'GuidePay is your income safety net. We automatically detect floods, platform outages, and curfews in your delivery zone — and pay you instantly via UPI when you can\'t work. Let\'s show you around!',
+    body: 'Your income safety net — we detect floods, outages, and curfews in your zone and pay you instantly via UPI.',
+    emoji: '🛡️',
   },
   {
     id: 'policy-card',
     target: '#policy-hero-card',
+    page: '/dashboard',
     title: 'Your Coverage Card',
-    body: 'This is your active policy. It shows your coverage cap (₹600/week), renewal dates, premium amount, and risk score. The green dot means you\'re currently protected.',
+    body: 'Shows your coverage cap, renewal date, premium amount, and risk score. Green dot = you\'re protected.',
+    emoji: '💳',
   },
   {
     id: 'alert-card',
     target: '#alert-banner',
+    page: '/dashboard',
     title: 'Risk Alerts',
-    body: 'Our AI monitors your zone 24/7. When it detects high flood risk, platform issues, or govt curfews — this alert appears automatically. Your coverage extends, no action needed from you.',
+    body: 'AI monitors your zone 24/7. When high flood risk or outages are detected, this alert appears and coverage extends automatically.',
+    emoji: '⚠️',
   },
   {
     id: 'zone-status',
     target: '#zone-status-card',
+    page: '/dashboard',
     title: 'Zone Monitor',
-    body: 'Real-time status of flood alerts, platform health (Zepto, Swiggy, Blinkit), and curfew orders in your 5km zone. We run checks every 15 minutes to protect you.',
+    body: 'Real-time flood alerts, platform health, and curfew status for your 5km zone. Checked every 15 minutes.',
+    emoji: '📡',
   },
   {
     id: 'bottom-nav-coverage',
     target: '#nav-coverage',
-    title: 'Buy or Change Coverage',
-    body: 'Tap "Cover" to browse plans (Basic ₹49/wk, Standard ₹58/wk, Premium ₹69/wk). Pick the plan that fits your risk zone and get instant protection.',
+    page: '/dashboard',
+    title: 'Coverage Tab',
+    body: 'Tap "Cover" to browse plans — Basic ₹49/wk, Standard ₹58/wk, Premium ₹69/wk.',
+    emoji: '🛡️',
   },
   {
-    id: 'bottom-nav-claims',
-    target: '#nav-claims',
+    id: 'coverage-page',
+    target: null,
+    page: '/coverage',
+    title: 'Coverage Plans',
+    body: 'Compare plans side by side. Each includes flood, outage, and curfew triggers with UPI instant payout.',
+    emoji: '📋',
+  },
+  {
+    id: 'claims-page',
+    target: null,
+    page: '/claims',
     title: 'Your Payouts',
-    body: 'When a trigger event happens (flood/outage/curfew), your payout is processed automatically. Track all past and current payouts here in real-time.',
+    body: 'Trigger events are processed automatically. Track all past and current payouts here in real-time.',
+    emoji: '💸',
   },
   {
-    id: 'bottom-nav-forecast',
-    target: '#nav-forecast',
+    id: 'forecast-page',
+    target: null,
+    page: '/forecast',
     title: 'AI Forecast',
-    body: 'Check flood probability for the next 7 days with our AI-powered map. Plan your deliveries around weather events and stay ahead of disruptions.',
-  },
-  {
-    id: 'chat-button',
-    target: '#chat-btn',
-    title: 'Got Questions?',
-    body: 'Tap this button anytime for instant answers about coverage, payouts, claims, and your premium. Our FAQ covers everything you need.',
+    body: '7-day flood probability forecast powered by AI. Plan your deliveries around weather events.',
+    emoji: '🌤️',
   },
   {
     id: 'done',
     target: null,
+    page: null,
     title: 'You\'re all set! 🎉',
-    body: 'Here\'s the flow: Buy a plan → We monitor your zone → Trigger event detected → Payout sent to your UPI in under 2 hours. That\'s it — go deliver, we handle the rest!',
+    body: 'Buy a plan → We monitor → Trigger detected → Payout to UPI in under 2 hours. Go deliver!',
+    emoji: '🚀',
     last: true,
   },
 ]
 
-export const AppTour = ({ onClose }) => {
+export function AppTour({ onClose }) {
   const [step, setStep] = useState(0)
-  const current = TOUR_STEPS[step]
   const [targetRect, setTargetRect] = useState(null)
+  const [navigating, setNavigating] = useState(false)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const current = TOUR_STEPS[step]
+  const waitingForPage = useRef(null)
+
+  // When location changes, check if we were waiting for this page
+  useEffect(() => {
+    if (waitingForPage.current && location.pathname === waitingForPage.current.page) {
+      const nextStep = waitingForPage.current.step
+      waitingForPage.current = null
+      // Wait for the new page to render
+      setTimeout(() => {
+        setStep(nextStep)
+        setNavigating(false)
+      }, 500)
+    }
+  }, [location.pathname])
+
+  const goToStep = (nextStepIdx) => {
+    const nextStep = TOUR_STEPS[nextStepIdx]
+    if (!nextStep) return
+
+    // If we need to navigate to a different page
+    if (nextStep.page && nextStep.page !== location.pathname) {
+      setNavigating(true)
+      waitingForPage.current = { page: nextStep.page, step: nextStepIdx }
+      navigate(nextStep.page)
+    } else {
+      setStep(nextStepIdx)
+    }
+  }
 
   const next = () => {
-    if (current.last) onClose()
-    else setStep(s => s + 1)
+    if (current.last) {
+      navigate('/dashboard')
+      onClose()
+      return
+    }
+    goToStep(step + 1)
   }
 
   const prev = () => {
-    if (step > 0) setStep(s => s - 1)
+    if (step <= 0) return
+    goToStep(step - 1)
+  }
+
+  const handleClose = () => {
+    if (location.pathname !== '/dashboard') {
+      navigate('/dashboard')
+    }
+    onClose()
   }
 
   const updateTargetRect = useCallback(() => {
@@ -79,7 +141,12 @@ export const AppTour = ({ onClose }) => {
       const el = document.querySelector(current.target)
       if (el) {
         const rect = el.getBoundingClientRect()
-        setTargetRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
+        setTargetRect({
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+        })
       } else {
         setTargetRect(null)
       }
@@ -101,60 +168,106 @@ export const AppTour = ({ onClose }) => {
     }
   }, [step, current.target, updateTargetRect])
 
+  // Determine card position — if target is in top half, show card below; otherwise center
+  const getCardPosition = () => {
+    if (!targetRect) {
+      // No target — bottom sheet style on mobile
+      return {
+        bottom: 24,
+        left: 16,
+        right: 16,
+        top: 'auto',
+        transform: 'none',
+      }
+    }
+
+    const targetCenter = targetRect.top + targetRect.height / 2
+    const viewportH = window.innerHeight
+
+    if (targetCenter < viewportH * 0.45) {
+      // Target is in top half — show card at bottom
+      return {
+        bottom: 24,
+        left: 16,
+        right: 16,
+        top: 'auto',
+        transform: 'none',
+      }
+    } else {
+      // Target is in bottom half — show card at top
+      return {
+        top: 24,
+        left: 16,
+        right: 16,
+        bottom: 'auto',
+        transform: 'none',
+      }
+    }
+  }
+
+  const cardPos = getCardPosition()
+
   return (
     <>
       {/* BACKDROP */}
-      <div
-        onClick={onClose}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={handleClose}
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.65)',
+          background: 'rgba(0,0,0,0.6)',
           zIndex: 8000,
         }}
       />
 
       {/* SPOTLIGHT on target */}
-      {current.target && targetRect && (
-        <div
-          style={{
-            position: 'fixed',
-            top: targetRect.top - 6,
-            left: targetRect.left - 6,
-            width: targetRect.width + 12,
-            height: targetRect.height + 12,
-            borderRadius: 14,
-            border: '2px solid #D97757',
-            background: 'transparent',
-            boxShadow: '0 0 0 4px rgba(217,119,87,0.25)',
-            zIndex: 8001,
-            pointerEvents: 'none',
-            transition: 'all 0.3s ease',
-          }}
-        />
-      )}
+      <AnimatePresence>
+        {current.target && targetRect && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              top: targetRect.top - 8,
+              left: targetRect.left - 8,
+              width: targetRect.width + 16,
+              height: targetRect.height + 16,
+              borderRadius: 16,
+              border: '2.5px solid #D97757',
+              background: 'rgba(255,255,255,0.08)',
+              boxShadow: '0 0 0 5px rgba(217,119,87,0.2), 0 0 20px rgba(217,119,87,0.15)',
+              zIndex: 8001,
+              pointerEvents: 'none',
+              transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
+            }}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* TOOLTIP CARD — always centered in the viewport */}
+      {/* TOOLTIP CARD — positioned as bottom/top sheet, not centered */}
       <motion.div
         key={step}
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        initial={{ opacity: 0, y: cardPos.bottom !== 'auto' ? 30 : -30 }}
+        animate={{ opacity: navigating ? 0.6 : 1, y: 0 }}
+        exit={{ opacity: 0, y: 20 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
         style={{
           position: 'fixed',
           zIndex: 8002,
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 'calc(100% - 32px)',
-          maxWidth: 360,
+          ...cardPos,
+          maxWidth: 400,
+          margin: '0 auto',
           background: 'white',
-          borderRadius: 18,
-          padding: 20,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+          borderRadius: 20,
+          padding: '18px 20px 20px',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)',
         }}
       >
-        {/* Progress bar */}
+        {/* Progress dots */}
         <div style={{
           display: 'flex',
           gap: 4,
@@ -164,38 +277,44 @@ export const AppTour = ({ onClose }) => {
             <div
               key={i}
               style={{
-                flex: 1, height: 3,
+                flex: 1,
+                height: 3,
                 borderRadius: 999,
-                background: i <= step ? '#D97757' : '#F4F4F5',
-                transition: 'background 0.2s',
+                background: i <= step ? '#D97757' : '#F0F0F2',
+                transition: 'background 0.3s',
               }}
             />
           ))}
         </div>
 
-        {/* Step info + close */}
+        {/* Header row: emoji + step count + close */}
         <div style={{
           display: 'flex',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: 8,
+          marginBottom: 10,
         }}>
-          <p style={{
-            fontSize: 11, fontWeight: 700,
-            fontFamily: 'Inter', color: '#D97757',
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            margin: 0,
-          }}>
-            Step {step + 1} of {TOUR_STEPS.length}
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 22 }}>{current.emoji}</span>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              fontFamily: 'Inter',
+              color: '#D97757',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}>
+              {step + 1} / {TOUR_STEPS.length}
+            </span>
+          </div>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: '#F4F4F5',
               border: 'none',
               borderRadius: 999,
-              width: 26, height: 26,
+              width: 28,
+              height: 28,
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -207,40 +326,50 @@ export const AppTour = ({ onClose }) => {
           </button>
         </div>
 
+        {/* Title */}
         <h3 style={{
-          fontFamily: 'Bricolage Grotesque',
-          fontSize: 20, fontWeight: 800,
-          color: '#0F0F0F', margin: '0 0 8px',
+          fontFamily: 'Bricolage Grotesque, sans-serif',
+          fontSize: 18,
+          fontWeight: 800,
+          color: '#0F0F0F',
+          margin: '0 0 6px',
+          lineHeight: 1.3,
         }}>
           {current.title}
         </h3>
 
+        {/* Body */}
         <p style={{
-          fontSize: 14, color: '#6B6B6B',
-          fontFamily: 'Inter', lineHeight: 1.6,
+          fontSize: 13,
+          color: '#6B6B6B',
+          fontFamily: 'Inter, sans-serif',
+          lineHeight: 1.55,
           margin: '0 0 16px',
         }}>
           {current.body}
         </p>
 
-        {/* Navigation buttons */}
-        <div style={{
-          display: 'flex',
-          gap: 8,
-        }}>
+        {/* Navigation */}
+        <div style={{ display: 'flex', gap: 8 }}>
           {step > 0 && (
             <button
               onClick={prev}
+              disabled={navigating}
               style={{
-                padding: '10px 16px',
+                padding: '10px 14px',
                 borderRadius: 10,
-                border: '1px solid #E4E4E7',
+                border: '1.5px solid #E4E4E7',
                 background: 'white',
-                fontSize: 13, fontWeight: 600,
+                fontSize: 13,
+                fontWeight: 600,
                 fontFamily: 'Inter',
-                color: '#0F0F0F', cursor: 'pointer',
-                display: 'flex', alignItems: 'center',
+                color: '#0F0F0F',
+                cursor: navigating ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
                 gap: 4,
+                opacity: navigating ? 0.4 : 1,
+                flexShrink: 0,
               }}
             >
               <ArrowLeft size={14} />
@@ -250,24 +379,73 @@ export const AppTour = ({ onClose }) => {
 
           <button
             onClick={next}
+            disabled={navigating}
             style={{
               flex: 1,
-              padding: '11px',
+              padding: '11px 16px',
               borderRadius: 10,
               border: 'none',
-              background: '#D97757',
-              fontSize: 14, fontWeight: 700,
+              background: current.last
+                ? 'linear-gradient(135deg, #12B76A, #0E9B58)'
+                : '#D97757',
+              fontSize: 14,
+              fontWeight: 700,
               fontFamily: 'Inter',
-              color: 'white', cursor: 'pointer',
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'center', gap: 6,
-              boxShadow: '0 4px 16px rgba(217,119,87,0.35)',
+              color: 'white',
+              cursor: navigating ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              boxShadow: current.last
+                ? '0 4px 16px rgba(18,183,106,0.35)'
+                : '0 4px 16px rgba(217,119,87,0.35)',
+              opacity: navigating ? 0.6 : 1,
             }}
           >
-            {current.last ? 'Start delivering!' : 'Next'}
-            {!current.last && <ArrowRight size={15} />}
+            {navigating ? (
+              <>
+                <div style={{
+                  width: 14, height: 14,
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  borderTopColor: 'white',
+                  borderRadius: 999,
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                Loading...
+              </>
+            ) : current.last ? (
+              'Start delivering! 🚀'
+            ) : (
+              <>
+                Next
+                <ArrowRight size={15} />
+              </>
+            )}
           </button>
         </div>
+
+        {/* Skip tour link */}
+        {!current.last && (
+          <button
+            onClick={handleClose}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'center',
+              background: 'none',
+              border: 'none',
+              color: '#9B9B9B',
+              fontSize: 12,
+              fontFamily: 'Inter',
+              cursor: 'pointer',
+              marginTop: 10,
+              padding: 4,
+            }}
+          >
+            Skip tour
+          </button>
+        )}
       </motion.div>
     </>
   )

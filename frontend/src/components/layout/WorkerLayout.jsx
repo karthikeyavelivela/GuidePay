@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, Shield, FileCheck, TrendingUp, User,
   ShieldCheck, X, Menu,
 } from 'lucide-react'
 import BottomNav from '../ui/BottomNav'
 import { NotificationBell } from '../ui/NotificationBell'
+import { AppTour } from '../tour/AppTour'
+import { useWorkerStore } from '../../store/workerStore'
 
 const NAV_ITEMS = [
   { id: 'home',     label: 'Home',     icon: Home,      path: '/dashboard' },
@@ -87,6 +89,8 @@ export default function WorkerLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+  const showTour = useWorkerStore((s) => s.showTour)
+  const setShowTour = useWorkerStore((s) => s.setShowTour)
 
   const pageTitle = location.pathname.replace('/', '') || 'Dashboard'
 
@@ -205,6 +209,13 @@ export default function WorkerLayout() {
 
       {/* Mobile bottom nav */}
       <BottomNav />
+
+      {/* Global App Tour — rendered at layout level so it persists across page navigations */}
+      <AnimatePresence>
+        {showTour && (
+          <AppTour onClose={() => setShowTour(false)} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

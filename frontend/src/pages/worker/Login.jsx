@@ -14,7 +14,6 @@ const item = {
   animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
 }
 
-// Google SVG logo
 const GoogleLogo = () => (
   <svg width="18" height="18" viewBox="0 0 18 18">
     <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
@@ -31,13 +30,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
-  const [tab, setTab] = useState('phone') // 'phone' | 'google'
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true)
     setError('')
     try {
-      // Dynamic import to avoid errors if Firebase not configured
       const { signInWithGoogle } = await import('../../services/firebase')
       const user = await signInWithGoogle()
       const { login } = useWorkerStore.getState()
@@ -55,11 +52,9 @@ export default function Login() {
       })
       navigate('/dashboard')
     } catch (e) {
-      // Firebase not configured — use mock
       const { login } = useWorkerStore.getState()
       login(null)
-      const { onboarded } = useWorkerStore.getState()
-      navigate(onboarded ? '/dashboard' : '/onboarding')
+      navigate('/dashboard')
     } finally {
       setGoogleLoading(false)
     }
@@ -91,23 +86,16 @@ export default function Login() {
   }
 
   return (
-    <motion.div
-      className="min-h-screen flex flex-col"
-      style={{ background: 'var(--bg-primary)' }}
-      initial="initial"
-      animate="animate"
-      variants={container}
-    >
-      {/* GIF HERO */}
-      <div style={{
-        width: '100%',
-        height: 220,
-        overflow: 'hidden',
-        position: 'relative',
-        borderRadius: '0 0 24px 24px',
-        background: '#0F0F0F',
-        flexShrink: 0,
-      }}>
+    <div className="min-h-screen flex flex-col lg:flex-row" style={{ background: 'var(--bg-primary)' }}>
+      {/* LEFT: GIF panel — mobile top banner (220px), desktop side panel (full height) */}
+      <div
+        className="w-full lg:w-1/2 lg:min-h-screen relative flex-shrink-0"
+        style={{
+          height: 220,
+          overflow: 'hidden',
+          background: '#0F0F0F',
+        }}
+      >
         <img
           src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774181576/yvg6hwnrtbpnaagohbvb.gif"
           alt="Delivery worker"
@@ -116,15 +104,29 @@ export default function Login() {
             height: '100%',
             objectFit: 'cover',
             opacity: 0.85,
+            position: 'absolute',
+            inset: 0,
           }}
         />
-        {/* Gradient overlay */}
-        <div style={{
-          position: 'absolute',
-          bottom: 0, left: 0, right: 0,
-          height: 80,
-          background: 'linear-gradient(to bottom, transparent, var(--bg-primary))',
-        }} />
+        {/* Gradient overlay — bottom on mobile, right on desktop */}
+        <div
+          className="block lg:hidden"
+          style={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: 80,
+            background: 'linear-gradient(to bottom, transparent, var(--bg-primary))',
+          }}
+        />
+        <div
+          className="hidden lg:block"
+          style={{
+            position: 'absolute',
+            top: 0, right: 0, bottom: 0,
+            width: 120,
+            background: 'linear-gradient(to right, transparent, var(--bg-primary))',
+          }}
+        />
         {/* Logo overlay */}
         <div style={{
           position: 'absolute',
@@ -145,149 +147,237 @@ export default function Login() {
             <ShieldCheck size={18} color="white" />
             <span style={{
               fontFamily: 'Bricolage Grotesque, sans-serif',
-              fontSize: 16,
-              fontWeight: 800,
+              fontSize: 16, fontWeight: 800,
               color: 'white',
             }}>GuidePay</span>
           </div>
         </div>
+
+        {/* Desktop tagline overlay */}
+        <div
+          className="hidden lg:flex"
+          style={{
+            position: 'absolute',
+            bottom: 40, left: 40, right: 80,
+            flexDirection: 'column',
+            gap: 12,
+          }}
+        >
+          <h2 style={{
+            fontFamily: 'Bricolage Grotesque',
+            fontSize: 32, fontWeight: 800,
+            color: 'white',
+            lineHeight: 1.2,
+            textShadow: '0 2px 12px rgba(0,0,0,0.4)',
+          }}>
+            Income protection for India's delivery workers.
+          </h2>
+          <p style={{
+            fontSize: 15, fontFamily: 'Inter',
+            color: 'rgba(255,255,255,0.8)',
+            lineHeight: 1.6,
+          }}>
+            Auto-pays when floods, outages, or curfews stop you from working.
+          </p>
+        </div>
       </div>
 
-      {/* Content */}
-      <div className="px-6 pt-6 pb-4">
-        <motion.h1
+      {/* RIGHT: Form panel */}
+      <motion.div
+        className="flex-1 flex flex-col lg:justify-center lg:max-w-xl lg:mx-auto lg:px-12"
+        initial="initial"
+        animate="animate"
+        variants={container}
+      >
+        {/* Mobile-only heading */}
+        <div className="px-6 pt-6 pb-4 lg:hidden">
+          <motion.h1
+            variants={item}
+            className="font-display font-bold text-[28px] leading-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            Income protection for delivery workers.
+          </motion.h1>
+
+          <motion.p
+            variants={item}
+            className="font-body text-[14px] leading-relaxed mt-2"
+            style={{ color: 'var(--text-secondary)' }}
+          >
+            Auto-pays when floods, outages, or curfews stop you from working.
+          </motion.p>
+
+          <motion.div variants={item} className="flex flex-wrap gap-2 mt-4">
+            {['🌊 Flood cover', '📱 Outage pay', '🚫 Curfew pay'].map((chip) => (
+              <span
+                key={chip}
+                className="rounded-pill px-3 py-1.5 text-[12px] font-medium font-body"
+                style={{
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text-secondary)',
+                }}
+              >
+                {chip}
+              </span>
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Desktop heading */}
+        <motion.div variants={item} className="hidden lg:block mb-6">
+          <h1 style={{
+            fontFamily: 'Bricolage Grotesque',
+            fontSize: 28, fontWeight: 800,
+            color: 'var(--text-primary)',
+            margin: '0 0 6px',
+          }}>
+            Welcome back
+          </h1>
+          <p style={{
+            fontSize: 15, fontFamily: 'Inter',
+            color: 'var(--text-secondary)',
+          }}>
+            Sign in to your GuidePay account
+          </p>
+        </motion.div>
+
+        {/* Auth card */}
+        <motion.div
           variants={item}
-          className="font-display font-bold text-[28px] leading-tight"
-          style={{ color: 'var(--text-primary)' }}
+          className="mx-4 mb-4 rounded-card p-5 lg:mx-0"
+          style={{
+            background: 'var(--bg-primary)',
+            boxShadow: 'var(--shadow-card)',
+            border: '1px solid var(--border-light)',
+          }}
         >
-          Income protection for delivery workers.
-        </motion.h1>
+          {/* Google Sign-In */}
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleGoogleLogin}
+            disabled={googleLoading}
+            className="w-full flex items-center justify-center gap-3 h-[52px] rounded-input font-semibold text-[15px] font-body transition-colors"
+            style={{
+              background: 'var(--bg-primary)',
+              border: '1.5px solid var(--border)',
+              color: 'var(--text-primary)',
+              boxShadow: 'var(--shadow-sm)',
+              opacity: googleLoading ? 0.7 : 1,
+              cursor: 'pointer',
+            }}
+          >
+            {googleLoading ? (
+              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full" style={{ animation: 'spin 0.8s linear infinite' }} />
+            ) : (
+              <GoogleLogo />
+            )}
+            Continue with Google
+          </motion.button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-4">
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+            <span className="text-[13px] font-body" style={{ color: 'var(--text-tertiary)' }}>or</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+          </div>
+
+          {/* Phone input */}
+          <label className="block text-[13px] font-medium font-body mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            Mobile number
+          </label>
+          <div
+            className="flex items-center rounded-input overflow-hidden h-[52px] transition-all"
+            style={{
+              border: error ? '1.5px solid var(--danger)' : '1.5px solid var(--border)',
+            }}
+          >
+            <div
+              className="flex items-center justify-center px-3.5 h-full text-[15px] font-semibold font-body flex-shrink-0"
+              style={{ background: 'var(--bg-secondary)', borderRight: '1.5px solid var(--border)', color: 'var(--text-primary)' }}
+            >
+              +91
+            </div>
+            <input
+              type="tel"
+              inputMode="numeric"
+              placeholder="98765 43210"
+              value={formatDisplay(phone)}
+              onChange={(e) => { setPhoneLocal(e.target.value); setError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleSendOTP()}
+              className="flex-1 h-full px-4 text-[15px] font-body outline-none"
+              style={{ background: 'transparent', color: 'var(--text-primary)' }}
+            />
+          </div>
+
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-[12px] mt-1.5 font-body"
+                style={{ color: 'var(--danger)' }}
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          {!error && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <Info size={12} style={{ color: 'var(--text-tertiary)' }} />
+              <span className="text-[12px] font-body" style={{ color: 'var(--text-tertiary)' }}>OTP sent via SMS</span>
+            </div>
+          )}
+
+          <div className="mt-3">
+            <Button onClick={handleSendOTP} loading={loading} fullWidth>
+              Send OTP
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* Sign up link */}
+        <motion.p
+          variants={item}
+          className="px-6 pb-2 text-center text-[14px] font-body"
+          style={{ color: 'var(--text-secondary)' }}
+        >
+          Don't have an account?{' '}
+          <span
+            onClick={() => navigate('/register')}
+            style={{
+              color: 'var(--brand)',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Sign up
+          </span>
+        </motion.p>
 
         <motion.p
           variants={item}
-          className="font-body text-[14px] leading-relaxed mt-2"
-          style={{ color: 'var(--text-secondary)' }}
+          className="px-6 pb-6 text-center text-[12px] font-body"
+          style={{ color: 'var(--text-tertiary)' }}
         >
-          Auto-pays when floods, outages, or curfews stop you from working.
-        </motion.p>
-
-        {/* Trust chips */}
-        <motion.div variants={item} className="flex flex-wrap gap-2 mt-4">
-          {['🌊 Flood cover', '📱 Outage pay', '🚫 Curfew pay'].map((chip) => (
-            <span
-              key={chip}
-              className="rounded-pill px-3 py-1.5 text-[12px] font-medium font-body"
-              style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-secondary)',
-              }}
-            >
-              {chip}
-            </span>
-          ))}
-        </motion.div>
-      </div>
-
-      {/* Auth card */}
-      <motion.div
-        variants={item}
-        className="mx-4 mb-4 rounded-card p-5"
-        style={{ background: 'var(--bg-primary)', boxShadow: 'var(--shadow-card)', border: '1px solid var(--border-light)' }}
-      >
-        {/* Google Sign-In (primary) */}
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={handleGoogleLogin}
-          disabled={googleLoading}
-          className="w-full flex items-center justify-center gap-3 h-[52px] rounded-input font-semibold text-[15px] font-body transition-colors"
-          style={{
-            background: 'var(--bg-primary)',
-            border: '1.5px solid var(--border)',
-            color: 'var(--text-primary)',
-            boxShadow: 'var(--shadow-sm)',
-            opacity: googleLoading ? 0.7 : 1,
-          }}
-        >
-          {googleLoading ? (
-            <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <GoogleLogo />
-          )}
-          Continue with Google
-        </motion.button>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-          <span className="text-[13px] font-body" style={{ color: 'var(--text-tertiary)' }}>or</span>
-          <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
-        </div>
-
-        {/* Phone input */}
-        <label className="block text-[13px] font-medium font-body mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-          Mobile number
-        </label>
-        <div
-          className="flex items-center rounded-input overflow-hidden h-[52px] transition-all"
-          style={{
-            border: error ? '1.5px solid var(--danger)' : '1.5px solid var(--border)',
-          }}
-        >
-          <div
-            className="flex items-center justify-center px-3.5 h-full text-[15px] font-semibold font-body flex-shrink-0"
-            style={{ background: 'var(--bg-secondary)', borderRight: '1.5px solid var(--border)', color: 'var(--text-primary)' }}
+          By continuing, you agree to our{' '}
+          <span
+            onClick={() => navigate('/terms')}
+            style={{ color: 'var(--brand)', cursor: 'pointer' }}
           >
-            +91
-          </div>
-          <input
-            type="tel"
-            inputMode="numeric"
-            placeholder="98765 43210"
-            value={formatDisplay(phone)}
-            onChange={(e) => { setPhoneLocal(e.target.value); setError('') }}
-            onKeyDown={(e) => e.key === 'Enter' && handleSendOTP()}
-            className="flex-1 h-full px-4 text-[15px] font-body outline-none"
-            style={{ background: 'transparent', color: 'var(--text-primary)' }}
-          />
-        </div>
-
-        <AnimatePresence>
-          {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="text-[12px] mt-1.5 font-body"
-              style={{ color: 'var(--danger)' }}
-            >
-              {error}
-            </motion.p>
-          )}
-        </AnimatePresence>
-
-        {!error && (
-          <div className="flex items-center gap-1.5 mt-2">
-            <Info size={12} style={{ color: 'var(--text-tertiary)' }} />
-            <span className="text-[12px] font-body" style={{ color: 'var(--text-tertiary)' }}>OTP sent via SMS</span>
-          </div>
-        )}
-
-        <div className="mt-3">
-          <Button onClick={handleSendOTP} loading={loading} fullWidth>
-            Send OTP
-          </Button>
-        </div>
+            Terms
+          </span>
+          {' '}&amp;{' '}
+          <span
+            onClick={() => navigate('/privacy')}
+            style={{ color: 'var(--brand)', cursor: 'pointer' }}
+          >
+            Privacy Policy
+          </span>
+        </motion.p>
       </motion.div>
-
-      <motion.p
-        variants={item}
-        className="px-6 pb-6 text-center text-[12px] font-body"
-        style={{ color: 'var(--text-tertiary)' }}
-      >
-        By continuing, you agree to our{' '}
-        <span style={{ color: 'var(--brand)' }}>Terms &amp; Privacy Policy</span>
-      </motion.p>
-    </motion.div>
+    </div>
   )
 }

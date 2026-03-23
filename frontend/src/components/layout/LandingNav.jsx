@@ -176,8 +176,20 @@ export const LandingNav = () => {
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
                 boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
+                animation: 'pulseGlow 2s ease-in-out infinite',
+                position: 'relative',
               }}
             >
+              {/* Green notification dot */}
+              <span style={{
+                position: 'absolute',
+                top: -2, right: -2,
+                width: 8, height: 8,
+                borderRadius: 999,
+                background: '#12B76A',
+                border: '1.5px solid white',
+                animation: 'pulse 2s ease-in-out infinite',
+              }} />
               Get protected →
             </motion.button>
 

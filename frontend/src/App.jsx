@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useThemeStore } from './store/themeStore'
 import { useWorkerStore } from './store/workerStore'
@@ -6,31 +6,33 @@ import LoadingScreen from './components/ui/LoadingScreen'
 import WorkerLayout from './components/layout/WorkerLayout'
 import { AnimatedBackground } from './components/ui/AnimatedBackground'
 
+// Eager-loaded routes (landing + auth)
 import Landing from './pages/Landing'
 import Login from './pages/worker/Login'
 import Register from './pages/worker/Register'
-import Onboarding from './pages/Onboarding'
-import PaymentSuccess from './pages/worker/PaymentSuccess'
-import OTP from './pages/worker/OTP'
-import ZoneSelect from './pages/worker/ZoneSelect'
-import RiskScore from './pages/worker/RiskScore'
-import AIForecast from './pages/worker/AIForecast'
-import Premium from './pages/worker/Premium'
-import Coverage from './pages/worker/Coverage'
-import Dashboard from './pages/worker/Dashboard'
-import ClaimStatus from './pages/worker/ClaimStatus'
-import PayoutSuccess from './pages/worker/PayoutSuccess'
-import Profile from './pages/worker/Profile'
-import Terms from './pages/Terms'
-import Privacy from './pages/Privacy'
-import Maintenance from './pages/Maintenance'
 
-import ClaimsList from './pages/worker/ClaimsList'
-import NotificationsPage from './pages/worker/NotificationsPage'
-
-import AdminDashboard from './pages/admin/AdminDashboard'
-import ClaimsQueue from './pages/admin/ClaimsQueue'
-import Analytics from './pages/admin/Analytics'
+// Lazy-loaded routes
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const PaymentSuccess = lazy(() => import('./pages/worker/PaymentSuccess'))
+const OTP = lazy(() => import('./pages/worker/OTP'))
+const ZoneSelect = lazy(() => import('./pages/worker/ZoneSelect'))
+const RiskScore = lazy(() => import('./pages/worker/RiskScore'))
+const AIForecast = lazy(() => import('./pages/worker/AIForecast'))
+const Premium = lazy(() => import('./pages/worker/Premium'))
+const Coverage = lazy(() => import('./pages/worker/Coverage'))
+const Dashboard = lazy(() => import('./pages/worker/Dashboard'))
+const ClaimStatus = lazy(() => import('./pages/worker/ClaimStatus'))
+const PayoutSuccess = lazy(() => import('./pages/worker/PayoutSuccess'))
+const Profile = lazy(() => import('./pages/worker/Profile'))
+const ClaimsList = lazy(() => import('./pages/worker/ClaimsList'))
+const NotificationsPage = lazy(() => import('./pages/worker/NotificationsPage'))
+const Terms = lazy(() => import('./pages/Terms'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Maintenance = lazy(() => import('./pages/Maintenance'))
+const NotFound = lazy(() => import('./pages/NotFound'))
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const ClaimsQueue = lazy(() => import('./pages/admin/ClaimsQueue'))
+const Analytics = lazy(() => import('./pages/admin/Analytics'))
 
 const CITIES = [
   { name: 'Hyderabad', lat: 17.385, lng: 78.4867, zone: 'kondapur-hyderabad' },
@@ -61,9 +63,29 @@ function PublicRoute({ children }) {
   return children
 }
 
+function SuspenseFallback() {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '60vh',
+    }}>
+      <div style={{
+        width: 28, height: 28,
+        border: '3px solid var(--border)',
+        borderTopColor: 'var(--brand)',
+        borderRadius: 999,
+        animation: 'spin 0.8s linear infinite',
+      }} />
+    </div>
+  )
+}
+
 function AppRoutes() {
   return (
-    <Routes>
+    <Suspense fallback={<SuspenseFallback />}>
+      <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
@@ -102,9 +124,10 @@ function AppRoutes() {
         <Route path="/admin/claims"    element={<ClaimsQueue />} />
         <Route path="/admin/analytics" element={<Analytics />} />
 
-        {/* Catch all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* 404 catch-all */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
+    </Suspense>
   )
 }
 
@@ -137,11 +160,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <AnimatedBackground />
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
       <AppRoutes />
     </BrowserRouter>
   )

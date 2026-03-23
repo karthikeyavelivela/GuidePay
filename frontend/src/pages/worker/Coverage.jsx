@@ -107,7 +107,7 @@ export default function Coverage() {
     <div style={{
       minHeight: '100vh',
       background: 'var(--bg-secondary)',
-      paddingBottom: 100,
+      paddingBottom: 140,
     }}>
       {/* TopBar */}
       <div style={{
@@ -425,14 +425,14 @@ export default function Coverage() {
         </p>
       </div>
 
-      {/* STICKY BUY BUTTON */}
+      {/* STICKY BUY BUTTON — above bottom nav */}
       <div style={{
         position: 'fixed',
-        bottom: 0, left: 0, right: 0,
-        padding: '12px 16px',
+        bottom: 64, left: 0, right: 0,
+        padding: '10px 16px',
         background: 'var(--bg-card)',
         borderTop: '1px solid var(--border-light)',
-        zIndex: 60,
+        zIndex: 40,
       }}>
         <motion.button
           onClick={handleBuy}
