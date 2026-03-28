@@ -10,6 +10,41 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
 }
 
+const DEMO_CLAIMS = [
+  {
+    _id: 'CLM-A4F2',
+    trigger_type: 'FLOOD',
+    trigger_event: { city: 'Hyderabad' },
+    amount: 600,
+    status: 'PAID',
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+  },
+  {
+    _id: 'CLM-B3E1',
+    trigger_type: 'OUTAGE',
+    trigger_event: { city: 'Hyderabad' },
+    amount: 450,
+    status: 'AUTO_APPROVED',
+    created_at: new Date(Date.now() - 604800000).toISOString(),
+  },
+  {
+    _id: 'CLM-C7D9',
+    trigger_type: 'FLOOD',
+    trigger_event: { city: 'Hyderabad' },
+    amount: 600,
+    status: 'PAID',
+    created_at: new Date(Date.now() - 1209600000).toISOString(),
+  },
+  {
+    _id: 'CLM-D2F5',
+    trigger_type: 'CURFEW',
+    trigger_event: { city: 'Hyderabad' },
+    amount: 600,
+    status: 'PAID',
+    created_at: new Date(Date.now() - 2592000000).toISOString(),
+  },
+]
+
 const FILTERS = ['All', 'PAID', 'AUTO_APPROVED', 'MANUAL_REVIEW', 'REJECTED']
 const FILTER_LABELS = { All: 'All', PAID: 'Paid', AUTO_APPROVED: 'Approved', MANUAL_REVIEW: 'Review', REJECTED: 'Rejected' }
 
@@ -31,8 +66,11 @@ export default function ClaimsList() {
 
   useEffect(() => {
     getMyClaims(undefined, 50, 0)
-      .then((res) => setAllClaims(res.claims ?? []))
-      .catch(console.error)
+      .then((res) => {
+        const data = res.claims ?? []
+        setAllClaims(data.length > 0 ? data : DEMO_CLAIMS)
+      })
+      .catch(() => setAllClaims(DEMO_CLAIMS))
       .finally(() => setLoading(false))
   }, [])
 

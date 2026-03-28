@@ -10,6 +10,7 @@ const ADMIN_NAV = [
   { label: 'Overview',       icon: LayoutDashboard, path: '/admin' },
   { label: 'Claims',         icon: FileCheck,        path: '/admin/claims' },
   { label: 'Analytics',      icon: BarChart2,        path: '/admin/analytics' },
+  { label: 'Insurer View',   icon: FileText,         path: '/admin/insurer' },
   { label: 'Reports',        icon: FileText,         path: '/admin/reports' },
   { label: 'Support Inbox',  icon: Headphones,       path: '/admin/support', badge: 'live' },
 ]

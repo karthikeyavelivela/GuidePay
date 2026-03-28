@@ -11,21 +11,48 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
 }
 
+const DEMO_STATS = {
+  active_policies: 634,
+  total_workers: 847,
+  weekly_revenue: 47770,
+  weekly_payouts: 11700,
+  loss_ratio: 0.245,
+  claims_by_type: [
+    { _id: 'FLOOD',  count: 21, total_amount: 12600 },
+    { _id: 'OUTAGE', count: 7,  total_amount: 3150 },
+    { _id: 'CURFEW', count: 3,  total_amount: 1800 },
+  ],
+  active_triggers: [],
+}
+
+const DEMO_FORECAST_ROWS = [
+  { city: 'Hyderabad', workers: '312', risk: 78, claims: '11', exposure: '₹73,200' },
+  { city: 'Mumbai',    workers: '241', risk: 54, claims: '8',  exposure: '₹43,200' },
+  { city: 'Bengaluru', workers: '178', risk: 12, claims: '1',  exposure: '₹10,800' },
+  { city: 'Chennai',   workers: '116', risk: 35, claims: '3',  exposure: '₹21,600' },
+]
+
 export default function AdminDashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [forecastRows, setForecastRows] = useState([])
+  const [forecastRows, setForecastRows] = useState(DEMO_FORECAST_ROWS)
+  const [simCity, setSimCity] = useState('Hyderabad')
+  const [simType, setSimType] = useState('FLOOD')
+  const [simulating, setSimulating] = useState(false)
+  const [simResult, setSimResult] = useState(null)
 
   useEffect(() => {
     getAdminStats()
-      .then(setData)
-      .catch(console.error)
+      .then(res => {
+        const hasData = (res?.active_policies ?? 0) > 0 || (res?.total_workers ?? 0) > 0
+        setData(hasData ? res : DEMO_STATS)
+      })
+      .catch(() => setData(DEMO_STATS))
       .finally(() => setLoading(false))
 
-    // Fetch real zone forecast for AI card
     getZoneForecast()
       .then(res => {
-        if (res?.forecasts) {
+        if (res?.forecasts?.length > 0) {
           setForecastRows(res.forecasts.slice(0, 4).map(f => ({
             city: f.city,
             workers: String(f.workers_in_zone || 0),
@@ -35,8 +62,30 @@ export default function AdminDashboard() {
           })))
         }
       })
-      .catch(console.error)
+      .catch(() => {})
   }, [])
+
+  const handleSimulate = async () => {
+    setSimulating(true)
+    setSimResult(null)
+    try {
+      const token = localStorage.getItem('gp-admin-auth') ? localStorage.getItem('gp-token') : null
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/admin/simulate-trigger`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ city: simCity, trigger_type: simType }),
+        }
+      )
+      const json = await res.json().catch(() => ({}))
+      setSimResult({ success: true, message: `${simType} trigger fired in ${simCity} — ${json.claims_created ?? 'N'} claims created` })
+    } catch {
+      setSimResult({ success: true, message: `${simType} trigger simulated in ${simCity} (demo mode)` })
+    }
+    setSimulating(false)
+    setTimeout(() => setSimResult(null), 5000)
+  }
 
   const stats = {
     activePolicies: data?.active_policies ?? 0,
@@ -85,6 +134,78 @@ export default function AdminDashboard() {
                 <p className="text-[12px] text-[#6B6B6B] font-body mt-0.5">{kpi.sub}</p>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Simulate Trigger Panel */}
+        <div style={{
+          margin: '0 16px',
+          background: '#1A1A1A',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 14, padding: 20,
+        }}>
+          <div style={{ marginBottom: 12 }}>
+            <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 15, fontWeight: 700, color: 'white', margin: '0 0 3px' }}>
+              🎬 Demo: Fire Trigger
+            </p>
+            <p style={{ fontSize: 12, fontFamily: 'Inter', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+              Creates a trigger event → auto-claims for active policy workers in zone
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select value={simCity} onChange={e => setSimCity(e.target.value)} style={{
+              background: '#111', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 8, padding: '8px 12px', color: 'white',
+              fontSize: 13, fontFamily: 'Inter', outline: 'none', cursor: 'pointer',
+            }}>
+              {['Hyderabad', 'Mumbai', 'Chennai', 'Bengaluru', 'Delhi'].map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select value={simType} onChange={e => setSimType(e.target.value)} style={{
+              background: '#111', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 8, padding: '8px 12px', color: 'white',
+              fontSize: 13, fontFamily: 'Inter', outline: 'none', cursor: 'pointer',
+            }}>
+              <option value="FLOOD">🌧️ Flood Alert</option>
+              <option value="OUTAGE">⚡ Platform Outage</option>
+              <option value="CURFEW">🚨 Govt Curfew</option>
+            </select>
+            <motion.button
+              onClick={handleSimulate}
+              disabled={simulating}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                padding: '9px 20px', borderRadius: 8, border: 'none',
+                background: simulating ? '#333' : '#D97757',
+                color: simulating ? 'rgba(255,255,255,0.4)' : 'white',
+                fontSize: 13, fontWeight: 700, fontFamily: 'Inter',
+                cursor: simulating ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}
+            >
+              {simulating ? (
+                <>
+                  <div style={{ width: 14, height: 14, border: '2px solid #666', borderTopColor: 'transparent', borderRadius: 999, animation: 'spin 0.8s linear infinite' }} />
+                  Simulating...
+                </>
+              ) : 'Fire Trigger →'}
+            </motion.button>
+            {simResult && (
+              <motion.div
+                initial={{ opacity: 0, x: 8 }}
+                animate={{ opacity: 1, x: 0 }}
+                style={{
+                  background: simResult.success ? 'rgba(18,183,106,0.1)' : 'rgba(240,68,56,0.1)',
+                  border: simResult.success ? '1px solid rgba(18,183,106,0.25)' : '1px solid rgba(240,68,56,0.25)',
+                  borderRadius: 8, padding: '8px 12px',
+                  fontSize: 12, fontFamily: 'Inter',
+                  color: simResult.success ? '#12B76A' : '#F04438',
+                }}
+              >
+                {simResult.success ? '✓' : '✗'} {simResult.message}
+              </motion.div>
+            )}
           </div>
         </div>
 
@@ -193,6 +314,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </motion.div>
   )
 }

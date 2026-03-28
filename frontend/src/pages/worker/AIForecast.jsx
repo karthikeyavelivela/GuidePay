@@ -216,14 +216,6 @@ export default function AIForecast() {
       animate="animate"
       exit="exit"
     >
-      {/* Progress */}
-      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-        <div className="flex-1 h-[3px] rounded-full overflow-hidden mr-3" style={{ background: 'var(--bg-tertiary)' }}>
-          <div className="h-full rounded-full" style={{ width: '100%', background: 'var(--brand)' }} />
-        </div>
-        <span className="text-[11px] font-body flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Step 3 of 3</span>
-      </div>
-
       <div className="px-4 mt-3">
         {/* Alert banner */}
         {topZone.probability > 60 && (

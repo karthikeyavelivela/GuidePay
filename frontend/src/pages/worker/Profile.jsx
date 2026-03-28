@@ -331,7 +331,11 @@ export default function Profile() {
             fontSize: 13, fontFamily: 'Inter',
             color: textTertiary,
           }}>
-            +91 {w.phone || '98765 43210'}
+            {(() => {
+              const raw = w.phone || '98765 43210'
+              const clean = raw.replace(/^\+91/, '').replace(/^91/, '').replace(/\s/g, '').slice(-10)
+              return `+91 ${clean}`
+            })()}
           </span>
 
           {/* Stats row */}

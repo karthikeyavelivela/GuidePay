@@ -463,13 +463,14 @@ export default function Coverage() {
 
       {/* STICKY BUY BUTTON — desktop aware */}
       <div
-        className="fixed bottom-0 left-0 right-0 lg:left-[240px]"
+        className="fixed left-0 right-0 lg:left-[240px]"
         style={{
+          bottom: 0,
           padding: '10px 16px',
-          paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
+          paddingBottom: 'calc(72px + env(safe-area-inset-bottom))',
           background: 'var(--bg-card)',
           borderTop: '1px solid var(--border-light)',
-          zIndex: 40,
+          zIndex: 60,
         }}
       >
         <div style={{ maxWidth: 560, width: '100%', margin: '0 auto' }}>

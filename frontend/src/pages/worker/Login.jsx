@@ -140,16 +140,12 @@ export default function Login() {
             backdropFilter: 'blur(8px)',
             borderRadius: 10,
             padding: '6px 12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
           }}>
-            <ShieldCheck size={18} color="white" />
-            <span style={{
-              fontFamily: 'Bricolage Grotesque, sans-serif',
-              fontSize: 16, fontWeight: 800,
-              color: 'white',
-            }}>GuidePay</span>
+            <img
+              src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
+              alt="GuidePay"
+              style={{ height: 24, filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
+            />
           </div>
         </div>
 

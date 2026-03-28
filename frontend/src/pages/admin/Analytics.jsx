@@ -115,9 +115,21 @@ export default function Analytics() {
               <YAxis {...axisStyle} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}K`} />
               <Tooltip {...tooltipStyle} formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, '']} />
               <Bar dataKey="premium" fill="#D97757" radius={[4, 4, 0, 0]} name="Premium" />
-              <Bar dataKey="payout"  fill="#E4E4E7" radius={[4, 4, 0, 0]} name="Payouts" />
+              <Bar dataKey="payout"  fill="#2E90FA" radius={[4, 4, 0, 0]} name="Payouts" />
             </BarChart>
           </ResponsiveContainer>
+          {/* Legend */}
+          <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 10 }}>
+            {[
+              { color: '#D97757', label: 'Premium collected' },
+              { color: '#2E90FA', label: 'Payouts made' },
+            ].map(l => (
+              <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 12, height: 3, background: l.color, borderRadius: 2 }} />
+                <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#9B9B9B' }}>{l.label}</span>
+              </div>
+            ))}
+          </div>
         </ChartCard>
 
         {/* Chart 2: Loss ratio trend */}

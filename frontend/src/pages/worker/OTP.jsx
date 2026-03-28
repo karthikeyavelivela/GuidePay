@@ -38,6 +38,41 @@ export default function OTP() {
     setLoading(true)
     setError(false)
     setErrorMsg('')
+
+    // Demo bypass — OTP 1234 auto-logs in as Ravi Kumar
+    if (val === '1234') {
+      const { useWorkerStore } = await import('../../store/workerStore')
+      const now = new Date()
+      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      useWorkerStore.getState().login({
+        id: 'demo_worker_1',
+        name: 'Ravi Kumar',
+        phone: phone || '+919876543210',
+        city: 'Hyderabad',
+        zone: 'kondapur-hyderabad',
+        platforms: ['zepto', 'swiggy'],
+        riskScore: 0.82,
+        riskTier: 'LOW',
+        premium: 58,
+        coverageCap: 600,
+      })
+      useWorkerStore.getState().setActivePolicy({
+        id: 'POL_DEMO_001',
+        planId: 'standard',
+        planName: 'Standard',
+        price: 58,
+        coverage: 600,
+        coverageCap: 600,
+        status: 'ACTIVE',
+        weekStart: now.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        paymentId: 'MOCK_DEMO',
+      })
+      setSuccess(true)
+      setTimeout(() => navigate('/dashboard'), 600)
+      return
+    }
+
     try {
       const res = await api.verifyOTP(phone, val)
       login(res.worker)
