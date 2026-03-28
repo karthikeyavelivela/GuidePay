@@ -57,7 +57,7 @@ function Sidebar({ onClose }) {
         <img
           src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
           alt="GuidePay"
-          style={{ height: 28, objectFit: 'contain', filter: 'none' }}
+          style={{ height: 56, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
         />
         {onClose && (
           <button onClick={onClose} className="ml-auto lg:hidden">

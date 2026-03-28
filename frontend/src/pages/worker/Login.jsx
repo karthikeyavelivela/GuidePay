@@ -144,7 +144,7 @@ export default function Login() {
             <img
               src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
               alt="GuidePay"
-              style={{ height: 24, filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
+              style={{ height: 56, width: 'auto', filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
             />
           </div>
         </div>

@@ -43,7 +43,7 @@ function AdminSidebar({ onClose }) {
         <img
           src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
           alt="GuidePay"
-          style={{ height: 26, objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
+          style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
         />
         <p style={{ fontSize: 10, color: '#6B6B6B', fontFamily: 'Inter', margin: 0, marginLeft: 2 }}>
           Admin

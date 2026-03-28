@@ -79,7 +79,7 @@ export const LandingNav = () => {
             <img
               src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
               alt="GuidePay"
-              style={{ height: 28, filter: 'none', objectFit: 'contain' }}
+              style={{ height: 44, width: 'auto', filter: 'none', objectFit: 'contain' }}
             />
           </motion.div>
 
@@ -244,7 +244,7 @@ export const LandingNav = () => {
                 <img
                   src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
                   alt="GuidePay"
-                  style={{ height: 26, filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
+                  style={{ height: 44, width: 'auto', filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
                 />
                 <motion.button
                   onClick={() => setMobileOpen(false)}
