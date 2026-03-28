@@ -1,100 +1,269 @@
-import { useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { LayoutDashboard, FileCheck, BarChart2, Map, Settings, ShieldCheck } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard, FileCheck, BarChart2, FileText,
+  Menu, X, RefreshCw, Bell, LogOut, Headphones,
+} from 'lucide-react'
 
 const ADMIN_NAV = [
-  { label: 'Overview',   icon: LayoutDashboard, path: '/admin' },
-  { label: 'Claims',     icon: FileCheck,        path: '/admin/claims' },
-  { label: 'Analytics',  icon: BarChart2,        path: '/admin/analytics' },
-  { label: 'Settings',   icon: Settings,         path: '/admin/settings' },
+  { label: 'Overview',       icon: LayoutDashboard, path: '/admin' },
+  { label: 'Claims',         icon: FileCheck,        path: '/admin/claims' },
+  { label: 'Analytics',      icon: BarChart2,        path: '/admin/analytics' },
+  { label: 'Reports',        icon: FileText,         path: '/admin/reports' },
+  { label: 'Support Inbox',  icon: Headphones,       path: '/admin/support', badge: 'live' },
 ]
 
-function AdminSidebar() {
+const PAGE_TITLES = {
+  '/admin': 'Overview',
+  '/admin/claims': 'Claims Queue',
+  '/admin/analytics': 'Analytics',
+  '/admin/reports': 'Reports',
+  '/admin/insurer': 'Insurer View',
+  '/admin/support': 'Support Inbox',
+}
+
+function AdminSidebar({ onClose }) {
   const navigate = useNavigate()
   const location = useLocation()
 
   return (
-    <aside
-      style={{
-        width: 260,
-        background: 'var(--bg-primary)',
-        borderRight: '1px solid var(--border-light)',
-        padding: '24px 12px',
-        flexShrink: 0,
-        minHeight: '100vh',
-      }}
-    >
-      <div className="flex items-center gap-2 px-3 mb-8">
-        <ShieldCheck size={24} style={{ color: 'var(--brand)' }} />
-        <div>
-          <p className="font-display font-bold text-[16px]" style={{ color: 'var(--text-primary)' }}>
-            SentinelX
-          </p>
-          <p className="text-[11px] font-body" style={{ color: 'var(--text-tertiary)' }}>
-            Admin Panel
-          </p>
-        </div>
+    <div style={{
+      width: 220,
+      background: '#111111',
+      borderRight: '1px solid #222222',
+      padding: '20px 10px',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+    }}>
+      {/* Logo */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 10px', marginBottom: 28 }}>
+        <img
+          src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
+          alt="GuidePay"
+          style={{ height: 26, objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
+        />
+        <p style={{ fontSize: 10, color: '#6B6B6B', fontFamily: 'Inter', margin: 0, marginLeft: 2 }}>
+          Admin
+        </p>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          >
+            <X size={18} color="#6B6B6B" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex flex-col gap-1">
-        {ADMIN_NAV.map((item) => {
+      {/* Nav */}
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {ADMIN_NAV.map(item => {
           const active = location.pathname === item.path
           const Icon = item.icon
           return (
             <motion.button
               key={item.label}
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate(item.path)}
-              className="flex items-center gap-3 px-3 py-3 rounded-[10px] w-full text-left transition-colors"
+              onClick={() => { navigate(item.path); onClose?.() }}
               style={{
-                background: active ? 'var(--brand-light)' : 'transparent',
-                color: active ? 'var(--brand)' : 'var(--text-secondary)',
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: 9,
+                border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left',
+                background: active ? 'rgba(217,119,87,0.12)' : 'transparent',
+                color: active ? '#D97757' : '#9B9B9B',
+                transition: 'background 0.15s, color 0.15s',
               }}
             >
-              <Icon size={18} strokeWidth={active ? 2.5 : 1.8} />
-              <span className="font-body font-semibold text-[14px]">{item.label}</span>
+              <Icon size={17} strokeWidth={active ? 2.5 : 1.8} />
+              <span style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 13 }}>
+                {item.label}
+              </span>
+              {item.badge && (
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: 9, fontWeight: 700, fontFamily: 'Inter',
+                  background: '#12B76A', color: 'white',
+                  padding: '2px 5px', borderRadius: 999,
+                  textTransform: 'uppercase', letterSpacing: 0.5,
+                }}>
+                  {item.badge}
+                </span>
+              )}
+              {active && !item.badge && (
+                <div style={{
+                  marginLeft: 'auto', width: 6, height: 6,
+                  borderRadius: 999, background: '#D97757',
+                }} />
+              )}
             </motion.button>
           )
         })}
       </nav>
 
-      <div className="mt-auto pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
+      {/* Footer */}
+      <div style={{ marginTop: 'auto', paddingTop: 16, borderTop: '1px solid #222' }}>
         <button
           onClick={() => navigate('/dashboard')}
-          className="flex items-center gap-2 px-3 py-2 w-full text-left"
-          style={{ color: 'var(--text-tertiary)' }}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 12px', width: '100%',
+          }}
         >
-          <span className="text-[12px] font-body">← Worker app</span>
+          <span style={{ fontSize: 12, fontFamily: 'Inter', color: '#6B6B6B' }}>← Worker app</span>
         </button>
+        <p style={{ fontSize: 10, color: '#3D3D3D', fontFamily: 'Inter', textAlign: 'center', marginTop: 6 }}>
+          GuidePay v1.0 · Phase 2
+        </p>
       </div>
-    </aside>
+    </div>
   )
 }
 
-export default function AdminLayout({ children, breadcrumb }) {
+export default function AdminLayout() {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // Auth guard
+  useEffect(() => {
+    if (!localStorage.getItem('gp-admin-auth')) {
+      navigate('/admin/login', { replace: true })
+    }
+  }, [location.pathname])
+
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Admin'
+  const breadcrumb = `Admin / ${pageTitle}`
+
+  const handleRefresh = () => {
+    window.dispatchEvent(new CustomEvent('admin-refresh'))
+    window.location.reload()
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('gp-admin-auth')
+    localStorage.removeItem('gp-admin-user')
+    navigate('/admin/login', { replace: true })
+  }
+
   return (
-    <div className="flex min-h-screen" style={{ background: 'var(--bg-secondary)' }}>
-      <AdminSidebar />
-      <div className="flex-1 flex flex-col">
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0A0A0A' }}>
+      {/* Desktop sidebar */}
+      <aside
+        className="hidden lg:flex"
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, bottom: 0,
+          width: 220, zIndex: 20,
+          flexDirection: 'column',
+        }}
+      >
+        <AdminSidebar />
+      </aside>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {drawerOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDrawerOpen(false)}
+              style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+                zIndex: 40,
+              }}
+            />
+            <motion.div
+              initial={{ x: -240 }}
+              animate={{ x: 0 }}
+              exit={{ x: -240 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              style={{
+                position: 'fixed', left: 0, top: 0, bottom: 0,
+                width: 220, zIndex: 50,
+              }}
+            >
+              <AdminSidebar onClose={() => setDrawerOpen(false)} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main content */}
+      <main
+        className="lg:ml-[220px]"
+        style={{ flex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}
+      >
         {/* Topbar */}
-        <div
-          className="sticky top-0 z-30 flex items-center px-6 h-14"
-          style={{
-            background: 'var(--bg-primary)',
-            borderBottom: '1px solid var(--border-light)',
-          }}
-        >
-          <p className="text-[13px] font-body" style={{ color: 'var(--text-tertiary)' }}>
-            Admin {breadcrumb ? `/ ${breadcrumb}` : '/ Overview'}
+        <div style={{
+          position: 'sticky', top: 0, zIndex: 30,
+          height: 56,
+          background: '#111111',
+          borderBottom: '1px solid #222222',
+          display: 'flex', alignItems: 'center',
+          padding: '0 20px',
+          gap: 12,
+        }}>
+          {/* Mobile hamburger */}
+          <button
+            className="lg:hidden"
+            onClick={() => setDrawerOpen(true)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          >
+            <Menu size={20} color="#9B9B9B" />
+          </button>
+
+          {/* Breadcrumb */}
+          <p style={{ fontSize: 13, fontFamily: 'Inter', color: '#6B6B6B', flex: 1 }}>
+            {breadcrumb}
           </p>
-        </div>
-        {/* Content */}
-        <main className="flex-1 p-6">
-          <div className="max-w-5xl mx-auto">
-            {children}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={handleRefresh}
+              title="Refresh data"
+              style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: '#1A1A1A', border: '1px solid #2A2A2A',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <RefreshCw size={15} color="#9B9B9B" />
+            </button>
+            <button
+              style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: '#1A1A1A', border: '1px solid #2A2A2A',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative',
+              }}
+            >
+              <Bell size={15} color="#9B9B9B" />
+            </button>
+            <button
+              onClick={handleLogout}
+              title="Logout"
+              style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: '#1A1A1A', border: '1px solid #2A2A2A',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <LogOut size={15} color="#9B9B9B" />
+            </button>
           </div>
-        </main>
-      </div>
+        </div>
+
+        {/* Page content */}
+        <div style={{ flex: 1, overflowX: 'hidden' }}>
+          <Outlet />
+        </div>
+      </main>
     </div>
   )
 }

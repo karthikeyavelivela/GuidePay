@@ -40,7 +40,14 @@ export const signInWithGoogle = async () => {
 
 export const setupRecaptcha = (containerId) => {
   if (!window.recaptchaVerifier) {
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+    // Create container if it doesn't exist in DOM
+    let el = document.getElementById(containerId)
+    if (!el) {
+      el = document.createElement('div')
+      el.id = containerId
+      document.body.appendChild(el)
+    }
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, el, {
       size: 'invisible',
       callback: () => {},
     })

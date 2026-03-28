@@ -1,12 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import TopBar from '../../components/ui/TopBar'
 import Badge from '../../components/ui/Badge'
 import BottomNav from '../../components/ui/BottomNav'
 import ChatWidget from '../../components/chat/ChatWidget'
+import { ClaimTimeline } from '../../components/claims/ClaimTimeline'
 import { useClaimStore } from '../../store/claimStore'
+import { useWorkerStore } from '../../store/workerStore'
+import { getClaimDetail } from '../../services/api'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -14,93 +17,81 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
 }
 
-const FRAUD_CHECKS = [
-  { label: 'GPS location verified',          result: 'In zone' },
-  { label: 'Last active order confirmed',     result: '38 min ago' },
-  { label: 'Platform activity checked',       result: 'Zepto active' },
-  { label: 'Zone correlation calculated',     result: '84% workers' },
-  { label: 'Historical pattern matched',      result: 'Normal' },
-  { label: 'Claim frequency checked',         result: '2 in 6 months' },
-  { label: 'Device fingerprint verified',     result: 'Consistent' },
-]
-
-function TimelineStep({ step, isLast }) {
-  return (
-    <div className={`relative flex gap-4 ${isLast ? '' : 'pb-5'}`}>
-      {/* Vertical line */}
-      {!isLast && (
-        <div className="absolute left-[8px] top-5 bottom-0 w-px" style={{ background: 'var(--border)' }} />
-      )}
-
-      {/* Dot */}
-      <div className="flex-shrink-0 mt-0.5">
-        {step.status === 'done' ? (
-          <div className="w-[18px] h-[18px] rounded-full bg-success flex items-center justify-center">
-            <Check size={10} strokeWidth={3} className="text-white" />
-          </div>
-        ) : step.status === 'active' ? (
-          <div className="w-[18px] h-[18px] rounded-full bg-brand flex items-center justify-center">
-            <motion.div
-              className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            />
-          </div>
-        ) : (
-          <div className="w-[18px] h-[18px] rounded-full border-[1.5px]" style={{ borderColor: 'var(--border)', background: 'var(--bg-card)' }} />
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-semibold font-body" style={{ color: step.status === 'pending' ? 'var(--text-tertiary)' : 'var(--text-primary)' }}>
-          {step.label}
-        </p>
-        <p className="text-[13px] font-body mt-0.5" style={{ color: 'var(--text-secondary)' }}>{step.detail}</p>
-
-        {/* Animated dots for active */}
-        {step.status === 'active' && (
-          <div className="flex gap-1 mt-1.5">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-brand"
-                animate={{ opacity: [0.3, 1, 0.3] }}
-                transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 export default function ClaimStatus() {
   const { id } = useParams()
-  const claim = useClaimStore((s) => s.activeClaim)
-  const [fraudExpanded, setFraudExpanded] = useState(false)
+  const storeClaim = useClaimStore((s) => s.activeClaim)
+  const workerClaims = useWorkerStore((s) => s.claims)
+  const [apiClaim, setApiClaim] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const c = claim || {
-    refId: 'GP-RZP-20260321-0847',
-    type: 'FLOOD',
+  // Fetch real claim data from backend
+  useEffect(() => {
+    const fetchClaim = async () => {
+      try {
+        const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
+        if (!token || !id) {
+          setLoading(false)
+          return
+        }
+        const data = await getClaimDetail(id)
+        if (data) setApiClaim(data)
+      } catch (e) {
+        // Silent — will use store/fallback data
+      }
+      setLoading(false)
+    }
+    fetchClaim()
+  }, [id])
+
+  // Priority: API data > worker store > claim store > minimal fallback
+  const foundClaim = apiClaim
+    || workerClaims?.find(c => (c.id === id || c._id === id))
+    || storeClaim
+
+  const claim = foundClaim || {
+    trigger_type: 'FLOOD',
     amount: 600,
-    status: 'PROCESSING',
-    triggeredAt: '2026-03-21T14:19:00',
+    status: 'PAID',
+    created_at: new Date(Date.now() - 300000).toISOString(),
+    paid_at: new Date().toISOString(),
     zone: 'Kondapur, Hyderabad',
-    fraudScore: 0.04,
-    steps: [
-      { id: 1, label: 'Trigger verified',    detail: 'IMD Red Alert confirmed · 2:19 PM',   status: 'done' },
-      { id: 2, label: 'You were working',    detail: 'Last order 38 min before trigger',      status: 'done' },
-      { id: 3, label: '28 workers confirmed',detail: '84% of your zone affected',             status: 'done' },
-      { id: 4, label: 'Fraud check passed',  detail: 'Score 0.04 · All checks clear',        status: 'done' },
-      { id: 5, label: 'Payout processing',   detail: 'UPI transfer · Est. 90 minutes',       status: 'active' },
-    ],
+    fraud_score: 0.04,
+    fraud_flags: [],
+    fraud_checks: {
+      duplicate: { result: 'PASS' },
+      gps: { result: 'PASS', distance_km: 0.8 },
+      activity: { result: 'PASS', age_minutes: 47 },
+      frequency: { result: 'PASS' },
+      correlation: { result: 'CONFIRMED', ratio: 0.84 },
+      worker_risk: { result: 'PASS' },
+      account_age: { result: 'PASS' },
+    },
   }
 
-  const statusBadge = c.status === 'PROCESSING'
+  const statusBadge = claim.status === 'PROCESSING' || claim.status === 'MANUAL_REVIEW'
     ? <Badge variant="warning">Processing</Badge>
-    : <Badge variant="success">Approved</Badge>
+    : claim.status === 'REJECTED'
+    ? <Badge variant="danger">Rejected</Badge>
+    : <Badge variant="success">Paid</Badge>
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{
+            width: 28, height: 28,
+            border: '3px solid var(--border)',
+            borderTopColor: '#D97757',
+            borderRadius: 999,
+            animation: 'spin 0.8s linear infinite',
+            margin: '0 auto 12px',
+          }} />
+          <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontFamily: 'Inter' }}>Loading claim...</p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    )
+  }
 
   return (
     <motion.div
@@ -112,7 +103,7 @@ export default function ClaimStatus() {
       exit="exit"
     >
       <TopBar
-        title={`← Claim #GP-0847`}
+        title={`← Claim #${(claim.id || claim._id || id || 'GP-0847').slice(-6).toUpperCase()}`}
         showBack
         rightAction={statusBadge}
       />
@@ -121,80 +112,28 @@ export default function ClaimStatus() {
         {/* Amount card */}
         <div className="rounded-card shadow-card p-5" style={{ background: 'var(--bg-card)' }}>
           <p className="text-[11px] font-semibold font-body tracking-[1px] uppercase" style={{ color: 'var(--text-tertiary)' }}>
-            {c.type} ALERT — {c.zone?.split(',')[0]?.toUpperCase()}
+            {claim.trigger_type || 'FLOOD'} ALERT — {(claim.zone || 'KONDAPUR')?.split(',')[0]?.toUpperCase()}
           </p>
           <div className="font-display font-extrabold text-[56px] tracking-[-2px] leading-none mt-1" style={{ color: 'var(--text-primary)' }}>
-            ₹{c.amount}
+            ₹{claim.amount}
           </div>
           <p className="text-[13px] font-body mt-1" style={{ color: 'var(--text-secondary)' }}>
-            {new Date(c.triggeredAt).toLocaleString('en-IN', {
-              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-            })}
+            {claim.created_at
+              ? new Date(claim.created_at).toLocaleString('en-IN', {
+                  day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                })
+              : 'Processing...'}
           </p>
         </div>
 
-        {/* Timeline */}
-        <div>
-          <p className="text-[14px] font-semibold font-body mb-4" style={{ color: 'var(--text-primary)' }}>
-            Verification steps
-          </p>
-          <div className="pl-0">
-            {c.steps.map((step, i) => (
-              <TimelineStep key={step.id} step={step} isLast={i === c.steps.length - 1} />
-            ))}
-          </div>
-        </div>
-
-        {/* Fraud detail - expandable */}
-        <div className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
-          <button
-            onClick={() => setFraudExpanded(!fraudExpanded)}
-            className="w-full flex items-center justify-between px-4 py-3.5"
-          >
-            <span className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
-              Fraud verification
-            </span>
-            {fraudExpanded
-              ? <ChevronUp size={16} style={{ color: 'var(--text-tertiary)' }} />
-              : <ChevronDown size={16} style={{ color: 'var(--text-tertiary)' }} />
-            }
-          </button>
-
-          <AnimatePresence>
-            {fraudExpanded && (
-              <motion.div
-                initial={{ height: 0 }}
-                animate={{ height: 'auto' }}
-                exit={{ height: 0 }}
-                style={{ overflow: 'hidden' }}
-              >
-                {FRAUD_CHECKS.map((check, i) => (
-                  <div
-                    key={check.label}
-                    className="flex items-center justify-between px-4 py-2.5"
-                    style={{ borderTop: '1px solid var(--border-light)' }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 size={14} className="text-success flex-shrink-0" />
-                      <span className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>{check.label}</span>
-                    </div>
-                    <span className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>{check.result}</span>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid var(--border-light)' }}>
-                  <span className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>Fraud score</span>
-                  <span className="text-[13px] font-semibold font-body text-success">
-                    {c.fraudScore} — Auto approved
-                  </span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {/* Feature 2: Claim Timeline */}
+        <ClaimTimeline claim={claim} />
       </div>
 
       <ChatWidget />
       <BottomNav />
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </motion.div>
   )
 }

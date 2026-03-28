@@ -4,6 +4,7 @@ import { useThemeStore } from './store/themeStore'
 import { useWorkerStore } from './store/workerStore'
 import LoadingScreen from './components/ui/LoadingScreen'
 import WorkerLayout from './components/layout/WorkerLayout'
+import AdminLayout from './components/layout/AdminLayout'
 import { AnimatedBackground } from './components/ui/AnimatedBackground'
 
 // Eager-loaded routes (landing + auth)
@@ -26,6 +27,10 @@ const PayoutSuccess = lazy(() => import('./pages/worker/PayoutSuccess'))
 const Profile = lazy(() => import('./pages/worker/Profile'))
 const ClaimsList = lazy(() => import('./pages/worker/ClaimsList'))
 const NotificationsPage = lazy(() => import('./pages/worker/NotificationsPage'))
+const EarningsShield = lazy(() => import('./pages/worker/EarningsShield'))
+const ZoneIntel = lazy(() => import('./pages/worker/ZoneIntel'))
+const CommunityStats = lazy(() => import('./pages/worker/CommunityStats'))
+const CoverageAssistant = lazy(() => import('./pages/worker/CoverageAssistant'))
 const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Maintenance = lazy(() => import('./pages/Maintenance'))
@@ -33,6 +38,11 @@ const NotFound = lazy(() => import('./pages/NotFound'))
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
 const ClaimsQueue = lazy(() => import('./pages/admin/ClaimsQueue'))
 const Analytics = lazy(() => import('./pages/admin/Analytics'))
+const InsurerDashboard = lazy(() => import('./pages/admin/InsurerDashboard'))
+const Reports = lazy(() => import('./pages/admin/Reports'))
+const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
+const AdminSupport = lazy(() => import('./pages/admin/AdminSupport'))
+const Support = lazy(() => import('./pages/worker/Support'))
 
 const CITIES = [
   { name: 'Hyderabad', lat: 17.385, lng: 78.4867, zone: 'kondapur-hyderabad' },
@@ -117,12 +127,25 @@ function AppRoutes() {
           <Route path="/profile"        element={<Profile />} />
           <Route path="/claims"         element={<ClaimsList />} />
           <Route path="/notifications"  element={<NotificationsPage />} />
+          <Route path="/earnings"       element={<EarningsShield />} />
+          <Route path="/zone-intel"     element={<ZoneIntel />} />
+          <Route path="/community"      element={<CommunityStats />} />
+          <Route path="/assistant"      element={<CoverageAssistant />} />
+          <Route path="/support"        element={<Support />} />
         </Route>
 
-        {/* Admin routes */}
-        <Route path="/admin"           element={<AdminDashboard />} />
-        <Route path="/admin/claims"    element={<ClaimsQueue />} />
-        <Route path="/admin/analytics" element={<Analytics />} />
+        {/* Admin login — standalone, no layout */}
+        <Route path="/admin/login" element={<AdminLogin />} />
+
+        {/* Admin routes — nested under AdminLayout */}
+        <Route element={<AdminLayout />}>
+          <Route path="/admin"              element={<AdminDashboard />} />
+          <Route path="/admin/claims"       element={<ClaimsQueue />} />
+          <Route path="/admin/analytics"    element={<Analytics />} />
+          <Route path="/admin/reports"      element={<Reports />} />
+          <Route path="/admin/insurer"      element={<InsurerDashboard />} />
+          <Route path="/admin/support"      element={<AdminSupport />} />
+        </Route>
 
         {/* 404 catch-all */}
         <Route path="*" element={<NotFound />} />

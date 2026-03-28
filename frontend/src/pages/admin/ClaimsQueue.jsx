@@ -1,10 +1,9 @@
-import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Search, Filter } from 'lucide-react'
-import { useState } from 'react'
-import TopBar from '../../components/ui/TopBar'
+import { Search, Download } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import Badge from '../../components/ui/Badge'
-import { MOCK_ADMIN } from '../../services/mockData'
+import { getClaimsQueue, approveClaim, rejectClaim } from '../../services/api'
+import * as XLSX from 'xlsx'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -12,52 +11,74 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
 }
 
-const ADMIN_TABS = [
-  { id: 'overview',  label: 'Overview',  path: '/admin' },
-  { id: 'claims',    label: 'Claims',    path: '/admin/claims' },
-  { id: 'analytics', label: 'Analytics', path: '/admin/analytics' },
-]
-
-function AdminBottomNav({ active }) {
-  const navigate = useNavigate()
-  return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 bg-white border-t border-grey-200">
-      <div className="flex h-14">
-        {ADMIN_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => navigate(tab.path)}
-            className={`flex-1 flex items-center justify-center text-[13px] font-semibold font-body transition-colors ${active === tab.id ? 'text-brand border-t-2 border-brand' : 'text-grey-400'}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function ClaimsQueue() {
-  const { claimsQueue } = MOCK_ADMIN
+  const [claims, setClaims] = useState([])
   const [filter, setFilter] = useState('ALL')
+  const [loading, setLoading] = useState(true)
+
+  const fetchClaims = (status) => {
+    setLoading(true)
+    getClaimsQueue(status === 'ALL' ? undefined : status)
+      .then((res) => setClaims(res.claims ?? []))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchClaims(filter) }, [filter])
+
+  const handleApprove = async (claimId) => {
+    await approveClaim(claimId)
+    fetchClaims(filter)
+  }
+
+  const handleReject = async (claimId) => {
+    await rejectClaim(claimId, 'Manual review failed')
+    fetchClaims(filter)
+  }
 
   const filters = ['ALL', 'AUTO_APPROVED', 'MANUAL_REVIEW']
+  const filtered = claims
 
-  const filtered = filter === 'ALL'
-    ? claimsQueue
-    : claimsQueue.filter((c) => c.status === filter)
+  const exportToExcel = () => {
+    const rows = filtered.map(c => ({
+      'Claim ID': c.id || c._id,
+      'Worker': c.worker?.name || 'Unknown',
+      'Phone': c.worker?.phone || '',
+      'City': c.worker?.city || '',
+      'Trigger Type': c.trigger_type || '',
+      'Amount (₹)': c.amount || 0,
+      'Status': c.status || '',
+      'Fraud Score': c.fraud_score?.toFixed(3) || '0.000',
+      'Flags': (c.fraud_flags || []).join(', '),
+      'Created At': c.created_at || '',
+    }))
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Claims')
+    XLSX.writeFile(wb, `Claims_${filter}_${new Date().toISOString().slice(0, 10)}.xlsx`)
+  }
 
   return (
     <motion.div
-      className="min-h-screen bg-grey-50 pb-20"
+      className="min-h-screen bg-grey-50 pb-8"
       variants={pageVariants}
       initial="initial"
       animate="animate"
       exit="exit"
     >
-      <TopBar title="Claims Queue" bgClass="bg-grey-50" />
-
       <div className="px-4 mt-3">
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-[17px] font-bold font-display text-[#0F0F0F]">Claims Queue</h2>
+          <button
+            onClick={exportToExcel}
+            className="flex items-center gap-2 px-3 py-2 rounded-[8px] bg-[#0F0F0F] text-white text-[12px] font-semibold font-body"
+          >
+            <Download size={13} />
+            Export
+          </button>
+        </div>
+
         {/* Search */}
         <div className="flex items-center gap-3 px-4 h-[48px] rounded-input border-[1.5px] border-grey-200 bg-white mb-3">
           <Search size={16} className="text-grey-400 flex-shrink-0" />
@@ -87,30 +108,36 @@ export default function ClaimsQueue() {
 
         {/* Claims */}
         <div className="bg-white rounded-card shadow-card overflow-hidden">
-          {filtered.map((claim, i) => (
+          {loading ? (
+            <div className="px-4 py-8 text-center">
+              <p className="text-[14px] text-[#9B9B9B] font-body">Loading...</p>
+            </div>
+          ) : filtered.map((claim, i) => (
             <div
-              key={claim.id}
+              key={claim._id}
               className={`p-4 ${i < filtered.length - 1 ? 'border-b border-grey-50' : ''} ${claim.status === 'MANUAL_REVIEW' ? 'bg-danger-light' : ''}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0 mr-3">
-                  <p className="text-[15px] font-semibold font-body text-[#0F0F0F]">{claim.name}</p>
-                  <p className="text-[13px] text-[#6B6B6B] font-body mt-0.5">
-                    {claim.type} · ₹{claim.amount} · {claim.id}
+                  <p className="text-[15px] font-semibold font-body text-[#0F0F0F]">
+                    {claim.worker?.name ?? 'Worker'}
                   </p>
-                  {claim.flag && (
+                  <p className="text-[13px] text-[#6B6B6B] font-body mt-0.5">
+                    {claim.trigger_type} · ₹{claim.amount} · {claim._id?.slice(0, 8)}
+                  </p>
+                  {claim.fraud_flags?.length > 0 && (
                     <p className="text-[12px] text-danger font-semibold font-body mt-1.5">
-                      ⚠️ {claim.flag}
+                      ⚠️ {claim.fraud_flags.join(' · ')}
                     </p>
                   )}
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="font-display font-bold text-[20px] text-[#0F0F0F]">
-                    {claim.fraudScore}
+                    {claim.fraud_score?.toFixed(2) ?? '—'}
                   </p>
                   <p className="text-[11px] text-[#9B9B9B] font-body mb-1">fraud score</p>
-                  <Badge variant={claim.status === 'AUTO_APPROVED' ? 'success' : 'danger'}>
-                    {claim.status === 'AUTO_APPROVED' ? 'Auto' : 'Review'}
+                  <Badge variant={claim.status === 'AUTO_APPROVED' || claim.status === 'PAID' ? 'success' : claim.status === 'MANUAL_REVIEW' ? 'danger' : 'info'}>
+                    {claim.status === 'AUTO_APPROVED' ? 'Auto' : claim.status === 'PAID' ? 'Paid' : claim.status === 'MANUAL_REVIEW' ? 'Review' : claim.status}
                   </Badge>
                 </div>
               </div>
@@ -118,10 +145,16 @@ export default function ClaimsQueue() {
               {/* Action buttons for manual review */}
               {claim.status === 'MANUAL_REVIEW' && (
                 <div className="flex gap-2 mt-3">
-                  <button className="flex-1 h-9 bg-success text-white text-[13px] font-semibold font-body rounded-button">
+                  <button
+                    onClick={() => handleApprove(claim._id)}
+                    className="flex-1 h-9 bg-success text-white text-[13px] font-semibold font-body rounded-button"
+                  >
                     Approve
                   </button>
-                  <button className="flex-1 h-9 bg-danger text-white text-[13px] font-semibold font-body rounded-button">
+                  <button
+                    onClick={() => handleReject(claim._id)}
+                    className="flex-1 h-9 bg-danger text-white text-[13px] font-semibold font-body rounded-button"
+                  >
                     Reject
                   </button>
                 </div>
@@ -137,7 +170,6 @@ export default function ClaimsQueue() {
         )}
       </div>
 
-      <AdminBottomNav active="claims" />
     </motion.div>
   )
 }

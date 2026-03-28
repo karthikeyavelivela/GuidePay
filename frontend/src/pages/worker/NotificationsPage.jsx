@@ -1,165 +1,247 @@
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Bell, X } from 'lucide-react'
-import TopBar from '../../components/ui/TopBar'
-import BottomNav from '../../components/ui/BottomNav'
+import { motion } from 'framer-motion'
+import { ArrowLeft } from 'lucide-react'
+import { useWorkerStore } from '../../store/workerStore'
 
-const pageVariants = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
-}
-
-const MOCK_NOTIFICATIONS = [
+const DEFAULT_NOTIFICATIONS = [
   {
-    id: 'n1',
-    group: 'Today',
-    icon: '⚠️',
-    title: '78% flood risk tomorrow',
-    body: 'Kondapur zone · Coverage auto-extended. No action needed.',
-    time: '2 hours ago',
-    read: false,
-    color: '#F79009',
-  },
-  {
-    id: 'n2',
-    group: 'Today',
-    icon: '✅',
+    id: '1',
+    type: 'PAYOUT',
     title: '₹600 credited to your UPI',
-    body: 'IMD Red Alert payout · ravi.kumar@okaxis',
-    time: '5 hours ago',
+    body: 'Flood claim #CLM-A4F2 auto-processed',
+    time: new Date(Date.now() - 3600000).toISOString(),
     read: false,
+    icon: '💰',
     color: '#12B76A',
+    link: '/claims',
   },
   {
-    id: 'n3',
-    group: 'This week',
-    icon: '🛡️',
-    title: 'Coverage renewed',
-    body: 'Your weekly coverage (Mar 21–27) is now active.',
-    time: 'Mar 21',
-    read: true,
-    color: '#D97757',
-  },
-  {
-    id: 'n4',
-    group: 'This week',
-    icon: '📊',
-    title: 'Risk score updated',
-    body: 'Your score improved to 0.84 · ₹7 discount applied.',
-    time: 'Mar 20',
-    read: true,
-    color: '#7C3AED',
-  },
-  {
-    id: 'n5',
-    group: 'Earlier',
-    icon: '🌊',
-    title: 'Flood watch: Hyderabad',
-    body: 'IMD forecasts heavy rain this weekend. Stay prepared.',
-    time: 'Mar 17',
-    read: true,
+    id: '2',
+    type: 'ALERT',
+    title: 'Flood alert in your zone',
+    body: 'IMD Orange Alert — Kondapur, Hyderabad',
+    time: new Date(Date.now() - 7200000).toISOString(),
+    read: false,
+    icon: '🌧️',
     color: '#2E90FA',
+    link: '/forecast',
+  },
+  {
+    id: '3',
+    type: 'COVERAGE',
+    title: 'Coverage renewed automatically',
+    body: 'Standard Plan · ₹58 debited',
+    time: new Date(Date.now() - 86400000).toISOString(),
+    read: true,
+    icon: '🛡️',
+    color: '#D97757',
+    link: '/coverage',
+  },
+  {
+    id: '4',
+    type: 'SYSTEM',
+    title: 'Risk score updated',
+    body: 'Your score improved to 82/100 · Premium unchanged',
+    time: new Date(Date.now() - 172800000).toISOString(),
+    read: true,
+    icon: '📊',
+    color: '#7C3AED',
+    link: '/risk-score',
+  },
+  {
+    id: '5',
+    type: 'INFO',
+    title: 'GuidePay is watching your zone',
+    body: 'Monsoon season active · Stay protected',
+    time: new Date(Date.now() - 259200000).toISOString(),
+    read: true,
+    icon: '👁️',
+    color: '#D97757',
   },
 ]
 
-export default function NotificationsPage() {
+const timeLabel = (iso) => {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (mins < 60) return `${mins}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return `${days}d ago`
+}
+
+const Notifications = () => {
   const navigate = useNavigate()
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
+  const storeNotifs = useWorkerStore(s => s.notifications)
+  
+  // Merge store notifications with defaults
+  const all = [
+    ...(storeNotifs || []),
+    ...DEFAULT_NOTIFICATIONS,
+  ].slice(0, 20)
 
-  const markRead = (id) => setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n))
-  const clearAll = () => setNotifications([])
+  // Group by today / yesterday / older
+  const groups = {
+    'Today': all.filter(n => {
+      const diff = Date.now() - new Date(n.time).getTime()
+      return diff < 86400000
+    }),
+    'Yesterday': all.filter(n => {
+      const diff = Date.now() - new Date(n.time).getTime()
+      return diff >= 86400000 && diff < 172800000
+    }),
+    'Earlier': all.filter(n => {
+      const diff = Date.now() - new Date(n.time).getTime()
+      return diff >= 172800000
+    }),
+  }
 
-  const groups = [...new Set(notifications.map(n => n.group))]
+  const unreadCount = all.filter(n => !n.read).length
 
   return (
-    <motion.div
-      className="min-h-screen pb-24"
-      style={{ background: 'var(--bg-secondary)' }}
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      <TopBar title="Notifications" showBack />
-
-      {notifications.length > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '8px 16px 0' }}>
-          <button
-            onClick={clearAll}
-            style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#D97757', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            Clear all
-          </button>
-        </div>
-      )}
-
-      <div style={{ padding: '8px 16px' }}>
-        {notifications.length === 0 ? (
-          <div style={{ textAlign: 'center', paddingTop: 100 }}>
-            <div style={{ width: 72, height: 72, borderRadius: 999, background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', boxShadow: 'var(--shadow-card)' }}>
-              <Bell size={28} style={{ color: 'var(--text-tertiary)' }} />
-            </div>
-            <p style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Bricolage Grotesque, sans-serif', color: 'var(--text-primary)', margin: '0 0 8px' }}>
-              All caught up
-            </p>
-            <p style={{ fontSize: 14, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-              No new notifications
-            </p>
-          </div>
-        ) : (
-          groups.map(group => (
-            <div key={group} style={{ marginBottom: 20 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px 4px' }}>
-                {group}
-              </p>
-
-              <div style={{ borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
-                <AnimatePresence>
-                  {notifications.filter(n => n.group === group).map((n, i, arr) => (
-                    <motion.div
-                      key={n.id}
-                      layout
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      onClick={() => markRead(n.id)}
-                      style={{
-                        display: 'flex', alignItems: 'flex-start', gap: 12,
-                        padding: '14px 16px',
-                        borderBottom: i < arr.length - 1 ? '1px solid var(--border-light)' : 'none',
-                        background: n.read ? 'transparent' : `${n.color}08`,
-                        cursor: 'pointer', position: 'relative',
-                      }}
-                    >
-                      {!n.read && (
-                        <div style={{ position: 'absolute', left: 6, top: '50%', transform: 'translateY(-50%)', width: 6, height: 6, borderRadius: 999, background: n.color }} />
-                      )}
-                      <div style={{ width: 40, height: 40, borderRadius: 12, background: `${n.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-                        {n.icon}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                          <p style={{ fontSize: 14, fontWeight: n.read ? 500 : 700, fontFamily: 'Inter, sans-serif', color: 'var(--text-primary)', margin: '0 0 3px' }}>
-                            {n.title}
-                          </p>
-                          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', flexShrink: 0 }}>{n.time}</span>
-                        </div>
-                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', margin: 0, lineHeight: 1.4 }}>
-                          {n.body}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-          ))
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--bg-secondary)',
+      paddingBottom: 80,
+    }}>
+      {/* TopBar */}
+      <div style={{
+        background: 'var(--bg-card)',
+        borderBottom: '1px solid var(--border-light)',
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        position: 'sticky', top: 0, zIndex: 50,
+      }}>
+        <button onClick={() => navigate(-1)}
+          style={{ background: 'none', border: 'none',
+            cursor: 'pointer', padding: 0 }}>
+          <ArrowLeft size={22}
+            color="var(--text-primary)"/>
+        </button>
+        <h1 style={{
+          fontFamily: 'Bricolage Grotesque',
+          fontSize: 18, fontWeight: 800,
+          color: 'var(--text-primary)', margin: 0,
+          flex: 1,
+        }}>
+          Notifications
+        </h1>
+        {unreadCount > 0 && (
+          <span style={{
+            background: '#D97757',
+            color: 'white',
+            fontSize: 11, fontWeight: 700,
+            fontFamily: 'Inter',
+            padding: '2px 8px',
+            borderRadius: 999,
+          }}>
+            {unreadCount} new
+          </span>
         )}
       </div>
 
-      <BottomNav />
-    </motion.div>
+      <div style={{ padding: '8px 0' }}>
+        {Object.entries(groups)
+          .filter(([, items]) => items.length > 0)
+          .map(([group, items]) => (
+          <div key={group}>
+            <p style={{
+              fontSize: 11, fontWeight: 700,
+              fontFamily: 'Inter',
+              color: 'var(--text-tertiary)',
+              letterSpacing: '1.5px',
+              textTransform: 'uppercase',
+              padding: '12px 16px 6px',
+              margin: 0,
+            }}>
+              {group}
+            </p>
+            {items.map((notif, i) => (
+              <motion.div
+                key={notif.id}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                onClick={() => notif.link
+                  && navigate(notif.link)}
+                style={{
+                  display: 'flex',
+                  gap: 12,
+                  padding: '14px 16px',
+                  background: notif.read
+                    ? 'transparent'
+                    : 'rgba(217,119,87,0.04)',
+                  borderBottom:
+                    '1px solid var(--border-light)',
+                  cursor: notif.link ? 'pointer' : 'default',
+                }}
+              >
+                {/* Icon */}
+                <div style={{
+                  width: 40, height: 40,
+                  borderRadius: 12,
+                  background: `${notif.color}15`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 18,
+                  flexShrink: 0,
+                }}>
+                  {notif.icon}
+                </div>
+
+                {/* Content */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                  }}>
+                    <p style={{
+                      fontSize: 13, fontWeight: notif.read
+                        ? 500 : 700,
+                      fontFamily: 'Inter',
+                      color: 'var(--text-primary)',
+                      margin: 0,
+                    }}>
+                      {notif.title}
+                    </p>
+                    <span style={{
+                      fontSize: 10, fontFamily: 'Inter',
+                      color: 'var(--text-tertiary)',
+                      flexShrink: 0,
+                    }}>
+                      {timeLabel(notif.time)}
+                    </span>
+                  </div>
+                  <p style={{
+                    fontSize: 12, fontFamily: 'Inter',
+                    color: 'var(--text-secondary)',
+                    margin: '2px 0 0',
+                  }}>
+                    {notif.body}
+                  </p>
+                </div>
+
+                {/* Unread dot */}
+                {!notif.read && (
+                  <div style={{
+                    width: 7, height: 7,
+                    borderRadius: 999,
+                    background: '#D97757',
+                    flexShrink: 0,
+                    marginTop: 6,
+                  }}/>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
+
+export default Notifications

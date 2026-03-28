@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useWorkerStore } from '../../store/workerStore'
 import { Check, ShieldCheck } from 'lucide-react'
+import { createPaymentOrder, verifyPayment } from '../../services/api'
 
 const PLANS = [
   {
@@ -82,9 +83,47 @@ export default function Coverage() {
 
   const plan = PLANS.find(p => p.id === selectedPlan)
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     setLoading(true)
-    // Simulate a short delay for UX, then activate policy
+    const plan = PLANS.find(p => p.id === selectedPlan)
+
+    try {
+      const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
+
+      if (token) {
+        // Try backend flow: create order -> verify payment -> get real policy
+        const order = await createPaymentOrder(plan.id, plan.price)
+        const mockPaymentId = `pay_MOCK_${Date.now()}`
+        const mockSignature = `sig_MOCK_${Date.now()}`
+
+        const result = await verifyPayment({
+          razorpay_order_id: order.order_id,
+          razorpay_payment_id: mockPaymentId,
+          razorpay_signature: mockSignature,
+          plan_id: plan.id,
+        })
+
+        if (result?.policy) {
+          setActivePolicy({
+            planId: result.policy.plan_id || plan.id,
+            planName: result.policy.plan_name || plan.name,
+            price: result.policy.weekly_premium || plan.price,
+            coverage: result.policy.coverage_cap || plan.coverage,
+            weekStart: result.policy.week_start || new Date().toISOString(),
+            weekEnd: result.policy.week_end || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+            paymentId: result.payment_id || mockPaymentId,
+            status: result.policy.status || 'ACTIVE',
+          })
+          setLoading(false)
+          navigate('/payment-success')
+          return
+        }
+      }
+    } catch (e) {
+      console.warn('[Coverage] Backend payment failed, using local fallback:', e.message)
+    }
+
+    // Graceful fallback: activate locally if backend unavailable
     setTimeout(() => {
       setActivePolicy({
         planId: plan.id,
@@ -100,7 +139,7 @@ export default function Coverage() {
       })
       setLoading(false)
       navigate('/payment-success')
-    }, 1200)
+    }, 800)
   }
 
   return (
@@ -114,9 +153,6 @@ export default function Coverage() {
         background: 'var(--bg-card)',
         borderBottom: '1px solid var(--border-light)',
         padding: '16px',
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
       }}>
         <h1 style={{
           fontFamily: 'Bricolage Grotesque',
@@ -425,61 +461,67 @@ export default function Coverage() {
         </p>
       </div>
 
-      {/* STICKY BUY BUTTON — above bottom nav */}
-      <div style={{
-        position: 'fixed',
-        bottom: 64, left: 0, right: 0,
-        padding: '10px 16px',
-        background: 'var(--bg-card)',
-        borderTop: '1px solid var(--border-light)',
-        zIndex: 40,
-      }}>
-        <motion.button
-          onClick={handleBuy}
-          disabled={loading}
-          whileHover={!loading ? { scale: 1.01 } : {}}
-          whileTap={!loading ? { scale: 0.97 } : {}}
-          style={{
-            width: '100%',
-            padding: '15px',
-            borderRadius: 12,
-            border: 'none',
-            background: loading
-              ? '#E4E4E7'
-              : 'linear-gradient(135deg,#D97757,#B85C3A)',
-            color: loading ? '#9B9B9B' : 'white',
-            fontSize: 16, fontWeight: 700,
-            fontFamily: 'Inter', cursor: loading
-              ? 'not-allowed' : 'pointer',
-            boxShadow: loading
-              ? 'none'
-              : '0 4px 20px rgba(217,119,87,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            maxWidth: 560,
-            margin: '0 auto',
-          }}
-        >
-          {loading ? (
-            <>
-              <div style={{
-                width: 18, height: 18,
-                border: '2px solid #9B9B9B',
-                borderTopColor: 'transparent',
-                borderRadius: 999,
-                animation: 'spin 0.8s linear infinite',
-              }} />
-              Opening payment...
-            </>
-          ) : (
-            <>
-              <ShieldCheck size={18} />
-              Buy {plan.name} — ₹{plan.price}/week
-            </>
-          )}
-        </motion.button>
+      {/* STICKY BUY BUTTON — desktop aware */}
+      <div
+        className="fixed bottom-0 left-0 right-0 lg:left-[240px]"
+        style={{
+          padding: '10px 16px',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom))',
+          background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border-light)',
+          zIndex: 40,
+        }}
+      >
+        <div style={{ maxWidth: 560, width: '100%', margin: '0 auto' }}>
+          <motion.button
+            onClick={handleBuy}
+            disabled={loading}
+            whileHover={!loading ? { scale: 1.01 } : {}}
+            whileTap={!loading ? { scale: 0.97 } : {}}
+            animate={!loading ? {
+              boxShadow: [
+                '0 4px 20px rgba(217,119,87,0.4)',
+                '0 4px 28px rgba(217,119,87,0.7)',
+                '0 4px 20px rgba(217,119,87,0.4)',
+              ],
+            } : {}}
+            transition={!loading ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : {}}
+            style={{
+              width: '100%',
+              padding: '15px',
+              borderRadius: 12,
+              border: 'none',
+              background: loading
+                ? '#E4E4E7'
+                : 'linear-gradient(135deg,#D97757,#B85C3A)',
+              color: loading ? '#9B9B9B' : 'white',
+              fontSize: 16, fontWeight: 700,
+              fontFamily: 'Bricolage Grotesque, sans-serif',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
+          >
+            {loading ? (
+              <>
+                <div style={{
+                  width: 18, height: 18,
+                  border: '2px solid #9B9B9B',
+                  borderTopColor: 'transparent',
+                  borderRadius: 999,
+                  animation: 'spin 0.8s linear infinite',
+                }} />
+                Opening payment...
+              </>
+            ) : (
+              <>
+                🛡️ Buy {plan.name} — ₹{plan.price}/week
+              </>
+            )}
+          </motion.button>
+        </div>
       </div>
 
       <style>{`

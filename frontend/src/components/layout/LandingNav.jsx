@@ -76,27 +76,11 @@ export const LandingNav = () => {
               flexShrink: 0,
             }}
           >
-            <div style={{
-              width: 30, height: 30,
-              borderRadius: 8,
-              background: 'rgba(255,255,255,0.25)',
-              border: '1px solid rgba(255,255,255,0.4)',
-              backdropFilter: 'blur(8px)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-              <ShieldCheck size={16} color="white" />
-            </div>
-            <span style={{
-              fontFamily: 'Bricolage Grotesque',
-              fontSize: 17, fontWeight: 800,
-              color: 'white',
-              textShadow: '0 1px 4px rgba(0,0,0,0.2)',
-              letterSpacing: -0.3,
-            }}>
-              GuidePay
-            </span>
+            <img
+              src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
+              alt="GuidePay"
+              style={{ height: 28, filter: 'none', objectFit: 'contain' }}
+            />
           </motion.div>
 
           {/* CENTER: Nav links — desktop */}
@@ -257,13 +241,11 @@ export const LandingNav = () => {
                 alignItems: 'center',
                 marginBottom: 32,
               }}>
-                <span style={{
-                  fontFamily: 'Bricolage Grotesque',
-                  fontSize: 18, fontWeight: 800,
-                  color: 'white',
-                }}>
-                  GuidePay
-                </span>
+                <img
+                  src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
+                  alt="GuidePay"
+                  style={{ height: 26, filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
+                />
                 <motion.button
                   onClick={() => setMobileOpen(false)}
                   whileTap={{ scale: 0.9 }}

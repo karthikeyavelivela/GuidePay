@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, Shield, FileCheck, TrendingUp, User,
-  ShieldCheck, X, Menu,
+  DollarSign, MapPin, Bot, Headphones, X, Menu,
 } from 'lucide-react'
 import BottomNav from '../ui/BottomNav'
 import { NotificationBell } from '../ui/NotificationBell'
@@ -11,12 +11,33 @@ import { AppTour } from '../tour/AppTour'
 import { useWorkerStore } from '../../store/workerStore'
 
 const NAV_ITEMS = [
-  { id: 'home',     label: 'Home',     icon: Home,      path: '/dashboard' },
-  { id: 'coverage', label: 'Coverage', icon: Shield,    path: '/coverage' },
-  { id: 'claims',   label: 'Claims',   icon: FileCheck, path: '/claims' },
-  { id: 'forecast', label: 'Forecast', icon: TrendingUp,path: '/forecast' },
-  { id: 'profile',  label: 'Profile',  icon: User,      path: '/profile' },
+  { id: 'home',      label: 'Home',       icon: Home,             path: '/dashboard' },
+  { id: 'coverage',  label: 'Coverage',   icon: Shield,           path: '/coverage' },
+  { id: 'claims',    label: 'Claims',     icon: FileCheck,        path: '/claims' },
+  { id: 'forecast',  label: 'Forecast',   icon: TrendingUp,       path: '/forecast' },
+  { id: 'earnings',  label: 'Earnings',   icon: DollarSign,       path: '/earnings' },
+  { id: 'zone-intel',label: 'Zone Intel', icon: MapPin,           path: '/zone-intel' },
+  { id: 'assistant', label: 'Assistant',  icon: Bot,          path: '/assistant' },
+  { id: 'support',   label: 'Support',    icon: Headphones,   path: '/support' },
+  { id: 'profile',   label: 'Profile',    icon: User,             path: '/profile' },
 ]
+
+const PAGE_TITLES = {
+  '/dashboard': 'Dashboard',
+  '/coverage': 'Coverage',
+  '/claims': 'Claims',
+  '/forecast': 'AI Forecast',
+  '/profile': 'Profile',
+  '/notifications': 'Notifications',
+  '/zone': 'Select Zone',
+  '/risk-score': 'Risk Score',
+  '/premium': 'Your Premium',
+  '/earnings': 'Earnings Shield',
+  '/zone-intel': 'Zone Intel',
+  '/assistant': 'AI Assistant',
+  '/support': 'Support',
+  '/community': 'Community Stats',
+}
 
 function Sidebar({ onClose }) {
   const navigate = useNavigate()
@@ -33,10 +54,11 @@ function Sidebar({ onClose }) {
       }}
     >
       <div className="flex items-center gap-2 px-3 mb-8">
-        <ShieldCheck size={26} style={{ color: 'var(--brand)' }} />
-        <span className="font-display font-bold text-xl" style={{ color: 'var(--text-primary)' }}>
-          GuidePay
-        </span>
+        <img
+          src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
+          alt="GuidePay"
+          style={{ height: 28, objectFit: 'contain', filter: 'none' }}
+        />
         {onClose && (
           <button onClick={onClose} className="ml-auto lg:hidden">
             <X size={20} style={{ color: 'var(--text-tertiary)' }} />
@@ -91,8 +113,14 @@ export default function WorkerLayout() {
   const location = useLocation()
   const showTour = useWorkerStore((s) => s.showTour)
   const setShowTour = useWorkerStore((s) => s.setShowTour)
+  const worker = useWorkerStore((s) => s.worker)
 
-  const pageTitle = location.pathname.replace('/', '') || 'Dashboard'
+  // Build initials from worker name
+  const initials = worker?.name
+    ? worker.name.split(' ').slice(0, 2).map(p => p[0]).join('').toUpperCase()
+    : 'GP'
+
+  const pageTitle = PAGE_TITLES[location.pathname] || location.pathname.replace('/', '') || 'Dashboard'
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-primary)' }}>
@@ -150,12 +178,9 @@ export default function WorkerLayout() {
             >
               <Menu size={22} style={{ color: 'var(--text-primary)' }} />
             </button>
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={20} style={{ color: 'var(--brand)' }} />
-              <span className="font-display font-bold text-[17px]" style={{ color: 'var(--text-primary)' }}>
-                GuidePay
-              </span>
-            </div>
+            <span className="font-display font-bold text-[17px]" style={{ color: 'var(--text-primary)' }}>
+              {pageTitle}
+            </span>
           </div>
           <NotificationBell />
         </div>
@@ -196,7 +221,7 @@ export default function WorkerLayout() {
                 fontSize: 14,
                 fontWeight: 700,
                 color: 'var(--brand)',
-              }}>RK</span>
+              }}>{initials}</span>
             </div>
           </div>
         </div>

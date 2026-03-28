@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, ArrowRight, ArrowLeft, ChevronRight } from 'lucide-react'
+import { X, ArrowRight, ArrowLeft } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 
 const TOUR_STEPS = [
@@ -25,7 +25,7 @@ const TOUR_STEPS = [
     target: '#alert-banner',
     page: '/dashboard',
     title: 'Risk Alerts',
-    body: 'AI monitors your zone 24/7. When high flood risk or outages are detected, this alert appears and coverage extends automatically.',
+    body: 'AI monitors your zone 24/7. When high flood risk or outages are detected, this alert appears and your coverage extends automatically.',
     emoji: '⚠️',
   },
   {
@@ -37,19 +37,11 @@ const TOUR_STEPS = [
     emoji: '📡',
   },
   {
-    id: 'bottom-nav-coverage',
-    target: '#nav-coverage',
-    page: '/dashboard',
-    title: 'Coverage Tab',
-    body: 'Tap "Cover" to browse plans — Basic ₹49/wk, Standard ₹58/wk, Premium ₹69/wk.',
-    emoji: '🛡️',
-  },
-  {
     id: 'coverage-page',
     target: null,
     page: '/coverage',
     title: 'Coverage Plans',
-    body: 'Compare plans side by side. Each includes flood, outage, and curfew triggers with UPI instant payout.',
+    body: 'Compare plans side by side — Basic ₹49/wk, Standard ₹58/wk, Premium ₹69/wk. Each includes flood, outage, and curfew triggers.',
     emoji: '📋',
   },
   {
@@ -65,8 +57,48 @@ const TOUR_STEPS = [
     target: null,
     page: '/forecast',
     title: 'AI Forecast',
-    body: '7-day flood probability forecast powered by AI. Plan your deliveries around weather events.',
+    body: '7-day flood probability forecast powered by AI. Plan your deliveries around weather events before they happen.',
     emoji: '🌤️',
+  },
+  {
+    id: 'zone-intel-page',
+    target: null,
+    page: '/zone-intel',
+    title: 'Zone Intel',
+    body: 'Deep-dive analytics for your zone — historical trigger patterns, risk trends, and active event alerts.',
+    emoji: '🗺️',
+  },
+  {
+    id: 'earnings-page',
+    target: null,
+    page: '/earnings',
+    title: 'Earnings Shield',
+    body: 'See how much income you\'ve protected and recovered through payouts. Your financial safety net at a glance.',
+    emoji: '💰',
+  },
+  {
+    id: 'assistant-page',
+    target: null,
+    page: '/assistant',
+    title: 'AI Assistant',
+    body: 'Ask anything about your coverage, triggers, or claims. Get instant answers powered by AI.',
+    emoji: '🤖',
+  },
+  {
+    id: 'support-page',
+    target: null,
+    page: '/support',
+    title: 'Support',
+    body: 'Raise a ticket and chat directly with our support team. We respond within 24 hours.',
+    emoji: '🎧',
+  },
+  {
+    id: 'profile-page',
+    target: null,
+    page: '/profile',
+    title: 'Your Profile',
+    body: 'Manage your UPI ID, zone, personal details, and notification preferences.',
+    emoji: '👤',
   },
   {
     id: 'done',
@@ -88,12 +120,10 @@ export function AppTour({ onClose }) {
   const current = TOUR_STEPS[step]
   const waitingForPage = useRef(null)
 
-  // When location changes, check if we were waiting for this page
   useEffect(() => {
     if (waitingForPage.current && location.pathname === waitingForPage.current.page) {
       const nextStep = waitingForPage.current.step
       waitingForPage.current = null
-      // Wait for the new page to render
       setTimeout(() => {
         setStep(nextStep)
         setNavigating(false)
@@ -104,8 +134,6 @@ export function AppTour({ onClose }) {
   const goToStep = (nextStepIdx) => {
     const nextStep = TOUR_STEPS[nextStepIdx]
     if (!nextStep) return
-
-    // If we need to navigate to a different page
     if (nextStep.page && nextStep.page !== location.pathname) {
       setNavigating(true)
       waitingForPage.current = { page: nextStep.page, step: nextStepIdx }
@@ -130,9 +158,7 @@ export function AppTour({ onClose }) {
   }
 
   const handleClose = () => {
-    if (location.pathname !== '/dashboard') {
-      navigate('/dashboard')
-    }
+    if (location.pathname !== '/dashboard') navigate('/dashboard')
     onClose()
   }
 
@@ -141,12 +167,7 @@ export function AppTour({ onClose }) {
       const el = document.querySelector(current.target)
       if (el) {
         const rect = el.getBoundingClientRect()
-        setTargetRect({
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-        })
+        setTargetRect({ top: rect.top, left: rect.left, width: rect.width, height: rect.height })
       } else {
         setTargetRect(null)
       }
@@ -158,9 +179,7 @@ export function AppTour({ onClose }) {
   useEffect(() => {
     if (current.target) {
       const el = document.querySelector(current.target)
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       const timer = setTimeout(updateTargetRect, 400)
       return () => clearTimeout(timer)
     } else {
@@ -168,62 +187,22 @@ export function AppTour({ onClose }) {
     }
   }, [step, current.target, updateTargetRect])
 
-  // Determine card position — if target is in top half, show card below; otherwise center
-  const getCardPosition = () => {
-    if (!targetRect) {
-      // No target — bottom sheet style on mobile
-      return {
-        bottom: 24,
-        left: 16,
-        right: 16,
-        top: 'auto',
-        transform: 'none',
-      }
-    }
-
-    const targetCenter = targetRect.top + targetRect.height / 2
-    const viewportH = window.innerHeight
-
-    if (targetCenter < viewportH * 0.45) {
-      // Target is in top half — show card at bottom
-      return {
-        bottom: 24,
-        left: 16,
-        right: 16,
-        top: 'auto',
-        transform: 'none',
-      }
-    } else {
-      // Target is in bottom half — show card at top
-      return {
-        top: 24,
-        left: 16,
-        right: 16,
-        bottom: 'auto',
-        transform: 'none',
-      }
-    }
-  }
-
-  const cardPos = getCardPosition()
-
   return (
     <>
-      {/* BACKDROP */}
+      {/* Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={handleClose}
         style={{
-          position: 'fixed',
-          inset: 0,
+          position: 'fixed', inset: 0,
           background: 'rgba(0,0,0,0.6)',
           zIndex: 8000,
         }}
       />
 
-      {/* SPOTLIGHT on target */}
+      {/* Spotlight */}
       <AnimatePresence>
         {current.target && targetRect && (
           <motion.div
@@ -248,38 +227,37 @@ export function AppTour({ onClose }) {
         )}
       </AnimatePresence>
 
-      {/* TOOLTIP CARD — positioned as bottom/top sheet, not centered */}
+      {/* Tooltip — always bottom-center, shifted right on desktop for sidebar */}
       <motion.div
         key={step}
-        initial={{ opacity: 0, y: cardPos.bottom !== 'auto' ? 30 : -30 }}
+        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: navigating ? 0.6 : 1, y: 0 }}
         exit={{ opacity: 0, y: 20 }}
-        transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         style={{
           position: 'fixed',
+          bottom: 'calc(24px + env(safe-area-inset-bottom))',
+          left: 16,
+          right: 16,
           zIndex: 8002,
-          ...cardPos,
-          maxWidth: 400,
-          margin: '0 auto',
+          // On desktop: shift right to account for 240px sidebar
+          maxWidth: 420,
+          marginLeft: 'auto',
+          marginRight: 'auto',
           background: 'white',
-          borderRadius: 20,
+          borderRadius: 18,
           padding: '18px 20px 20px',
-          boxShadow: '0 16px 48px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)',
+          boxShadow: '0 -4px 40px rgba(0,0,0,0.2), 0 0 0 1px rgba(0,0,0,0.05)',
         }}
+        className="lg:left-[calc(50%+120px)] lg:right-auto lg:translate-x-[-50%]"
       >
-        {/* Progress dots */}
-        <div style={{
-          display: 'flex',
-          gap: 4,
-          marginBottom: 14,
-        }}>
+        {/* Progress bar */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 14 }}>
           {TOUR_STEPS.map((_, i) => (
             <div
               key={i}
               style={{
-                flex: 1,
-                height: 3,
-                borderRadius: 999,
+                flex: 1, height: 3, borderRadius: 999,
                 background: i <= step ? '#D97757' : '#F0F0F2',
                 transition: 'background 0.3s',
               }}
@@ -287,22 +265,13 @@ export function AppTour({ onClose }) {
           ))}
         </div>
 
-        {/* Header row: emoji + step count + close */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 10,
-        }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 22 }}>{current.emoji}</span>
             <span style={{
-              fontSize: 11,
-              fontWeight: 700,
-              fontFamily: 'Inter',
-              color: '#D97757',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
+              fontSize: 11, fontWeight: 700, fontFamily: 'Inter',
+              color: '#D97757', letterSpacing: '0.5px', textTransform: 'uppercase',
             }}>
               {step + 1} / {TOUR_STEPS.length}
             </span>
@@ -310,66 +279,42 @@ export function AppTour({ onClose }) {
           <button
             onClick={handleClose}
             style={{
-              background: '#F4F4F5',
-              border: 'none',
-              borderRadius: 999,
-              width: 28,
-              height: 28,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
+              background: '#F4F4F5', border: 'none', borderRadius: 999,
+              width: 28, height: 28, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}
           >
             <X size={14} color="#6B6B6B" />
           </button>
         </div>
 
-        {/* Title */}
         <h3 style={{
           fontFamily: 'Bricolage Grotesque, sans-serif',
-          fontSize: 18,
-          fontWeight: 800,
-          color: '#0F0F0F',
-          margin: '0 0 6px',
-          lineHeight: 1.3,
+          fontSize: 18, fontWeight: 800, color: '#0F0F0F',
+          margin: '0 0 6px', lineHeight: 1.3,
         }}>
           {current.title}
         </h3>
 
-        {/* Body */}
         <p style={{
-          fontSize: 13,
-          color: '#6B6B6B',
-          fontFamily: 'Inter, sans-serif',
-          lineHeight: 1.55,
-          margin: '0 0 16px',
+          fontSize: 13, color: '#6B6B6B', fontFamily: 'Inter, sans-serif',
+          lineHeight: 1.55, margin: '0 0 16px',
         }}>
           {current.body}
         </p>
 
-        {/* Navigation */}
         <div style={{ display: 'flex', gap: 8 }}>
           {step > 0 && (
             <button
               onClick={prev}
               disabled={navigating}
               style={{
-                padding: '10px 14px',
-                borderRadius: 10,
-                border: '1.5px solid #E4E4E7',
-                background: 'white',
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: 'Inter',
-                color: '#0F0F0F',
+                padding: '10px 14px', borderRadius: 10,
+                border: '1.5px solid #E4E4E7', background: 'white',
+                fontSize: 13, fontWeight: 600, fontFamily: 'Inter', color: '#0F0F0F',
                 cursor: navigating ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 4,
-                opacity: navigating ? 0.4 : 1,
-                flexShrink: 0,
+                display: 'flex', alignItems: 'center', gap: 4,
+                opacity: navigating ? 0.4 : 1, flexShrink: 0,
               }}
             >
               <ArrowLeft size={14} />
@@ -381,25 +326,12 @@ export function AppTour({ onClose }) {
             onClick={next}
             disabled={navigating}
             style={{
-              flex: 1,
-              padding: '11px 16px',
-              borderRadius: 10,
-              border: 'none',
-              background: current.last
-                ? 'linear-gradient(135deg, #12B76A, #0E9B58)'
-                : '#D97757',
-              fontSize: 14,
-              fontWeight: 700,
-              fontFamily: 'Inter',
-              color: 'white',
+              flex: 1, padding: '11px 16px', borderRadius: 10, border: 'none',
+              background: current.last ? 'linear-gradient(135deg, #12B76A, #0E9B58)' : '#D97757',
+              fontSize: 14, fontWeight: 700, fontFamily: 'Inter', color: 'white',
               cursor: navigating ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              boxShadow: current.last
-                ? '0 4px 16px rgba(18,183,106,0.35)'
-                : '0 4px 16px rgba(217,119,87,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              boxShadow: current.last ? '0 4px 16px rgba(18,183,106,0.35)' : '0 4px 16px rgba(217,119,87,0.35)',
               opacity: navigating ? 0.6 : 1,
             }}
           >
@@ -417,30 +349,19 @@ export function AppTour({ onClose }) {
             ) : current.last ? (
               'Start delivering! 🚀'
             ) : (
-              <>
-                Next
-                <ArrowRight size={15} />
-              </>
+              <>Next <ArrowRight size={15} /></>
             )}
           </button>
         </div>
 
-        {/* Skip tour link */}
         {!current.last && (
           <button
             onClick={handleClose}
             style={{
-              display: 'block',
-              width: '100%',
-              textAlign: 'center',
-              background: 'none',
-              border: 'none',
-              color: '#9B9B9B',
-              fontSize: 12,
-              fontFamily: 'Inter',
-              cursor: 'pointer',
-              marginTop: 10,
-              padding: 4,
+              display: 'block', width: '100%', textAlign: 'center',
+              background: 'none', border: 'none', color: '#9B9B9B',
+              fontSize: 12, fontFamily: 'Inter', cursor: 'pointer',
+              marginTop: 10, padding: 4,
             }}
           >
             Skip tour

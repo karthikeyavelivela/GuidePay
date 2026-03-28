@@ -8,13 +8,18 @@ export default function PaymentSuccess() {
   const activePolicy = useWorkerStore(s => s.activePolicy)
   const worker = useWorkerStore(s => s.worker)
 
-  const receiptId = activePolicy?.paymentId || ('GP-' + Date.now().toString().slice(-8))
-  const planName = activePolicy?.planName || 'Standard'
-  const planPrice = activePolicy?.price || 58
+  // Redirect to coverage if no active policy
+  if (!activePolicy) {
+    navigate('/coverage')
+    return null
+  }
 
-  const today = new Date()
-  const weekEnd = new Date(today)
-  weekEnd.setDate(today.getDate() + 7)
+  const receiptId = activePolicy.paymentId || ('GP-' + Date.now().toString().slice(-8))
+  const planName = activePolicy.planName || 'Standard'
+  const planPrice = activePolicy.price || 58
+
+  const today = activePolicy.weekStart ? new Date(activePolicy.weekStart) : new Date()
+  const weekEnd = activePolicy.weekEnd ? new Date(activePolicy.weekEnd) : new Date(Date.now() + 7 * 86400000)
 
   const formatDate = (d) => d.toLocaleDateString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -151,7 +156,7 @@ export default function PaymentSuccess() {
               { label: 'Amount paid',       value: `₹${planPrice}.00` },
               { label: 'Payment method',    value: 'UPI' },
               { label: 'Coverage period',   value: `${formatDate(today)} – ${formatDate(weekEnd)}` },
-              { label: 'Coverage cap',      value: '₹600 / week' },
+              { label: 'Coverage cap',      value: `₹${activePolicy.coverage || 600} / week` },
               { label: 'Triggers covered',  value: 'Flood · Outage · Curfew' },
               { label: 'Payout UPI',        value: worker?.phone ? `${worker.phone}@upi` : 'ravi.kumar@okaxis' },
               { label: 'Status',            value: '✓ Active', success: true },

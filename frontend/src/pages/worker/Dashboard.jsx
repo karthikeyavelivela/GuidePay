@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, Zap, ShieldCheck, MapPin, Bot, TrendingUp } from 'lucide-react'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import LiveDot from '../../components/ui/LiveDot'
 import ChatWidget from '../../components/chat/ChatWidget'
+import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
 import { useWorkerStore } from '../../store/workerStore'
 import { useClaimStore } from '../../store/claimStore'
 import { formatINR } from '../../utils/formatters'
+import { getMyProfile, getMyZoneForecast } from '../../services/api'
+import client from '../../services/api'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -31,20 +34,114 @@ export default function Dashboard() {
   const onboarded = useWorkerStore((s) => s.onboarded)
   const setOnboarded = useWorkerStore((s) => s.setOnboarded)
   const setShowTour = useWorkerStore((s) => s.setShowTour)
+  const setWorker = useWorkerStore((s) => s.setWorker)
+  const setActivePolicy = useWorkerStore((s) => s.setActivePolicy)
   const payouts = useClaimStore((s) => s.payouts)
-  const w = worker || {
-    name: 'Ravi Kumar', riskScore: 0.82, riskTier: 'LOW',
-    premium: 58, coverageCap: 600, weekStart: '2026-03-21', weekEnd: '2026-03-27',
-    policyStatus: 'ACTIVE',
+  const now = new Date()
+  const weekStartDate = new Date(now)
+  weekStartDate.setDate(now.getDate() - now.getDay() + 1)
+  const weekEndDate = new Date(weekStartDate)
+  weekEndDate.setDate(weekStartDate.getDate() + 6)
+
+  // Real profile data from API
+  const [profileData, setProfileData] = useState(null)
+  const [zoneAlert, setZoneAlert] = useState(null)
+
+  // Fetch real data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
+        if (!token) return
+
+        const profile = await getMyProfile()
+        if (profile) {
+          setProfileData(profile)
+          setWorker({
+            ...worker,
+            name: profile.name,
+            phone: profile.phone,
+            city: profile.city,
+            zone: profile.zone,
+            riskScore: profile.risk_score,
+            riskTier: profile.risk_tier,
+            premium: profile.premium_amount,
+            coverageCap: 600,
+          })
+          if (profile.active_policy) {
+            setActivePolicy({
+              planId: profile.active_policy.plan_id,
+              planName: profile.active_policy.plan_name,
+              price: profile.active_policy.weekly_premium,
+              coverage: profile.active_policy.coverage_cap || 600,
+              weekStart: profile.active_policy.week_start,
+              weekEnd: profile.active_policy.week_end,
+              paymentId: profile.active_policy.payment_id,
+              status: profile.active_policy.status,
+            })
+          }
+        }
+      } catch (e) {
+        console.warn('[Dashboard] Profile fetch failed, using store data:', e.message)
+      }
+    }
+    fetchData()
+  }, [])
+
+  // Fetch zone forecast for real alert data
+  useEffect(() => {
+    const fetchAlert = async () => {
+      try {
+        const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
+        if (!token) return
+        const data = await getMyZoneForecast()
+        if (data?.prediction) {
+          setZoneAlert({
+            probability: Math.round(data.prediction.probability * 100),
+            zone: data.zone || worker?.zone || 'Your zone',
+            autoExtended: data.auto_cover_extended,
+          })
+        }
+      } catch (e) {
+        // Silent — alert banner just won't show live data
+      }
+    }
+    fetchAlert()
+  }, [])
+
+  const w = {
+    name: worker?.name || profileData?.name || 'Delivery Partner',
+    riskScore: profileData?.risk_score ?? worker?.riskScore ?? 0.75,
+    riskTier: profileData?.risk_tier ?? worker?.riskTier ?? 'MEDIUM',
+    premium: profileData?.premium_amount ?? worker?.premium ?? 58,
+    coverageCap: 600,
   }
+
+  const apiStats = profileData?.stats || {}
+  const totalClaims = apiStats.total_claims ?? 0
+  const totalPayouts = apiStats.total_payouts ?? 0
 
   const [showAlert, setShowAlert] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
+  const [simulateLoading, setSimulateLoading] = useState(false)
+  const [simulateSuccess, setSimulateSuccess] = useState(false)
 
+  // Feature 4: Live claim polling + simulate
+  const [newClaimAlert, setNewClaimAlert] = useState(null)
+  const [simulating, setSimulating] = useState(false)
+  const prevClaimCountRef = useRef(0)
+  const claims = useWorkerStore(s => s.claims)
+  const setClaims = useWorkerStore(s => s.setClaims)
+
+  // Show alert only when we have real zone data or after timeout
   useEffect(() => {
-    const timer = setTimeout(() => setShowAlert(true), 800)
-    return () => clearTimeout(timer)
-  }, [])
+    if (zoneAlert && zoneAlert.probability > 30) {
+      setShowAlert(true)
+    } else {
+      const timer = setTimeout(() => setShowAlert(false), 100)
+      return () => clearTimeout(timer)
+    }
+  }, [zoneAlert])
 
   // Show welcome modal for first-time users
   useEffect(() => {
@@ -55,13 +152,134 @@ export default function Dashboard() {
   }, [onboarded])
 
   useEffect(() => {
-    if (showAlert && Notification.permission === 'granted') {
+    if (showAlert && zoneAlert && Notification.permission === 'granted') {
       new Notification('GuidePay Alert', {
-        body: '78% flood risk tomorrow in your zone. Coverage auto-extended.',
+        body: `${zoneAlert.probability}% flood risk tomorrow in ${zoneAlert.zone}. Coverage auto-extended.`,
         icon: '/favicon.ico',
       })
     }
   }, [showAlert])
+
+  // Feature 4: Poll for new claims every 5 seconds when policy active
+  useEffect(() => {
+    if (!activePolicy) return
+
+    const poll = async () => {
+      try {
+        const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+        if (USE_MOCK) return
+
+        const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
+        if (!token) return
+
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/claims/my`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        const data = await res.json()
+
+        if (data.claims &&
+            data.claims.length > prevClaimCountRef.current) {
+          const newClaim = data.claims[0]
+          setNewClaimAlert(newClaim)
+          setClaims(data.claims)
+          prevClaimCountRef.current = data.claims.length
+        }
+      } catch (e) {}
+    }
+
+    const interval = setInterval(poll, 5000)
+    return () => clearInterval(interval)
+  }, [activePolicy])
+
+  // Feature 4: Simulate flood trigger for demo
+  const handleSimulateTrigger = async () => {
+    setSimulating(true)
+    try {
+      const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+
+      if (USE_MOCK) {
+        // Mock simulation
+        await new Promise(r => setTimeout(r, 1500))
+        const mockNow = new Date()
+        const mockClaim = {
+          id: 'CLM_' + Date.now(),
+          _id: 'CLM_' + Date.now(),
+          trigger_type: 'FLOOD',
+          amount: 600,
+          status: 'PAID',
+          fraud_score: 0.04,
+          fraud_flags: [],
+          fraud_checks: {
+            duplicate: { result: 'PASS' },
+            gps: { result: 'PASS', distance_km: 0.8 },
+            activity: { result: 'PASS', age_minutes: 47 },
+            frequency: { result: 'PASS' },
+            correlation: { result: 'CONFIRMED', ratio: 0.84 },
+            worker_risk: { result: 'PASS' },
+            account_age: { result: 'PASS' },
+          },
+          last_order_age_minutes: 47,
+          zone_correlation_ratio: 0.84,
+          zone_worker_count: 312,
+          created_at: mockNow.toISOString(),
+          paid_at: new Date(
+            mockNow.getTime() + 120000
+          ).toISOString(),
+          zone: worker?.zone || 'Kondapur, Hyderabad',
+        }
+        setClaims([mockClaim])
+        setNewClaimAlert(mockClaim)
+      } else {
+        const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
+        await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/admin/simulate-trigger`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ city: 'Hyderabad', trigger_type: 'FLOOD' }),
+          }
+        )
+        // Also show success in non-mock mode
+        setSimulateSuccess(true)
+        setTimeout(() => setSimulateSuccess(false), 4000)
+      }
+    } catch (e) {
+      console.error('Simulate error:', e)
+      // Still show mock claim on error for demo
+      const mockNow = new Date()
+      const mockClaim = {
+        id: 'CLM_' + Date.now(),
+        _id: 'CLM_' + Date.now(),
+        trigger_type: 'FLOOD',
+        amount: 600,
+        status: 'PAID',
+        fraud_score: 0.04,
+        fraud_flags: [],
+        fraud_checks: {
+          duplicate: { result: 'PASS' },
+          gps: { result: 'PASS', distance_km: 0.8 },
+          activity: { result: 'PASS', age_minutes: 47 },
+          frequency: { result: 'PASS' },
+          correlation: { result: 'CONFIRMED', ratio: 0.84 },
+          worker_risk: { result: 'PASS' },
+          account_age: { result: 'PASS' },
+        },
+        last_order_age_minutes: 47,
+        zone_correlation_ratio: 0.84,
+        zone_worker_count: 312,
+        created_at: mockNow.toISOString(),
+        paid_at: new Date(mockNow.getTime() + 120000).toISOString(),
+        zone: worker?.zone || 'Kondapur, Hyderabad',
+      }
+      setClaims([mockClaim])
+      setNewClaimAlert(mockClaim)
+    }
+    setSimulating(false)
+  }
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -70,13 +288,38 @@ export default function Dashboard() {
     return 'Good evening'
   }
 
-  const firstName = w.name?.split(' ')[0] || 'Ravi'
+  const firstName = w.name?.split(' ')[0] || 'Partner'
+
+  const policyEndDate = activePolicy?.weekEnd
+    ? new Date(activePolicy.weekEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+    : null
+  const displayTotalProtected = totalPayouts > 0
+    ? totalPayouts
+    : payouts.reduce((sum, p) => sum + (p.amount || 0), 0)
+
+  const riskTierLabel = w.riskTier === 'LOW' ? 'Low' : w.riskTier === 'HIGH' ? 'High' : 'Medium'
+  const riskDiscount = w.riskTier === 'LOW' ? '₹7 discount' : w.riskTier === 'HIGH' ? 'Higher premium' : 'Standard rate'
 
   const stats = [
-    { label: 'PROTECTED', value: '₹1,200', sub: '2 events this month', valueColor: '#D97757' },
-    { label: 'PREMIUMS PAID', value: '₹232', sub: 'Since Mar 4', valueColor: '#0F0F0F' },
-    { label: 'RISK SCORE', value: `${w.riskScore}`, sub: `Low · ₹7 discount`, valueColor: '#12B76A' },
-    { label: 'NEXT RENEWAL', value: 'Mar 27', sub: '₹58 due', valueColor: '#0F0F0F' },
+    {
+      label: 'PROTECTED',
+      value: displayTotalProtected > 0 ? formatINR(displayTotalProtected) : (activePolicy ? `₹${activePolicy.coverage || 600}` : '₹0'),
+      sub: totalClaims > 0 ? `${totalClaims} payout${totalClaims > 1 ? 's' : ''} received` : 'Coverage active',
+      valueColor: '#D97757',
+    },
+    {
+      label: 'PREMIUMS PAID',
+      value: activePolicy ? `₹${activePolicy.price || w.premium}` : '₹0',
+      sub: activePolicy ? 'This week' : 'No active plan',
+      valueColor: '#0F0F0F',
+    },
+    { label: 'RISK SCORE', value: `${w.riskScore}`, sub: `${riskTierLabel} · ${riskDiscount}`, valueColor: '#12B76A' },
+    {
+      label: 'NEXT RENEWAL',
+      value: policyEndDate || 'No coverage',
+      sub: activePolicy ? `₹${activePolicy.price || w.premium} due` : 'Buy a plan',
+      valueColor: '#0F0F0F',
+    },
   ]
 
   return (
@@ -100,7 +343,7 @@ export default function Dashboard() {
             onClick={() => navigate('/profile')}
           >
             <span className="font-display font-bold text-[13px] text-white">
-              {firstName[0]}{w.name?.split(' ')[1]?.[0] || 'K'}
+              {firstName[0]}{w.name?.split(' ')[1]?.[0] || ''}
             </span>
           </div>
         </div>
@@ -146,43 +389,178 @@ export default function Dashboard() {
           </motion.div>
         )}
 
-        {/* Policy card */}
-        <motion.div variants={fadeUp}>
-          <div id="policy-hero-card" className="rounded-card p-5" style={{ background: 'var(--bg-card)', boxShadow: '0 10px 24px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04)' }}>
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <LiveDot status="active" />
-                <span className="text-[10px] font-bold font-body tracking-[1px] uppercase" style={{ color: 'var(--text-tertiary)' }}>
-                  Active
+        {/* Policy card — only when active */}
+        {activePolicy && (
+          <motion.div variants={fadeUp}>
+            <div
+              id="policy-hero-card"
+              className="rounded-card p-5"
+              style={{
+                background: 'linear-gradient(135deg, #1a1a1a 0%, #2d1810 50%, #3d1f0d 100%)',
+                boxShadow: '0 12px 32px rgba(217,119,87,0.25), 0 4px 8px rgba(0,0,0,0.15)',
+                position: 'relative',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Subtle glow orb */}
+              <div style={{
+                position: 'absolute', top: -40, right: -40,
+                width: 160, height: 160,
+                borderRadius: 999,
+                background: 'radial-gradient(circle, rgba(217,119,87,0.18) 0%, transparent 70%)',
+                pointerEvents: 'none',
+              }} />
+
+              <div className="flex items-center justify-between mb-2">
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  background: 'rgba(18,183,106,0.18)',
+                  border: '1px solid rgba(18,183,106,0.3)',
+                  borderRadius: 999, padding: '4px 10px',
+                }}>
+                  <LiveDot status="active" />
+                  <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'Inter', color: '#12B76A', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    {activePolicy.status || 'Active'}
+                  </span>
+                </div>
+                <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'rgba(255,255,255,0.5)' }}>
+                  {activePolicy.weekStart
+                    ? `${new Date(activePolicy.weekStart).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${new Date(activePolicy.weekEnd).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`
+                    : 'This week'}
                 </span>
               </div>
-              <span className="text-[12px] font-body" style={{ color: 'var(--text-tertiary)' }}>Mar 21 – 27</span>
-            </div>
-            <div className="font-display font-extrabold text-[44px] tracking-[-2px] leading-none mt-1" style={{ color: 'var(--text-primary)' }}>
-              ₹600
-            </div>
-            <p className="text-[13px] font-body" style={{ color: 'var(--text-secondary)' }}>coverage this week</p>
-            <div className="h-px my-3.5" style={{ background: 'var(--border-light)' }} />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[12px] font-body" style={{ color: 'var(--text-secondary)' }}>Next premium</p>
-                <p className="text-[13px] font-semibold font-body mt-0.5" style={{ color: 'var(--text-primary)' }}>
-                  Mar 27 · ₹{w.premium}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[12px] font-body" style={{ color: 'var(--text-secondary)' }}>Risk score</p>
-                <p className="text-[13px] font-semibold font-body text-success mt-0.5">
-                  {w.riskScore} LOW
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
-        {/* Animated alert banner */}
+              <div style={{ fontFamily: 'Bricolage Grotesque', fontWeight: 800, fontSize: 48, letterSpacing: -2, lineHeight: 1, color: 'white', marginTop: 8 }}>
+                ₹{activePolicy.coverage || 600}
+              </div>
+              <p style={{ fontSize: 13, fontFamily: 'Inter', color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                coverage this week · {activePolicy.planName || activePolicy.planId || 'Standard'} plan
+              </p>
+
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.1)', margin: '14px 0' }} />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <p style={{ fontSize: 11, fontFamily: 'Inter', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: 0 }}>Next premium</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Inter', color: 'white', marginTop: 3 }}>
+                    {policyEndDate} · ₹{activePolicy.price || w.premium}
+                  </p>
+                </div>
+                <div
+                  style={{ textAlign: 'right', cursor: 'pointer' }}
+                  onClick={() => navigate('/risk-score')}
+                >
+                  <p style={{ fontSize: 11, fontFamily: 'Inter', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.8px', margin: 0 }}>Risk score</p>
+                  <p style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Inter', color: '#12B76A', marginTop: 3 }}>
+                    {w.riskScore} · {w.riskTier === 'LOW' ? 'Low' : w.riskTier === 'HIGH' ? 'High' : 'Medium'}
+                  </p>
+                  <span style={{ fontSize: 11, color: '#D97757', fontFamily: 'Inter', fontWeight: 600 }}>
+                    View breakdown →
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Feature 1: Zone Monitor — below policy card, above everything else */}
+        {activePolicy && (
+          <motion.div variants={fadeUp}>
+            <ZoneMonitor />
+          </motion.div>
+        )}
+
+        {/* Feature 4: New claim notification banner */}
         <AnimatePresence>
-          {showAlert && (
+          {newClaimAlert && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div
+                onClick={() => {
+                  navigate(`/claim/${newClaimAlert.id
+                    || newClaimAlert._id}`)
+                  setNewClaimAlert(null)
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #12B76A, #0A9456)',
+                  borderRadius: 14,
+                  padding: '14px 16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <p style={{
+                    fontSize: 13, fontWeight: 700,
+                    fontFamily: 'Inter', color: 'white',
+                    margin: '0 0 2px',
+                  }}>
+                    💰 ₹{newClaimAlert.amount} Payout Processed
+                  </p>
+                  <p style={{
+                    fontSize: 12, fontFamily: 'Inter',
+                    color: 'rgba(255,255,255,0.8)', margin: 0,
+                  }}>
+                    {newClaimAlert.trigger_type || 'Flood'} claim auto-approved · Tap to view
+                  </p>
+                </div>
+                <span style={{
+                  fontSize: 18, marginLeft: 8, color: 'white',
+                }}>→</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Feature 4: Simulate Flood Trigger (dashed border version) */}
+        {activePolicy && (
+          <motion.div variants={fadeUp}>
+            <motion.button
+              onClick={handleSimulateTrigger}
+              disabled={simulating}
+              whileTap={{ scale: 0.97 }}
+              style={{
+                width: '100%',
+                padding: '13px',
+                borderRadius: 12,
+                border: '1.5px dashed rgba(217,119,87,0.4)',
+                background: 'rgba(217,119,87,0.06)',
+                color: '#D97757',
+                fontSize: 13, fontWeight: 700,
+                fontFamily: 'Inter', cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              {simulating ? (
+                <>
+                  <div style={{
+                    width: 14, height: 14,
+                    border: '2px solid #D97757',
+                    borderTopColor: 'transparent',
+                    borderRadius: 999,
+                    animation: 'spin 0.8s linear infinite',
+                  }}/>
+                  Simulating flood trigger...
+                </>
+              ) : (
+                <>🎬 Demo: Simulate Flood Trigger</>
+              )}
+            </motion.button>
+          </motion.div>
+        )}
+
+        {/* Animated alert banner — driven by real zone forecast */}
+        <AnimatePresence>
+          {showAlert && zoneAlert && (
             <motion.div
               id="alert-banner"
               initial={{ height: 0, opacity: 0 }}
@@ -194,10 +572,10 @@ export default function Dashboard() {
                 <span style={{ fontSize: 20 }}>⚠️</span>
                 <div style={{ flex: 1 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Inter, sans-serif', color: 'white', margin: '0 0 2px' }}>
-                    78% flood risk tomorrow
+                    {zoneAlert.probability}% flood risk tomorrow
                   </p>
                   <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-                    Kondapur zone · Coverage auto-extended
+                    {zoneAlert.zone} · {zoneAlert.autoExtended ? 'Coverage auto-extended' : 'Buy coverage now'}
                   </p>
                 </div>
                 <button
@@ -214,7 +592,12 @@ export default function Dashboard() {
         {/* Stats grid */}
         <motion.div variants={fadeUp} className="grid grid-cols-2 gap-2">
           {stats.map((stat) => (
-            <div key={stat.label} className="rounded-card shadow-card p-3.5" style={{ background: 'var(--bg-card)' }}>
+            <div
+              key={stat.label}
+              className="rounded-card shadow-card p-3.5"
+              style={{ background: 'var(--bg-card)', cursor: stat.label === 'RISK SCORE' ? 'pointer' : 'default' }}
+              onClick={stat.label === 'RISK SCORE' ? () => navigate('/risk-score') : undefined}
+            >
               <p className="text-[11px] font-medium font-body tracking-[0.5px] uppercase" style={{ color: 'var(--text-tertiary)' }}>
                 {stat.label}
               </p>
@@ -225,38 +608,59 @@ export default function Dashboard() {
                 {stat.value}
               </p>
               <p className="text-[12px] font-body mt-0.5" style={{ color: 'var(--text-secondary)' }}>{stat.sub}</p>
+              {stat.label === 'RISK SCORE' && (
+                <span style={{ fontSize: 11, color: '#D97757', fontFamily: 'Inter', fontWeight: 600 }}>
+                  View breakdown →
+                </span>
+              )}
             </div>
           ))}
         </motion.div>
 
-        {/* Zone status */}
+        {/* Quick Actions */}
         <motion.div variants={fadeUp}>
-          <p className="text-[14px] font-semibold font-body mb-2" style={{ color: 'var(--text-primary)' }}>Zone status</p>
-          <div id="zone-status-card" className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
+          <p className="text-[14px] font-semibold font-body mb-2" style={{ color: 'var(--text-primary)' }}>
+            Quick actions
+          </p>
+          <div className="grid grid-cols-4 gap-2">
             {[
-              { icon: '🌊', label: 'Flood alert', badge: 'Clear', variant: 'success' },
-              { icon: '📱', label: 'Zepto', badge: 'Normal', variant: 'success' },
-              { icon: '🚫', label: 'Curfew', badge: 'None', variant: 'success' },
-              { icon: '🤖', label: 'Tomorrow', badge: '78% risk', variant: 'warning' },
-            ].map((row, i, arr) => (
-              <div
-                key={row.label}
-                className="flex items-center justify-between px-4 py-3"
-                style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--border-light)' : 'none' }}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-[16px]">{row.icon}</span>
-                  <span className="text-[14px] font-body" style={{ color: 'var(--text-primary)' }}>{row.label}</span>
-                </div>
-                <Badge variant={row.variant}>{row.badge}</Badge>
-              </div>
-            ))}
-            <div className="flex items-center gap-2 px-4 py-2.5">
-              <LiveDot status="active" />
-              <span className="text-[12px] font-body" style={{ color: 'var(--text-tertiary)' }}>
-                847 checks done · Last 3 min ago
-              </span>
-            </div>
+              { icon: ShieldCheck, label: 'Earnings', path: '/earnings', color: '#12B76A', bg: '#ECFDF3' },
+              { icon: MapPin, label: 'Zone Intel', path: '/zone-intel', color: '#2E90FA', bg: '#EFF8FF' },
+              { icon: Bot, label: 'Assistant', path: '/assistant', color: '#D97757', bg: '#FDF1ED' },
+              { icon: TrendingUp, label: 'Risk Score', path: '/risk-score', color: '#7A5AF8', bg: '#F4F3FF' },
+            ].map((action) => {
+              const Icon = action.icon
+              return (
+                <motion.button
+                  key={action.path}
+                  whileTap={{ scale: 0.94 }}
+                  onClick={() => navigate(action.path)}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center',
+                    gap: 6, padding: '12px 4px',
+                    borderRadius: 12,
+                    border: '1px solid var(--border-light)',
+                    background: 'var(--bg-card)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{
+                    width: 36, height: 36, borderRadius: 10,
+                    background: action.bg,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Icon size={18} color={action.color} />
+                  </div>
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, fontFamily: 'Inter',
+                    color: 'var(--text-secondary)',
+                    textAlign: 'center', lineHeight: 1.2,
+                  }}>
+                    {action.label}
+                  </span>
+                </motion.button>
+              )
+            })}
           </div>
         </motion.div>
 
@@ -264,38 +668,52 @@ export default function Dashboard() {
         <motion.div variants={fadeUp}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>Recent payouts</p>
-            <button className="text-[13px] text-brand font-semibold font-body" onClick={() => navigate('/claims')}>See all</button>
+            {payouts.length > 0 && (
+              <button className="text-[13px] text-brand font-semibold font-body" onClick={() => navigate('/claims')}>View all claims</button>
+            )}
           </div>
           <div className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
-            {payouts.slice(0, 2).map((payout, i) => (
-              <motion.button
-                key={payout.id}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => navigate('/claim/cl-001')}
-                className="w-full flex items-center justify-between px-4 py-3.5 text-left"
-                style={{ borderBottom: i < 1 ? '1px solid var(--border-light)' : 'none' }}
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[16px]">
-                      {payout.type === 'FLOOD' ? '🌊' : '📱'}
-                    </span>
-                    <p className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
-                      {payout.event}
+            {payouts.length === 0 ? (
+              <div style={{ padding: '28px 16px', textAlign: 'center' }}>
+                <span style={{ fontSize: 32, display: 'block', marginBottom: 10 }}>💸</span>
+                <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Bricolage Grotesque, sans-serif', color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                  No payouts yet
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', margin: 0 }}>
+                  Payouts appear here when a trigger event fires
+                </p>
+              </div>
+            ) : (
+              payouts.slice(0, 2).map((payout, i) => (
+                <motion.button
+                  key={payout.id}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => navigate(`/claim/${payout.id || 'cl-001'}`)}
+                  className="w-full flex items-center justify-between px-4 py-3.5 text-left"
+                  style={{ borderBottom: i < Math.min(payouts.length, 2) - 1 ? '1px solid var(--border-light)' : 'none' }}
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[16px]">
+                        {payout.type === 'FLOOD' ? '🌊' : '📱'}
+                      </span>
+                      <p className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
+                        {payout.event}
+                      </p>
+                    </div>
+                    <p className="text-[12px] font-body mt-0.5 pl-7" style={{ color: 'var(--text-secondary)' }}>
+                      {new Date(payout.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
-                  <p className="text-[12px] font-body mt-0.5 pl-7" style={{ color: 'var(--text-secondary)' }}>
-                    {new Date(payout.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display font-bold text-[16px] text-success">
-                    +{formatINR(payout.amount)}
-                  </p>
-                  <Badge variant="success">Paid</Badge>
-                </div>
-              </motion.button>
-            ))}
+                  <div className="text-right">
+                    <p className="font-display font-bold text-[16px] text-success">
+                      +{formatINR(payout.amount)}
+                    </p>
+                    <Badge variant="success">Paid</Badge>
+                  </div>
+                </motion.button>
+              ))
+            )}
           </div>
         </motion.div>
       </motion.div>
@@ -442,6 +860,12 @@ export default function Dashboard() {
           </>
         )}
       </AnimatePresence>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </motion.div>
   )
 }

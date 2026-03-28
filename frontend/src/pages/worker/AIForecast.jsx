@@ -1,12 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { AlertTriangle, Clock, ShieldCheck } from 'lucide-react'
-import TopBar from '../../components/ui/TopBar'
 import Button from '../../components/ui/Button'
-import BottomNav from '../../components/ui/BottomNav'
 import ChatWidget from '../../components/chat/ChatWidget'
-import { MOCK_FORECAST } from '../../services/mockData'
+import { getZoneForecast } from '../../services/api'
 import IndiaCalendar from '../../components/forecast/IndiaCalendar'
 
 const pageVariants = {
@@ -18,18 +16,19 @@ const pageVariants = {
 const riskColor = (pct) =>
   pct > 60 ? '#F04438' : pct >= 30 ? '#F79009' : '#12B76A'
 
-// ─── RISK ZONES for map/list ─────────────────────────
-const RISK_ZONES = [
-  { name: 'Kondapur, Hyderabad', risk: 78, level: 'HIGH',   color: '#F04438', workers: 32, exposure: 19200 },
-  { name: 'Kurla, Mumbai',       risk: 54, level: 'MEDIUM', color: '#F79009', workers: 18, exposure: 10800 },
-  { name: 'T.Nagar, Chennai',    risk: 38, level: 'MEDIUM', color: '#F79009', workers: 14, exposure: 6300  },
-  { name: 'Koramangala, Bengaluru', risk: 12, level: 'LOW', color: '#12B76A', workers: 41, exposure: 0    },
-  { name: 'Dwarka, Delhi',       risk: 8,  level: 'LOW',   color: '#12B76A', workers: 28, exposure: 0    },
-]
+// Zone names for display
+const ZONE_DISPLAY_NAMES = {
+  'kondapur-hyderabad': 'Kondapur, Hyderabad',
+  'kurla-mumbai': 'Kurla, Mumbai',
+  'tnagar-chennai': 'T.Nagar, Chennai',
+  'koramangala-bengaluru': 'Koramangala, Bengaluru',
+  'dwarka-delhi': 'Dwarka, Delhi',
+}
 
 // ─── RISK MAP (list fallback — works without Google Maps key) ────────────────
-const RiskMap = () => {
+const RiskMap = ({ zones }) => {
   const mapsKey = import.meta.env.VITE_GOOGLE_MAPS_KEY
+  const RISK_ZONES = zones || []
 
   // If no key or placeholder, show styled list
   if (!mapsKey || mapsKey === 'your_google_maps_key_here' || mapsKey.length < 10) {
@@ -51,7 +50,7 @@ const RiskMap = () => {
             Zone risk levels
           </span>
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif' }}>
-            Live · 5 zones
+            Live · 7 zones
           </span>
         </div>
         {RISK_ZONES.map((zone, i) => (
@@ -183,8 +182,30 @@ const NewsCarousel = () => (
 
 export default function AIForecast() {
   const navigate = useNavigate()
-  const forecast = MOCK_FORECAST
-  const topZone = forecast[0]
+  const [forecastData, setForecastData] = useState(null)
+
+  useEffect(() => {
+    getZoneForecast()
+      .then((res) => setForecastData(res))
+      .catch(console.error)
+  }, [])
+
+  // Map API response to shape used by the UI
+  const forecast = (forecastData?.forecasts ?? []).map((f) => ({
+    city: f.city,
+    zone: f.zone,
+    probability: Math.round((f.flood_probability_24h ?? 0) * 100),
+    risk: f.risk_level,
+    rainfall: f.rainfall_forecast_mm ?? 0,
+    elevation: f.inputs?.elevation_m ?? 100,
+    events: f.inputs?.historical_floods_5yr ?? 0,
+    monsoon: f.inputs?.monsoon_intensity ?? 0,
+  }))
+
+  const topZone = forecast[0] ?? {
+    city: '', zone: '', probability: 0, risk: 'LOW',
+    rainfall: 0, elevation: 100, events: 0, monsoon: 0,
+  }
 
   return (
     <motion.div
@@ -195,8 +216,6 @@ export default function AIForecast() {
       animate="animate"
       exit="exit"
     >
-      <TopBar title="AI Forecast" showBack />
-
       {/* Progress */}
       <div className="px-4 pt-3 pb-1 flex items-center justify-between">
         <div className="flex-1 h-[3px] rounded-full overflow-hidden mr-3" style={{ background: 'var(--bg-tertiary)' }}>
@@ -232,7 +251,14 @@ export default function AIForecast() {
           <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'Inter, sans-serif', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Zone risk map
           </p>
-          <RiskMap />
+          <RiskMap zones={forecast.length > 0 ? forecast.map(f => ({
+            name: ZONE_DISPLAY_NAMES[f.zone] || f.zone,
+            risk: f.probability,
+            level: f.risk,
+            color: riskColor(f.probability),
+            workers: forecastData?.forecasts?.find(fd => fd.zone === f.zone)?.workers_in_zone || 0,
+            exposure: forecastData?.forecasts?.find(fd => fd.zone === f.zone)?.active_trigger ? f.probability * 100 : 0,
+          })) : []} />
         </div>
 
         {/* ── NEWS CAROUSEL ── */}
@@ -339,14 +365,13 @@ export default function AIForecast() {
       </div>
 
       {/* Sticky bottom */}
-      <div className="fixed bottom-0 left-0 right-0 px-4 py-3 z-40" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)' }}>
+      <div className="fixed bottom-16 left-0 right-0 lg:left-[240px] px-4 py-3 z-40" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)' }}>
         <Button onClick={() => navigate('/premium')} fullWidth>
           View Your Premium →
         </Button>
       </div>
 
       <ChatWidget />
-      <BottomNav />
     </motion.div>
   )
 }

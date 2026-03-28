@@ -1,9 +1,8 @@
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Settings, BrainCircuit } from 'lucide-react'
-import TopBar from '../../components/ui/TopBar'
+import { BrainCircuit } from 'lucide-react'
 import Badge from '../../components/ui/Badge'
-import { MOCK_ADMIN } from '../../services/mockData'
+import { getAdminStats, getZoneForecast } from '../../services/api'
 import { formatINRShort } from '../../utils/formatters'
 
 const pageVariants = {
@@ -12,62 +11,57 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
 }
 
-const ADMIN_TABS = [
-  { id: 'overview',   label: 'Overview',   path: '/admin' },
-  { id: 'claims',     label: 'Claims',     path: '/admin/claims' },
-  { id: 'analytics',  label: 'Analytics',  path: '/admin/analytics' },
-]
-
-function AdminBottomNav({ active }) {
-  const navigate = useNavigate()
-  return (
-    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-50 bg-white border-t border-grey-200">
-      <div className="flex h-14">
-        {ADMIN_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => navigate(tab.path)}
-            className={`
-              flex-1 flex items-center justify-center text-[13px] font-semibold font-body transition-colors
-              ${active === tab.id ? 'text-brand border-t-2 border-brand' : 'text-grey-400'}
-            `}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export default function AdminDashboard() {
-  const navigate = useNavigate()
-  const { stats, claimsQueue, events } = MOCK_ADMIN
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [forecastRows, setForecastRows] = useState([])
+
+  useEffect(() => {
+    getAdminStats()
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setLoading(false))
+
+    // Fetch real zone forecast for AI card
+    getZoneForecast()
+      .then(res => {
+        if (res?.forecasts) {
+          setForecastRows(res.forecasts.slice(0, 4).map(f => ({
+            city: f.city,
+            workers: String(f.workers_in_zone || 0),
+            risk: Math.round(f.flood_probability_24h * 100),
+            claims: String(Math.round(f.workers_in_zone * f.flood_probability_24h * 0.3) || 0),
+            exposure: `₹${((f.workers_in_zone || 0) * 600 * f.flood_probability_24h).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`,
+          })))
+        }
+      })
+      .catch(console.error)
+  }, [])
+
+  const stats = {
+    activePolicies: data?.active_policies ?? 0,
+    weeklyRevenue: data?.weekly_revenue ?? 0,
+    weeklyPayouts: data?.weekly_payouts ?? 0,
+    lossRatio: data?.loss_ratio != null ? Math.round(data.loss_ratio * 100) : 0,
+  }
+  const claimsQueue = data?.claims_by_type ?? []
+  const events = data?.active_triggers ?? []
 
   const kpis = [
-    { label: 'Active Policies', value: stats.activePolicies.toLocaleString('en-IN'), sub: '+12 today', color: '#12B76A' },
+    { label: 'Active Policies', value: stats.activePolicies.toLocaleString('en-IN'), sub: 'Total insured', color: '#12B76A' },
     { label: 'Weekly Revenue',  value: formatINRShort(stats.weeklyRevenue), sub: `₹${stats.weeklyRevenue.toLocaleString('en-IN')} collected`, color: '#D97757' },
-    { label: 'Payouts',         value: formatINRShort(stats.activePayouts), sub: '18 claims active', color: '#F79009' },
+    { label: 'Payouts',         value: formatINRShort(stats.weeklyPayouts), sub: 'This week', color: '#F79009' },
     { label: 'Loss Ratio',      value: `${stats.lossRatio}%`, sub: 'Target ≤65%', color: '#12B76A' },
   ]
 
   return (
     <motion.div
-      className="min-h-screen bg-grey-50 pb-20"
+      className="min-h-screen bg-grey-50 pb-8"
       variants={pageVariants}
       initial="initial"
       animate="animate"
       exit="exit"
     >
-      <TopBar
-        title="Admin · SentinelX"
-        bgClass="bg-grey-50"
-        rightAction={
-          <button className="w-10 h-10 flex items-center justify-center">
-            <Settings size={22} className="text-[#0F0F0F]" />
-          </button>
-        }
-      />
 
       <div className="mt-3 flex flex-col gap-3">
         {/* KPI cards - horizontal scroll */}
@@ -102,15 +96,17 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center justify-between mb-3">
             <span className="font-display font-extrabold text-[40px] text-success leading-none">
-              {stats.lossRatio}%
+              {loading ? '—' : `${stats.lossRatio}%`}
             </span>
-            <Badge variant="success">Healthy</Badge>
+            <Badge variant={stats.lossRatio <= 65 ? 'success' : 'danger'}>
+              {stats.lossRatio <= 65 ? 'Healthy' : 'Over target'}
+            </Badge>
           </div>
           <div className="h-1.5 bg-grey-100 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-success rounded-full"
               initial={{ width: 0 }}
-              animate={{ width: `${stats.lossRatio}%` }}
+              animate={{ width: `${Math.min(stats.lossRatio, 100)}%` }}
               transition={{ type: 'spring', stiffness: 60, damping: 15, delay: 0.3 }}
             />
           </div>
@@ -122,10 +118,9 @@ export default function AdminDashboard() {
             <BrainCircuit size={16} className="text-brand" />
             <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">7-Day AI Forecast</span>
           </div>
-          {[
-            { city: 'Hyderabad', workers: '1,247', risk: 78,  claims: '18', exposure: '₹10,800' },
-            { city: 'Mumbai',    workers: '843',   risk: 54,  claims: '11', exposure: '₹6,600' },
-          ].map((row) => (
+          {(forecastRows.length > 0 ? forecastRows : [
+            { city: 'Hyderabad', workers: '0', risk: 0, claims: '0', exposure: '₹0' },
+          ]).map((row) => (
             <div key={row.city} className="px-4 py-3 border-b border-grey-50">
               <div className="flex items-center justify-between">
                 <p className="text-[15px] font-semibold font-body text-[#0F0F0F]">{row.city}</p>
@@ -135,7 +130,7 @@ export default function AdminDashboard() {
                 <div className="flex-1 h-1 bg-grey-100 rounded-full overflow-hidden">
                   <div
                     className="h-full rounded-full"
-                    style={{ width: `${row.risk}%`, backgroundColor: row.risk > 60 ? '#F04438' : '#F79009' }}
+                    style={{ width: `${row.risk}%`, backgroundColor: row.risk > 60 ? '#F04438' : row.risk > 30 ? '#F79009' : '#12B76A' }}
                   />
                 </div>
                 <span className="text-[12px] font-body text-[#6B6B6B]">{row.claims} est. claims · {row.exposure}</span>
@@ -144,72 +139,60 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Correlation card */}
+        {/* Active triggers */}
         <div className="mx-4 bg-white rounded-card shadow-card overflow-hidden">
           <div className="px-4 py-3.5 border-b border-grey-100">
-            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Today's events</span>
+            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Active triggers</span>
           </div>
-          {events.map((ev) => {
-            const isAnomaly = ev.status === 'ANOMALY'
-            return (
-              <div
-                key={ev.city}
-                className={`px-4 py-3 border-b border-grey-50 ${isAnomaly ? 'bg-danger-light' : ''}`}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[14px] font-semibold font-body text-[#0F0F0F]">
-                      {ev.city} {ev.type}
-                    </p>
-                    <p className="text-[12px] text-[#6B6B6B] font-body mt-0.5">
-                      {ev.claimed}/{ev.total} workers · {ev.correlation}% corr
-                    </p>
-                  </div>
-                  <Badge variant={isAnomaly ? 'danger' : 'info'}>
-                    {isAnomaly ? 'Anomaly' : 'Confirmed'}
-                  </Badge>
+          {events.length === 0 ? (
+            <div className="px-4 py-6 text-center">
+              <p className="text-[13px] text-[#9B9B9B] font-body">No active triggers</p>
+            </div>
+          ) : events.map((ev) => (
+            <div key={ev._id} className="px-4 py-3 border-b border-grey-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[14px] font-semibold font-body text-[#0F0F0F]">
+                    {ev.city} — {ev.trigger_type}
+                  </p>
+                  <p className="text-[12px] text-[#6B6B6B] font-body mt-0.5">
+                    {ev.claims_count}/{ev.affected_workers} workers · {ev.severity}
+                  </p>
                 </div>
+                <Badge variant="info">{ev.confirmation_status}</Badge>
               </div>
-            )
-          })}
+            </div>
+          ))}
         </div>
 
-        {/* Claims queue preview */}
+        {/* Claims by type */}
         <div className="mx-4 bg-white rounded-card shadow-card overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3.5 border-b border-grey-100">
-            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Claims queue</span>
+            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Claims by type</span>
             <span className="bg-grey-50 text-grey-500 text-[12px] font-semibold font-body px-2 py-0.5 rounded-full">
               {claimsQueue.length}
             </span>
           </div>
-          {claimsQueue.map((claim, i) => (
+          {claimsQueue.length === 0 ? (
+            <div className="px-4 py-6 text-center">
+              <p className="text-[13px] text-[#9B9B9B] font-body">No claims yet</p>
+            </div>
+          ) : claimsQueue.map((row, i) => (
             <div
-              key={claim.id}
+              key={row._id}
               className={`flex items-center justify-between px-4 py-3 ${i < claimsQueue.length - 1 ? 'border-b border-grey-50' : ''}`}
             >
               <div>
-                <p className="text-[14px] font-semibold font-body text-[#0F0F0F]">{claim.name}</p>
+                <p className="text-[14px] font-semibold font-body text-[#0F0F0F]">{row._id}</p>
                 <p className="text-[12px] text-[#6B6B6B] font-body mt-0.5">
-                  {claim.type} · ₹{claim.amount}
+                  {row.count} claims · ₹{row.total_amount?.toLocaleString('en-IN')}
                 </p>
-                {claim.flag && (
-                  <p className="text-[11px] text-danger font-body mt-0.5">{claim.flag}</p>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="font-display font-bold text-[16px] text-[#0F0F0F]">
-                  {claim.fraudScore}
-                </p>
-                <Badge variant={claim.status === 'AUTO_APPROVED' ? 'success' : 'danger'}>
-                  {claim.status === 'AUTO_APPROVED' ? 'Auto' : 'Review'}
-                </Badge>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      <AdminBottomNav active="overview" />
     </motion.div>
   )
 }

@@ -1,10 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import BottomNav from '../../components/ui/BottomNav'
-import TopBar from '../../components/ui/TopBar'
 import Badge from '../../components/ui/Badge'
-import { useClaimStore } from '../../store/claimStore'
+import { getMyClaims } from '../../services/api'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -12,29 +10,33 @@ const pageVariants = {
   exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
 }
 
-const FILTERS = ['All', 'Paid', 'Processing', 'Flagged']
-
-const MOCK_CLAIMS = [
-  { id: 'cl-001', type: 'FLOOD',   event: 'IMD Red Alert — Kondapur',     date: '2026-03-18', amount: 600, status: 'Paid' },
-  { id: 'cl-002', type: 'OUTAGE',  event: 'Zepto outage — 3hrs',          date: '2026-03-10', amount: 450, status: 'Paid' },
-  { id: 'cl-003', type: 'FLOOD',   event: 'Orange Alert — Hyderabad',     date: '2026-02-28', amount: 600, status: 'Processing' },
-  { id: 'cl-004', type: 'CURFEW',  event: 'Section 144 — Kondapur',       date: '2026-02-14', amount: 600, status: 'Paid' },
-  { id: 'cl-005', type: 'OUTAGE',  event: 'Swiggy down — partial',        date: '2026-01-30', amount: 0,   status: 'Flagged' },
-]
+const FILTERS = ['All', 'PAID', 'AUTO_APPROVED', 'MANUAL_REVIEW', 'REJECTED']
+const FILTER_LABELS = { All: 'All', PAID: 'Paid', AUTO_APPROVED: 'Approved', MANUAL_REVIEW: 'Review', REJECTED: 'Rejected' }
 
 const typeIcon = (type) => ({ FLOOD: '🌊', OUTAGE: '📱', CURFEW: '🚫' }[type] || '📋')
 
 const statusVariant = (status) => ({
-  Paid: 'success',
-  Processing: 'warning',
-  Flagged: 'danger',
+  PAID: 'success',
+  AUTO_APPROVED: 'success',
+  MANUAL_REVIEW: 'warning',
+  PENDING: 'warning',
+  REJECTED: 'danger',
 }[status] || 'default')
 
 export default function ClaimsList() {
   const navigate = useNavigate()
   const [filter, setFilter] = useState('All')
+  const [allClaims, setAllClaims] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const claims = MOCK_CLAIMS.filter(c => filter === 'All' || c.status === filter)
+  useEffect(() => {
+    getMyClaims(undefined, 50, 0)
+      .then((res) => setAllClaims(res.claims ?? []))
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
+
+  const claims = filter === 'All' ? allClaims : allClaims.filter(c => c.status === filter)
 
   return (
     <motion.div
@@ -45,8 +47,6 @@ export default function ClaimsList() {
       animate="animate"
       exit="exit"
     >
-      <TopBar title="Claims" showBack />
-
       {/* Filter tabs */}
       <div style={{ padding: '12px 16px 0', display: 'flex', gap: 8, overflowX: 'auto' }}>
         {FILTERS.map(f => (
@@ -63,13 +63,17 @@ export default function ClaimsList() {
               cursor: 'pointer',
             }}
           >
-            {f}
+            {FILTER_LABELS[f]}
           </motion.button>
         ))}
       </div>
 
       <div style={{ padding: '12px 16px' }}>
-        {claims.length === 0 ? (
+        {loading ? (
+          <div style={{ textAlign: 'center', paddingTop: 80 }}>
+            <p style={{ fontSize: 14, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif' }}>Loading...</p>
+          </div>
+        ) : claims.length === 0 ? (
           <div style={{ textAlign: 'center', paddingTop: 80 }}>
             <span style={{ fontSize: 48, display: 'block', marginBottom: 16 }}>📋</span>
             <p style={{ fontSize: 16, fontWeight: 600, fontFamily: 'Bricolage Grotesque, sans-serif', color: 'var(--text-primary)', margin: '0 0 8px' }}>
@@ -83,8 +87,8 @@ export default function ClaimsList() {
           <div style={{ borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
             {claims.map((claim, i) => (
               <motion.button
-                key={claim.id}
-                onClick={() => navigate(`/claim/${claim.id}`)}
+                key={claim._id}
+                onClick={() => navigate(`/claim/${claim._id}`)}
                 whileTap={{ scale: 0.98 }}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: 12,
@@ -99,15 +103,15 @@ export default function ClaimsList() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: 20, flexShrink: 0,
                 }}>
-                  {typeIcon(claim.type)}
+                  {typeIcon(claim.trigger_type)}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: 'var(--text-primary)', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {claim.event}
+                    {claim.trigger_event?.city ?? claim.trigger_type} — {claim.trigger_type}
                   </p>
                   <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter, sans-serif', margin: 0 }}>
-                    {new Date(claim.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(claim.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 </div>
 
@@ -125,7 +129,6 @@ export default function ClaimsList() {
         )}
       </div>
 
-      <BottomNav />
     </motion.div>
   )
 }

@@ -2,40 +2,42 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
-// All Indian holidays and festivals 2026
-const HOLIDAYS = {
-  '2026-01-01': { name: "New Year's Day", emoji: '🎉', type: 'public', risk: 'low' },
-  '2026-01-14': { name: 'Makar Sankranti', emoji: '🪁', type: 'festival', risk: 'medium', note: 'Order surge · Zone delays' },
-  '2026-01-23': { name: 'Netaji Jayanti', emoji: '🇮🇳', type: 'public', risk: 'low' },
-  '2026-01-26': { name: 'Republic Day', emoji: '🇮🇳', type: 'national', risk: 'high', note: 'Road closures · Possible restrictions' },
-  '2026-02-14': { name: "Valentine's Day", emoji: '💝', type: 'informal', risk: 'low', note: 'High order surge' },
-  '2026-02-26': { name: 'Maha Shivratri', emoji: '🙏', type: 'festival', risk: 'low' },
-  '2026-03-20': { name: 'Holi', emoji: '🌈', type: 'festival', risk: 'high', note: 'Major disruption · Platform slowdowns · Street closures' },
-  '2026-03-30': { name: 'Eid ul-Fitr', emoji: '🌙', type: 'festival', risk: 'medium', note: 'High order volume · Traffic delays' },
-  '2026-04-02': { name: 'Ram Navami', emoji: '🏹', type: 'festival', risk: 'low' },
-  '2026-04-03': { name: 'Good Friday', emoji: '✝️', type: 'public', risk: 'low' },
-  '2026-04-05': { name: 'Easter Sunday', emoji: '🐣', type: 'festival', risk: 'low' },
-  '2026-04-14': { name: 'Ambedkar Jayanti / Tamil New Year', emoji: '📘', type: 'public', risk: 'medium', note: 'Processions in some cities' },
-  '2026-05-01': { name: 'Labour Day', emoji: '✊', type: 'public', risk: 'medium', note: 'Platform worker protests possible' },
-  '2026-05-09': { name: 'Rabindra Jayanti', emoji: '🎶', type: 'regional', risk: 'low' },
-  '2026-06-07': { name: 'Eid ul-Adha', emoji: '🐑', type: 'festival', risk: 'medium', note: 'High demand · Route delays' },
-  '2026-06-15': { name: 'Monsoon begins', emoji: '🌧️', type: 'weather', risk: 'high', note: 'Flood season starts · Ensure coverage active' },
-  '2026-07-05': { name: 'Muharram', emoji: '🌙', type: 'festival', risk: 'medium' },
-  '2026-07-15': { name: 'Peak monsoon', emoji: '⛈️', type: 'weather', risk: 'high', note: 'Highest flood risk · IMD alerts likely' },
-  '2026-08-15': { name: 'Independence Day', emoji: '🇮🇳', type: 'national', risk: 'high', note: 'Security restrictions · Road closures' },
-  '2026-08-22': { name: 'Raksha Bandhan', emoji: '🧡', type: 'festival', risk: 'low', note: 'Order surge' },
-  '2026-08-29': { name: 'Janmashtami', emoji: '🪈', type: 'festival', risk: 'medium', note: 'Dahi Handi events · Route delays' },
-  '2026-09-17': { name: 'Ganesh Chaturthi', emoji: '🐘', type: 'festival', risk: 'high', note: 'Massive disruption Mumbai/Pune · 10 days of events' },
-  '2026-10-02': { name: 'Gandhi Jayanti', emoji: '🕊️', type: 'national', risk: 'low' },
-  '2026-10-15': { name: 'Navratri begins', emoji: '🪔', type: 'festival', risk: 'medium', note: '9 day festival · Varied disruptions' },
-  '2026-10-20': { name: 'Dussehra', emoji: '🏹', type: 'festival', risk: 'high', note: 'Major processions · Traffic jams · Platform surge' },
-  '2026-10-28': { name: 'Diwali', emoji: '🪔', type: 'festival', risk: 'high', note: 'Highest demand day · Air quality warnings · Possible disruptions' },
-  '2026-10-30': { name: 'Govardhan Puja', emoji: '🌼', type: 'festival', risk: 'low' },
-  '2026-11-02': { name: 'Bhai Dooj', emoji: '💛', type: 'festival', risk: 'low' },
-  '2026-11-09': { name: 'Guru Nanak Jayanti', emoji: '🙏', type: 'festival', risk: 'medium', note: 'Processions in North India' },
-  '2026-12-25': { name: 'Christmas', emoji: '🎄', type: 'public', risk: 'low', note: 'High order surge expected' },
-  '2026-12-31': { name: "New Year's Eve", emoji: '🎆', type: 'informal', risk: 'medium', note: 'Very high order volume · Late night surge' },
+// Year-independent holidays — MM-DD keys only
+const HOLIDAY_TEMPLATES = {
+  '01-01': { name: "New Year's Day", emoji: '🎉', type: 'public', risk: 'low' },
+  '01-14': { name: 'Makar Sankranti', emoji: '🪁', type: 'festival', risk: 'medium', note: 'Order surge · Zone delays' },
+  '01-23': { name: 'Netaji Jayanti', emoji: '🇮🇳', type: 'public', risk: 'low' },
+  '01-26': { name: 'Republic Day', emoji: '🇮🇳', type: 'national', risk: 'high', note: 'Road closures · Possible restrictions' },
+  '02-14': { name: "Valentine's Day", emoji: '💝', type: 'informal', risk: 'low', note: 'High order surge' },
+  '02-26': { name: 'Maha Shivratri', emoji: '🙏', type: 'festival', risk: 'low' },
+  '03-20': { name: 'Holi', emoji: '🌈', type: 'festival', risk: 'high', note: 'Major disruption · Platform slowdowns · Street closures' },
+  '03-31': { name: 'Eid ul-Fitr', emoji: '🌙', type: 'festival', risk: 'medium', note: 'High order volume · Traffic delays' },
+  '04-06': { name: 'Ram Navami', emoji: '🏹', type: 'festival', risk: 'low' },
+  '04-10': { name: 'Good Friday', emoji: '✝️', type: 'public', risk: 'low' },
+  '04-14': { name: 'Ambedkar Jayanti / Tamil New Year', emoji: '📘', type: 'public', risk: 'medium', note: 'Processions in some cities' },
+  '05-01': { name: 'Labour Day', emoji: '✊', type: 'public', risk: 'medium', note: 'Platform worker protests possible' },
+  '05-09': { name: 'Rabindra Jayanti', emoji: '🎶', type: 'regional', risk: 'low' },
+  '06-07': { name: 'Eid ul-Adha', emoji: '🐑', type: 'festival', risk: 'medium', note: 'High demand · Route delays' },
+  '06-15': { name: 'Monsoon begins', emoji: '🌧️', type: 'weather', risk: 'high', note: 'Flood season starts · Ensure coverage active' },
+  '07-05': { name: 'Muharram', emoji: '🌙', type: 'festival', risk: 'medium' },
+  '07-15': { name: 'Peak monsoon', emoji: '⛈️', type: 'weather', risk: 'high', note: 'Highest flood risk · IMD alerts likely' },
+  '08-15': { name: 'Independence Day', emoji: '🇮🇳', type: 'national', risk: 'high', note: 'Security restrictions · Road closures' },
+  '08-22': { name: 'Raksha Bandhan', emoji: '🧡', type: 'festival', risk: 'low', note: 'Order surge' },
+  '08-29': { name: 'Janmashtami', emoji: '🪈', type: 'festival', risk: 'medium', note: 'Dahi Handi events · Route delays' },
+  '09-17': { name: 'Ganesh Chaturthi', emoji: '🐘', type: 'festival', risk: 'high', note: 'Massive disruption Mumbai/Pune · 10 days of events' },
+  '10-02': { name: 'Gandhi Jayanti', emoji: '🕊️', type: 'national', risk: 'low' },
+  '10-15': { name: 'Navratri begins', emoji: '🪔', type: 'festival', risk: 'medium', note: '9 day festival · Varied disruptions' },
+  '10-20': { name: 'Dussehra', emoji: '🏹', type: 'festival', risk: 'high', note: 'Major processions · Traffic jams · Platform surge' },
+  '10-28': { name: 'Diwali', emoji: '🪔', type: 'festival', risk: 'high', note: 'Highest demand day · Air quality warnings · Possible disruptions' },
+  '10-30': { name: 'Govardhan Puja', emoji: '🌼', type: 'festival', risk: 'low' },
+  '11-02': { name: 'Bhai Dooj', emoji: '💛', type: 'festival', risk: 'low' },
+  '11-09': { name: 'Guru Nanak Jayanti', emoji: '🙏', type: 'festival', risk: 'medium', note: 'Processions in North India' },
+  '12-25': { name: 'Christmas', emoji: '🎄', type: 'public', risk: 'low', note: 'High order surge expected' },
+  '12-31': { name: "New Year's Eve", emoji: '🎆', type: 'informal', risk: 'medium', note: 'Very high order volume · Late night surge' },
 }
+
+// Monsoon months (1-indexed): June-Sept = high risk
+const MONSOON_MONTHS = [6, 7, 8, 9]
 
 const MONSOON_RISK = {
   5: 'low',
@@ -68,19 +70,21 @@ export const IndiaCalendar = () => {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const firstDayOfWeek = new Date(year, month, 1).getDay()
 
+  // Year-independent key: MM-DD
   const getKey = (day) => {
     const m = String(month + 1).padStart(2, '0')
     const d = String(day).padStart(2, '0')
-    return `${year}-${m}-${d}`
+    return `${m}-${d}`
   }
 
-  const getEvent = (day) => HOLIDAYS[getKey(day)]
+  const getEvent = (day) => HOLIDAY_TEMPLATES[getKey(day)]
   const isToday = (day) =>
     day === now.getDate() &&
     month === now.getMonth() &&
     year === now.getFullYear()
 
   const monsoonRisk = MONSOON_RISK[month + 1]
+  const isMonsoon = MONSOON_MONTHS.includes(month + 1)
 
   const prev = () => {
     if (month === 0) { setMonth(11); setYear(y => y - 1) }
@@ -97,10 +101,9 @@ export const IndiaCalendar = () => {
   const selectedEvent = selected ? getEvent(selected) : null
 
   // Count events this month
-  const monthEvents = Object.entries(HOLIDAYS).filter(
-    ([key]) => key.startsWith(
-      `${year}-${String(month + 1).padStart(2, '0')}`
-    )
+  const monthPrefix = String(month + 1).padStart(2, '0')
+  const monthEvents = Object.entries(HOLIDAY_TEMPLATES).filter(
+    ([key]) => key.startsWith(monthPrefix + '-')
   )
 
   return (

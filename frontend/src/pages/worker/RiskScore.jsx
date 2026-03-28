@@ -1,142 +1,371 @@
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle2 } from 'lucide-react'
-import TopBar from '../../components/ui/TopBar'
-import Button from '../../components/ui/Button'
+import { ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 
-const pageVariants = {
-  initial: { opacity: 0, y: 12 },
-  animate: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 30 } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.12 } },
-}
-
-const SCORE_ROWS = [
-  { label: 'Delivery Activity', value: 0.88, color: '#12B76A' },
-  { label: 'Claim History',     value: 0.90, color: '#12B76A' },
-  { label: 'Fraud Risk',        value: 0.78, color: '#0F0F0F' },
-  { label: 'Active Hours',      value: 0.72, color: '#F79009' },
-]
-
-function RingScore({ score }) {
-  const radius = 54
-  const circ = 2 * Math.PI * radius
-  const offset = circ - (score * circ)
-
-  return (
-    <svg width="160" height="160" viewBox="0 0 160 160">
-      <circle cx="80" cy="80" r={radius} fill="none" stroke="#F0F0F2" strokeWidth="10" />
-      <motion.circle
-        cx="80" cy="80" r={radius}
-        fill="none"
-        stroke="#12B76A"
-        strokeWidth="10"
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={circ}
-        animate={{ strokeDashoffset: offset }}
-        transition={{ type: 'spring', stiffness: 60, damping: 15, delay: 0.3 }}
-        transform="rotate(-90 80 80)"
-      />
-      <text x="80" y="74" textAnchor="middle" fontFamily="Bricolage Grotesque" fontSize="34" fontWeight="700" fill="#0F0F0F">
-        {score}
-      </text>
-      <text x="80" y="92" textAnchor="middle" fontFamily="Inter" fontSize="10" fontWeight="600" fill="#12B76A" letterSpacing="1">
-        LOW RISK
-      </text>
-    </svg>
-  )
-}
-
-export default function RiskScore() {
+const RiskScore = () => {
   const navigate = useNavigate()
-  const worker = useWorkerStore((s) => s.worker)
-  const score = worker?.riskScore || 0.82
+  const worker = useWorkerStore(s => s.worker)
+  const riskScore = useWorkerStore(s => s.riskScore)
+    || worker?.risk_score || 0.82
+  const zone = worker?.zone || 'kondapur-hyderabad'
+
+  // Premium breakdown calculation
+  const BASE = 49
+  const zoneMultiplier = {
+    'kondapur-hyderabad': 1.18,
+    'kurla-mumbai': 1.22,
+    'tnagar-chennai': 1.08,
+    'koramangala-bengaluru': 0.92,
+    'dwarka-delhi': 0.95,
+  }[zone] || 1.0
+
+  const workerMultiplier = riskScore > 0.75
+    ? 0.85 : riskScore >= 0.50 ? 1.00 : 1.15
+
+  const zoneAdj = Math.round(BASE * (zoneMultiplier - 1))
+  const workerAdj = Math.round(
+    BASE * zoneMultiplier * (workerMultiplier - 1)
+  )
+  const total = Math.round(
+    BASE * zoneMultiplier * workerMultiplier
+  )
+
+  const scorePercent = Math.round(riskScore * 100)
+
+  // Score segments
+  const segments = [
+    { label: 'Delivery history', value: 35,
+      filled: Math.round(riskScore * 35),
+      tip: 'Complete more deliveries to improve' },
+    { label: 'Zone consistency', value: 25,
+      filled: Math.round(riskScore * 25),
+      tip: 'Stay in your registered zone' },
+    { label: 'Claim history', value: 25,
+      filled: 22,
+      tip: 'Clean claim history maintained' },
+    { label: 'Account age', value: 15,
+      filled: Math.round(riskScore * 15),
+      tip: 'Score improves with account age' },
+  ]
+
+  const improvements = [
+    { action: 'Complete 10 more deliveries this week',
+      impact: '-₹2 premium' },
+    { action: 'Stay in Kondapur zone consistently',
+      impact: '-₹1 premium' },
+    { action: 'No fraudulent claims',
+      impact: 'Score protected' },
+  ]
 
   return (
-    <motion.div
-      className="min-h-screen pb-28"
-      style={{ background: 'var(--bg-primary)' }}
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      <TopBar title="Your risk score" showBack />
-
-      {/* Progress */}
-      <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-        <div className="flex-1 h-[3px] rounded-full overflow-hidden mr-3" style={{ background: 'var(--bg-tertiary)' }}>
-          <div className="h-full bg-brand rounded-full" style={{ width: '66%' }} />
-        </div>
-        <span className="text-[11px] font-body flex-shrink-0" style={{ color: 'var(--text-tertiary)' }}>Step 2 of 3</span>
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--bg-secondary)',
+      paddingBottom: 40,
+    }}>
+      {/* TopBar */}
+      <div style={{
+        background: 'var(--bg-card)',
+        borderBottom: '1px solid var(--border-light)',
+        padding: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        position: 'sticky', top: 0, zIndex: 50,
+      }}>
+        <button onClick={() => navigate(-1)}
+          style={{ background: 'none', border: 'none',
+            cursor: 'pointer', padding: 0 }}>
+          <ArrowLeft size={22}
+            color="var(--text-primary)"/>
+        </button>
+        <h1 style={{
+          fontFamily: 'Bricolage Grotesque',
+          fontSize: 18, fontWeight: 800,
+          color: 'var(--text-primary)', margin: 0,
+        }}>
+          Your Risk Score
+        </h1>
       </div>
 
-      <div className="px-4 mt-4">
-        {/* Hero ring card */}
-        <div className="rounded-card shadow-card p-6 text-center" style={{ background: 'var(--bg-card)' }}>
-          <div className="flex justify-center">
-            <RingScore score={score} />
-          </div>
-          <h2 className="font-display font-bold text-[18px] mt-2" style={{ color: 'var(--text-primary)' }}>
-            Low Risk Worker
-          </h2>
-          <p className="font-body text-[14px] mt-1" style={{ color: 'var(--text-secondary)' }}>
-            Your consistent activity earns you a ₹7/week discount
-          </p>
+      <div style={{ padding: 16 }}>
 
-          {/* Score breakdown */}
-          <div className="mt-5 text-left">
-            <p className="text-[13px] font-semibold font-body mb-3" style={{ color: 'var(--text-primary)' }}>
-              Score breakdown
-            </p>
-            <div className="flex flex-col gap-3">
-              {SCORE_ROWS.map((row) => (
-                <div key={row.label} className="flex items-center gap-3">
-                  <span className="text-[14px] font-body w-36 flex-shrink-0" style={{ color: 'var(--text-primary)' }}>
-                    {row.label}
-                  </span>
-                  <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'var(--bg-tertiary)' }}>
-                    <motion.div
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: row.color }}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${row.value * 100}%` }}
-                      transition={{ type: 'spring', stiffness: 80, damping: 20, delay: 0.4 }}
-                    />
-                  </div>
-                  <span
-                    className="text-[13px] font-semibold font-body w-10 text-right flex-shrink-0"
-                    style={{ color: row.color }}
-                  >
-                    {row.value}
-                  </span>
-                </div>
-              ))}
+        {/* Score gauge */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 16,
+          padding: 24,
+          textAlign: 'center',
+          marginBottom: 12,
+          border: '1px solid var(--border)',
+        }}>
+          <div style={{
+            width: 120, height: 120,
+            borderRadius: 999,
+            background: `conic-gradient(
+              #12B76A ${scorePercent * 3.6}deg,
+              var(--bg-secondary) 0deg
+            )`,
+            margin: '0 auto 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+          }}>
+            <div style={{
+              width: 88, height: 88,
+              borderRadius: 999,
+              background: 'var(--bg-card)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexDirection: 'column',
+            }}>
+              <p style={{
+                fontFamily: 'Bricolage Grotesque',
+                fontSize: 28, fontWeight: 800,
+                color: '#12B76A', margin: 0,
+                lineHeight: 1,
+              }}>
+                {scorePercent}
+              </p>
+              <p style={{
+                fontSize: 10, fontFamily: 'Inter',
+                color: 'var(--text-tertiary)',
+                margin: 0,
+              }}>
+                /100
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* Signal card */}
-        <div className="mt-4 border-l-[3px] border-success bg-success-light rounded-r-card px-3.5 py-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-success flex-shrink-0" />
-            <p className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>
-              4 months of consistent activity
-            </p>
-          </div>
-          <p className="text-[13px] font-body mt-1 pl-6" style={{ color: 'var(--text-secondary)' }}>
-            2 claims in 6 months · No fraud flags
+          <p style={{
+            fontFamily: 'Bricolage Grotesque',
+            fontSize: 18, fontWeight: 700,
+            color: 'var(--text-primary)',
+            margin: '0 0 4px',
+          }}>
+            {riskScore > 0.75 ? 'Trusted Worker'
+              : riskScore > 0.50 ? 'Good Standing'
+              : 'Building Trust'}
+          </p>
+          <p style={{
+            fontSize: 13, fontFamily: 'Inter',
+            color: 'var(--text-secondary)', margin: 0,
+          }}>
+            Your score qualifies you for
+            {riskScore > 0.75 ? ' reduced' : ' standard'} premium
           </p>
         </div>
-      </div>
 
-      {/* Sticky bottom */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-4 py-3 z-40" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)' }}>
-        <Button onClick={() => navigate('/forecast')} fullWidth>
-          See AI Disruption Forecast →
-        </Button>
+        {/* Premium breakdown */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 16,
+          padding: 18,
+          marginBottom: 12,
+          border: '1px solid var(--border)',
+        }}>
+          <p style={{
+            fontSize: 11, fontWeight: 700,
+            fontFamily: 'Inter',
+            color: 'var(--text-tertiary)',
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            margin: '0 0 14px',
+          }}>
+            Premium Breakdown
+          </p>
+
+          {[
+            { label: 'Base premium', value: `₹${BASE}`,
+              sub: 'Standard rate for all workers' },
+            { label: 'Zone adjustment',
+              value: zoneAdj >= 0
+                ? `+₹${zoneAdj}` : `-₹${Math.abs(zoneAdj)}`,
+              sub: `${worker?.city || 'Hyderabad'} flood risk`,
+              color: zoneAdj > 0 ? '#F04438' : '#12B76A' },
+            { label: 'Your score',
+              value: workerAdj >= 0
+                ? `+₹${workerAdj}` : `-₹${Math.abs(workerAdj)}`,
+              sub: riskScore > 0.75
+                ? 'Trusted worker discount'
+                : 'Standard worker rate',
+              color: workerAdj > 0 ? '#F04438' : '#12B76A' },
+          ].map((row, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '10px 0',
+              borderBottom: '1px solid var(--border-light)',
+            }}>
+              <div>
+                <p style={{
+                  fontSize: 14, fontWeight: 600,
+                  fontFamily: 'Inter',
+                  color: 'var(--text-primary)', margin: 0,
+                }}>
+                  {row.label}
+                </p>
+                <p style={{
+                  fontSize: 11, fontFamily: 'Inter',
+                  color: 'var(--text-tertiary)',
+                  margin: '2px 0 0',
+                }}>
+                  {row.sub}
+                </p>
+              </div>
+              <p style={{
+                fontFamily: 'Bricolage Grotesque',
+                fontSize: 18, fontWeight: 800,
+                color: row.color || 'var(--text-primary)',
+                margin: 0, alignSelf: 'center',
+              }}>
+                {row.value}
+              </p>
+            </div>
+          ))}
+
+          {/* Total */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            paddingTop: 12,
+          }}>
+            <p style={{
+              fontFamily: 'Bricolage Grotesque',
+              fontSize: 16, fontWeight: 800,
+              color: 'var(--text-primary)', margin: 0,
+            }}>
+              Your weekly premium
+            </p>
+            <p style={{
+              fontFamily: 'Bricolage Grotesque',
+              fontSize: 24, fontWeight: 800,
+              color: '#D97757', margin: 0,
+            }}>
+              ₹{total}
+            </p>
+          </div>
+        </div>
+
+        {/* Score breakdown bars */}
+        <div style={{
+          background: 'var(--bg-card)',
+          borderRadius: 16,
+          padding: 18,
+          marginBottom: 12,
+          border: '1px solid var(--border)',
+        }}>
+          <p style={{
+            fontSize: 11, fontWeight: 700,
+            fontFamily: 'Inter',
+            color: 'var(--text-tertiary)',
+            letterSpacing: '2px',
+            textTransform: 'uppercase',
+            margin: '0 0 14px',
+          }}>
+            Score Components
+          </p>
+          {segments.map(seg => (
+            <div key={seg.label} style={{
+              marginBottom: 14,
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: 5,
+              }}>
+                <span style={{
+                  fontSize: 12, fontFamily: 'Inter',
+                  color: 'var(--text-secondary)',
+                  fontWeight: 600,
+                }}>
+                  {seg.label}
+                </span>
+                <span style={{
+                  fontSize: 12, fontFamily: 'Inter',
+                  color: 'var(--text-tertiary)',
+                }}>
+                  {seg.filled}/{seg.value}
+                </span>
+              </div>
+              <div style={{
+                height: 6,
+                background: 'var(--bg-secondary)',
+                borderRadius: 999,
+                overflow: 'hidden',
+              }}>
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{
+                    width: `${(seg.filled/seg.value)*100}%`
+                  }}
+                  transition={{ delay: 0.2, duration: 0.6 }}
+                  style={{
+                    height: '100%',
+                    background: '#12B76A',
+                    borderRadius: 999,
+                  }}
+                />
+              </div>
+              <p style={{
+                fontSize: 10, fontFamily: 'Inter',
+                color: 'var(--text-tertiary)',
+                margin: '3px 0 0',
+              }}>
+                {seg.tip}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* How to improve */}
+        <div style={{
+          background: 'rgba(18,183,106,0.06)',
+          border: '1px solid rgba(18,183,106,0.2)',
+          borderRadius: 14,
+          padding: 16,
+        }}>
+          <p style={{
+            fontSize: 12, fontWeight: 700,
+            fontFamily: 'Inter', color: '#12B76A',
+            letterSpacing: '1px',
+            textTransform: 'uppercase',
+            margin: '0 0 10px',
+          }}>
+            How to lower your premium
+          </p>
+          {improvements.map((item, i) => (
+            <div key={i} style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              padding: '8px 0',
+              borderBottom: i < improvements.length - 1
+                ? '1px solid rgba(18,183,106,0.1)'
+                : 'none',
+            }}>
+              <p style={{
+                fontSize: 12, fontFamily: 'Inter',
+                color: 'var(--text-secondary)',
+                margin: 0, flex: 1, lineHeight: 1.4,
+              }}>
+                {item.action}
+              </p>
+              <span style={{
+                fontSize: 12, fontWeight: 700,
+                fontFamily: 'Inter', color: '#12B76A',
+                marginLeft: 12, flexShrink: 0,
+              }}>
+                {item.impact}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
-    </motion.div>
+    </div>
   )
 }
+
+export default RiskScore

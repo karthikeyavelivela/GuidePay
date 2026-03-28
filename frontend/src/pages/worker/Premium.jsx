@@ -17,10 +17,29 @@ const pageVariants = {
 export default function Premium() {
   const navigate = useNavigate()
   const worker = useWorkerStore((s) => s.worker)
+  const setActivePolicy = useWorkerStore((s) => s.setActivePolicy)
   const zone = worker?.zone || 'kondapur-hyderabad'
   const score = worker?.riskScore || 0.82
   const bd = getBreakdown(zone, score)
   const animatedTotal = useCountUp(bd.total, 1000)
+
+  const activatePolicy = () => {
+    const now = new Date()
+    const weekEnd = new Date(now)
+    weekEnd.setDate(now.getDate() + 7)
+
+    setActivePolicy({
+      planId: 'standard',
+      planName: 'Standard',
+      price: bd.total,
+      coverage: 600,
+      weekStart: now.toISOString(),
+      weekEnd: weekEnd.toISOString(),
+      paymentId: 'GP_' + Date.now(),
+      status: 'ACTIVE',
+    })
+    navigate('/payment-success')
+  }
 
   const handleActivate = () => {
     // Razorpay integration
@@ -31,14 +50,15 @@ export default function Premium() {
         currency: 'INR',
         name: 'GuidePay',
         description: 'Weekly Income Protection',
-        handler: () => navigate('/dashboard'),
+        handler: () => activatePolicy(),
         prefill: { contact: worker?.phone || '9876543210' },
         theme: { color: '#D97757' },
       }
       const rzp = new window.Razorpay(options)
       rzp.open()
     } else {
-      navigate('/dashboard')
+      // Mock mode — no Razorpay SDK loaded
+      activatePolicy()
     }
   }
 
@@ -132,19 +152,30 @@ export default function Premium() {
         </div>
       </div>
 
-      {/* Sticky bottom */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] px-4 py-4 z-40" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)' }}>
-        <Button onClick={handleActivate} fullWidth>
-          Activate for ₹{bd.total}/week →
-        </Button>
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/zone')}
-          fullWidth
-          className="mt-2"
-        >
-          ← Change my zone
-        </Button>
+      {/* Sticky bottom — desktop aware */}
+      <div
+        className="fixed bottom-0 left-0 right-0 lg:left-[240px]"
+        style={{
+          padding: '12px 16px',
+          paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+          background: 'var(--bg-card)',
+          borderTop: '1px solid var(--border-light)',
+          zIndex: 40,
+        }}
+      >
+        <div style={{ maxWidth: 560, width: '100%', margin: '0 auto' }}>
+          <Button onClick={handleActivate} fullWidth>
+            Activate for ₹{bd.total}/week →
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/zone')}
+            fullWidth
+            className="mt-2"
+          >
+            ← Change my zone
+          </Button>
+        </div>
       </div>
     </motion.div>
   )

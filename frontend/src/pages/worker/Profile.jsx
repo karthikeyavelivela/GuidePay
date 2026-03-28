@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -9,6 +9,8 @@ import ThemeToggle from '../../components/ui/ThemeToggle'
 import { useWorkerStore } from '../../store/workerStore'
 import { useThemeStore } from '../../store/themeStore'
 import { PROFILE_BACKGROUNDS } from '../../components/profile/ProfileBgOptions'
+import { getMyProfile } from '../../services/api'
+import { formatINR } from '../../utils/formatters'
 
 export default function Profile() {
   const navigate = useNavigate()
@@ -18,6 +20,22 @@ export default function Profile() {
   const { isDark } = useThemeStore()
   const [photo, setPhoto] = useState(worker?.photoURL || null)
   const fileRef = useRef()
+  const [realStats, setRealStats] = useState(null)
+
+  // Fetch real profile stats on mount
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
+        if (!token) return
+        const data = await getMyProfile()
+        if (data?.stats) setRealStats(data.stats)
+      } catch (e) {
+        // Silent — will use fallback values
+      }
+    }
+    fetchStats()
+  }, [])
 
   const w = worker || {
     name: 'Ravi Kumar',
@@ -330,9 +348,9 @@ export default function Profile() {
             maxWidth: 320,
           }}>
             {[
-              { label: 'Protected', value: '₹1,200' },
-              { label: 'Payouts', value: '3' },
-              { label: 'Risk score', value: '0.82' },
+              { label: 'Protected', value: realStats ? formatINR(realStats.total_payouts) : '₹0' },
+              { label: 'Payouts', value: realStats ? String(realStats.total_claims) : '0' },
+              { label: 'Risk score', value: String(w.riskScore || 0.75) },
             ].map((stat, i) => (
               <div key={i} style={{
                 flex: 1,

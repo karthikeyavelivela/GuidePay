@@ -1,49 +1,77 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { MOCK_WORKER } from '../services/mockData'
 
 export const useWorkerStore = create(
   persist(
     (set, get) => ({
+      // Auth
       worker: null,
       isAuthenticated: false,
       phone: '',
-      onboarded: false,
-      activePolicy: false,
-      detectedCity: null,
+
+      // Policy — CRITICAL for payment fix
+      activePolicy: null,
+
+      // Profile
       profileBg: 'plain',
+      onboarded: false,
       showTour: false,
 
-      setShowTour: (val) => set({ showTour: val }),
+      // Data
+      riskScore: null,
+      claims: [],
+      notifications: [],
+      detectedCity: null,
+
+      // Setters
+      setWorker: (worker) => set({ worker }),
+      setAuthenticated: (val) => set({ isAuthenticated: val }),
       setPhone: (phone) => set({ phone }),
 
+      // THIS IS THE CRITICAL ONE:
+      setActivePolicy: (policy) => {
+        console.log('Setting active policy:', policy)
+        set({ activePolicy: policy })
+      },
+
+      clearPolicy: () => set({ activePolicy: null }),
+      setProfileBg: (bg) => set({ profileBg: bg }),
+      setOnboarded: (val = true) => set({ onboarded: val }),
+      setShowTour: (val) => set({ showTour: val }),
+      setRiskScore: (score) => set({ riskScore: score }),
+      setClaims: (claims) => set({ claims }),
       setDetectedCity: (city) => set({ detectedCity: city }),
+      addNotification: (notif) => set(state => ({
+        notifications: [notif, ...state.notifications].slice(0, 20)
+      })),
 
       login: (workerData) => set({
-        worker: workerData || MOCK_WORKER,
+        worker: workerData,
         isAuthenticated: true,
       }),
-
-      setOnboarded: (val = true) => set({ onboarded: val }),
-
-      setActivePolicy: (val) => set({ activePolicy: val }),
 
       updateWorker: (data) => set((state) => ({
         worker: { ...state.worker, ...data },
       })),
 
-      setProfileBg: (bg) => set({ profileBg: bg }),
-
       logout: () => set({
         worker: null,
         isAuthenticated: false,
         phone: '',
+        activePolicy: null,
         onboarded: false,
-        activePolicy: false,
+        riskScore: null,
+        claims: [],
+        notifications: [],
         detectedCity: null,
         profileBg: 'plain',
       }),
     }),
-    { name: 'gp-worker' }
+    {
+      name: 'guidepay-store',
+      // Persist everything including activePolicy
+    }
   )
 )
+
+export default useWorkerStore
