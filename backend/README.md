@@ -1,96 +1,105 @@
 # Guide-Pay Backend API
 
-FastAPI backend for parametric income insurance for gig delivery workers.
+FastAPI backend for GuidePay parametric income insurance platform.
 
-## Setup
+## Deploy to Render (Free Tier)
 
-1. Install Python 3.11+
-2. Create virtual environment:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # Mac/Linux
-   venv\Scripts\activate     # Windows
-   ```
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-4. Copy `.env.example` to `.env` and fill in your values:
-   ```
-   cp .env.example .env
-   ```
-5. Run development server:
-   ```
-   uvicorn app.main:app --reload --port 8000
-   ```
+### Step 1: Push to GitHub
+```bash
+git add .
+git commit -m "feat: complete Phase 2 backend"
+git push origin main
+```
 
-## API Docs
-Visit http://localhost:8000/docs after starting the server.
+### Step 2: Create Render account
+Go to render.com → Sign up with GitHub
 
-## Environment Variables
+### Step 3: Create Web Service
+1. New → Web Service
+2. Connect GitHub repo
+3. Settings:
+   - Root Directory: backend
+   - Environment: Python 3
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1`
+   - Plan: Free
 
-| Variable | Description |
-|---|---|
-| `MONGODB_URL` | MongoDB Atlas connection string |
-| `MONGODB_DB_NAME` | Database name (default: `guidepay`) |
-| `FIREBASE_PROJECT_ID` | Firebase project ID |
-| `FIREBASE_PRIVATE_KEY_ID` | Firebase service account key ID |
-| `FIREBASE_PRIVATE_KEY` | Firebase RSA private key |
-| `FIREBASE_CLIENT_EMAIL` | Firebase service account email |
-| `FIREBASE_CLIENT_ID` | Firebase client ID |
-| `RAZORPAY_KEY_ID` | Razorpay test key ID |
-| `RAZORPAY_KEY_SECRET` | Razorpay key secret |
-| `SECRET_KEY` | JWT signing secret (64+ chars) |
-| `FRONTEND_URL` | Deployed frontend URL (CORS) |
+### Step 4: Add Environment Variables
+In Render dashboard → Environment tab:
 
-## Deploy to Railway
+```
+MONGODB_URL = mongodb+srv://2300032330:karthikeya%232005@cluster0.fsioiuq.mongodb.net/guidepay
+MONGODB_DB_NAME = guidepay
+FIREBASE_PROJECT_ID = guide-pay
+FIREBASE_PRIVATE_KEY_ID = c1655b0cb1b3f6ad10bc06fdaea1cc18fa15309f
+FIREBASE_PRIVATE_KEY = (paste entire private key with \n)
+FIREBASE_CLIENT_EMAIL = firebase-adminsdk-fbsvc@guide-pay.iam.gserviceaccount.com
+FIREBASE_CLIENT_ID = 105610383101752899067
+RAZORPAY_KEY_ID = rzp_test_mock_guidepay
+RAZORPAY_KEY_SECRET = mock_secret_guidepay_2026
+RAZORPAY_MOCK_MODE = true
+SECRET_KEY = guidepay-sentinelx-klu-devtrails-2026-phase2-secret-key
+FRONTEND_URL = https://guidepayklu.vercel.app
+ENVIRONMENT = production
+TRIGGER_POLL_INTERVAL_MINUTES = 15
+```
 
-1. Connect GitHub repo at railway.app
-2. Add all environment variables from `.env.example`
-3. Railway auto-detects Dockerfile and deploys
+### Step 5: Deploy
+Click "Create Web Service" — wait 3-5 minutes.
 
-## Architecture
+### Step 6: Test
+- Health: https://your-app.onrender.com/health
+- Docs: https://your-app.onrender.com/docs
 
-- **FastAPI** + **Motor** (async MongoDB driver)
-- **Firebase Admin** for phone auth token verification
-- **APScheduler** for 15-minute IMD trigger polling
-- **Razorpay** for payments and payouts
-- **Rule-based ML** for flood prediction + fraud detection
+### Step 7: Connect Frontend
+In Vercel dashboard for guidepayklu.vercel.app:
+Settings → Environment Variables:
+- VITE_API_URL = https://your-render-url.onrender.com
+- VITE_USE_MOCK = false
+
+Then Vercel → Deployments → Redeploy.
+
+## Local Development
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate     # Windows
+pip install -r requirements.txt
+cp .env.example .env
+# Fill in .env values
+
+# Train ML models (first time only)
+python -m app.ml.train_models
+
+# Start server
+uvicorn app.main:app --reload --port 8000
+# Docs: http://localhost:8000/docs
+```
 
 ## API Endpoints
 
-### Auth
-- `POST /api/v1/auth/login` — Firebase token → JWT
-- `POST /api/v1/auth/logout`
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /health | Health check |
+| POST | /api/v1/auth/login | Firebase auth |
+| GET | /api/v1/workers/me | Worker profile |
+| GET | /api/v1/workers/me/premium-breakdown | ML premium |
+| GET | /api/v1/workers/premium-compare | Zone comparison |
+| GET | /api/v1/policies/my/active | Active policy |
+| POST | /api/v1/payments/create-order | Create Razorpay order |
+| POST | /api/v1/payments/verify | Verify payment |
+| GET | /api/v1/claims/my | My claims |
+| GET | /api/v1/triggers/active | Active triggers |
+| GET | /api/v1/triggers/types | All 5 trigger types |
+| GET | /api/v1/forecast/zones | Zone flood forecasts |
+| GET | /api/v1/admin/stats | Admin stats |
+| POST | /api/v1/admin/simulate-trigger | Simulate trigger |
 
-### Workers
-- `GET /api/v1/workers/me` — Profile + active policy + stats
-- `PUT /api/v1/workers/me` — Update profile
-- `GET /api/v1/workers/me/risk-score` — Recalculate risk score
+## ML Architecture
 
-### Policies
-- `GET /api/v1/policies/my/active` — Active policy
-- `GET /api/v1/policies/my` — All policies
-
-### Payments
-- `POST /api/v1/payments/create-order` — Create Razorpay order
-- `POST /api/v1/payments/verify` — Verify + activate policy
-
-### Claims
-- `GET /api/v1/claims/my` — My claims
-- `GET /api/v1/claims/{id}` — Claim detail
-
-### Triggers
-- `GET /api/v1/triggers/active` — Active trigger events
-- `GET /api/v1/triggers/my-zone` — Triggers in my zone
-
-### Forecast
-- `GET /api/v1/forecast/zones` — AI forecast for all zones
-- `GET /api/v1/forecast/my-zone` — My zone forecast
-
-### Admin
-- `GET /api/v1/admin/stats` — Dashboard stats
-- `GET /api/v1/admin/claims/queue` — Claims review queue
-- `PATCH /api/v1/admin/claims/{id}/approve`
-- `PATCH /api/v1/admin/claims/{id}/reject`
-- `GET /api/v1/admin/analytics`
+Models trained on startup using synthetic data based on real NDMA/IMD flood statistics 2019-2024:
+- **Fraud model**: GradientBoostingClassifier (6 features)
+- **Flood model**: GradientBoostingClassifier (8 features)
+- **Premium model**: RandomForestRegressor (9 features)
+- **Anomaly model**: IsolationForest (unsupervised)

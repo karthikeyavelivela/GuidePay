@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query
 from app.database import get_db
 from app.routes.auth import get_current_worker
-from app.ml.flood_predictor import predict_flood_probability
 from app.services.premium_service import ZONE_RISK
+from app.ml.ml_service import predict_flood_probability
 from app.utils.formatters import serialize_doc
 from datetime import datetime, timedelta
 import logging
@@ -20,10 +20,7 @@ async def get_zone_forecast(
     forecasts = []
 
     for zone_key, zone_data in ZONE_RISK.items():
-        prediction = await predict_flood_probability(
-            zone=zone_key,
-            zone_data=zone_data
-        )
+        prediction = predict_flood_probability(zone=zone_key)
 
         workers_count = await db.workers.count_documents({
             "zone": zone_key, "is_active": True
@@ -72,10 +69,7 @@ async def get_zone_intel(
         return {"error": "Zone not monitored", "zone": zone}
 
     # Get flood prediction
-    prediction = await predict_flood_probability(
-        zone=zone,
-        zone_data=zone_data
-    )
+    prediction = predict_flood_probability(zone=zone)
 
     # Workers in zone
     workers_count = await db.workers.count_documents({
@@ -177,10 +171,7 @@ async def get_my_zone_forecast(
     if not zone_data:
         return {"forecast": None, "message": "Zone not monitored"}
 
-    prediction = await predict_flood_probability(
-        zone=zone,
-        zone_data=zone_data
-    )
+    prediction = predict_flood_probability(zone=zone)
 
     active_triggers = await db.trigger_events.find({
         "zone": zone,

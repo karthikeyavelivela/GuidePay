@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Shield, Wifi, Clock, AlertTriangle } from 'lucide-react'
+import { Shield, Clock } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
+import { getActiveTriggers, USE_MOCK } from '../../services/api'
 
 const CHECKS = [
   { id: 'imd', label: 'IMD Flood Check', icon: '🌧️' },
@@ -35,19 +36,9 @@ export const ZoneMonitor = () => {
       }, i * 400)
     })
 
-    // Try real API, fallback to mock
     try {
-      const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
       if (!USE_MOCK) {
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/v1/triggers/active`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('gp-token')}`
-            }
-          }
-        )
-        const data = await res.json()
+        const data = await getActiveTriggers()
         if (data.triggers && data.triggers.length > 0) {
           setHasAlert(true)
           setAlertData(data.triggers[0])
@@ -57,7 +48,6 @@ export const ZoneMonitor = () => {
         }
       }
     } catch (e) {
-      // Mock: no alerts in dev
       setHasAlert(false)
     }
 

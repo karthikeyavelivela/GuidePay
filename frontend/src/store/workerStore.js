@@ -40,6 +40,11 @@ export const useWorkerStore = create(
       setShowTour: (val) => set({ showTour: val }),
       setRiskScore: (score) => set({ riskScore: score }),
       setClaims: (claims) => set({ claims }),
+      setNotifications: (notifications) => set((state) => ({
+        notifications: typeof notifications === 'function'
+          ? notifications(state.notifications)
+          : notifications,
+      })),
       setDetectedCity: (city) => set({ detectedCity: city }),
       addNotification: (notif) => set(state => ({
         notifications: [notif, ...state.notifications].slice(0, 20)

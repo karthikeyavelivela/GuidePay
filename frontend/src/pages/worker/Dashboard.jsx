@@ -7,12 +7,10 @@ import Badge from '../../components/ui/Badge'
 import LiveDot from '../../components/ui/LiveDot'
 import ChatWidget from '../../components/chat/ChatWidget'
 import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
-import { MLPricingEngine } from '../../components/premium/MLPricingEngine'
 import { useWorkerStore } from '../../store/workerStore'
 import { useClaimStore } from '../../store/claimStore'
 import { formatINR } from '../../utils/formatters'
-import { getMyProfile, getMyZoneForecast } from '../../services/api'
-import client from '../../services/api'
+import { getMyClaims, getMyProfile, getMyZoneForecast, simulateTrigger, USE_MOCK } from '../../services/api'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -55,7 +53,11 @@ export default function Dashboard() {
         const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
         if (!token) return
 
-        const profile = await getMyProfile()
+        const [profile, claimsRes] = await Promise.all([
+          getMyProfile(),
+          getMyClaims(null, 5, 0).catch(() => ({ claims: [] })),
+        ])
+
         if (profile) {
           setProfileData(profile)
           setWorker({
@@ -81,6 +83,11 @@ export default function Dashboard() {
               status: profile.active_policy.status,
             })
           }
+        }
+
+        if (claimsRes?.claims) {
+          setClaims(claimsRes.claims)
+          prevClaimCountRef.current = claimsRes.claims.length
         }
       } catch (e) {
         console.warn('[Dashboard] Profile fetch failed, using store data:', e.message)
@@ -124,10 +131,7 @@ export default function Dashboard() {
 
   const [showAlert, setShowAlert] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
-  const [simulateLoading, setSimulateLoading] = useState(false)
   const [simulateSuccess, setSimulateSuccess] = useState(false)
-
-  // Feature 4: Live claim polling + simulate
   const [newClaimAlert, setNewClaimAlert] = useState(null)
   const [simulating, setSimulating] = useState(false)
   const prevClaimCountRef = useRef(0)
@@ -161,26 +165,13 @@ export default function Dashboard() {
     }
   }, [showAlert])
 
-  // Feature 4: Poll for new claims every 5 seconds when policy active
   useEffect(() => {
-    if (!activePolicy) return
+    if (!activePolicy || USE_MOCK) return
 
     const poll = async () => {
       try {
-        const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-        if (USE_MOCK) return
-
-        const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
-        if (!token) return
-
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/claims/my`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        const data = await res.json()
-
-        if (data.claims &&
-            data.claims.length > prevClaimCountRef.current) {
+        const data = await getMyClaims(null, 5, 0)
+        if (data?.claims?.length > prevClaimCountRef.current) {
           const newClaim = data.claims[0]
           setNewClaimAlert(newClaim)
           setClaims(data.claims)
@@ -193,91 +184,21 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [activePolicy])
 
-  // Feature 4: Simulate flood trigger for demo
   const handleSimulateTrigger = async () => {
     setSimulating(true)
     try {
-      const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-
-      if (USE_MOCK) {
-        // Mock simulation
-        await new Promise(r => setTimeout(r, 1500))
-        const mockNow = new Date()
-        const mockClaim = {
-          id: 'CLM_' + Date.now(),
-          _id: 'CLM_' + Date.now(),
-          trigger_type: 'FLOOD',
-          amount: 600,
-          status: 'PAID',
-          fraud_score: 0.04,
-          fraud_flags: [],
-          fraud_checks: {
-            duplicate: { result: 'PASS' },
-            gps: { result: 'PASS', distance_km: 0.8 },
-            activity: { result: 'PASS', age_minutes: 47 },
-            frequency: { result: 'PASS' },
-            correlation: { result: 'CONFIRMED', ratio: 0.84 },
-            worker_risk: { result: 'PASS' },
-            account_age: { result: 'PASS' },
-          },
-          last_order_age_minutes: 47,
-          zone_correlation_ratio: 0.84,
-          zone_worker_count: 312,
-          created_at: mockNow.toISOString(),
-          paid_at: new Date(
-            mockNow.getTime() + 120000
-          ).toISOString(),
-          zone: worker?.zone || 'Kondapur, Hyderabad',
-        }
-        setClaims([mockClaim])
-        setNewClaimAlert(mockClaim)
-      } else {
-        const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
-        await fetch(
-          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/admin/simulate-trigger`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ city: 'Hyderabad', trigger_type: 'FLOOD' }),
-          }
-        )
-        // Also show success in non-mock mode
-        setSimulateSuccess(true)
-        setTimeout(() => setSimulateSuccess(false), 4000)
+      await simulateTrigger(worker?.city || 'Hyderabad', 'FLOOD')
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const data = await getMyClaims(null, 5, 0)
+      if (data?.claims?.length) {
+        setClaims(data.claims)
+        setNewClaimAlert(data.claims[0])
+        prevClaimCountRef.current = data.claims.length
       }
+      setSimulateSuccess(true)
+      setTimeout(() => setSimulateSuccess(false), 4000)
     } catch (e) {
       console.error('Simulate error:', e)
-      // Still show mock claim on error for demo
-      const mockNow = new Date()
-      const mockClaim = {
-        id: 'CLM_' + Date.now(),
-        _id: 'CLM_' + Date.now(),
-        trigger_type: 'FLOOD',
-        amount: 600,
-        status: 'PAID',
-        fraud_score: 0.04,
-        fraud_flags: [],
-        fraud_checks: {
-          duplicate: { result: 'PASS' },
-          gps: { result: 'PASS', distance_km: 0.8 },
-          activity: { result: 'PASS', age_minutes: 47 },
-          frequency: { result: 'PASS' },
-          correlation: { result: 'CONFIRMED', ratio: 0.84 },
-          worker_risk: { result: 'PASS' },
-          account_age: { result: 'PASS' },
-        },
-        last_order_age_minutes: 47,
-        zone_correlation_ratio: 0.84,
-        zone_worker_count: 312,
-        created_at: mockNow.toISOString(),
-        paid_at: new Date(mockNow.getTime() + 120000).toISOString(),
-        zone: worker?.zone || 'Kondapur, Hyderabad',
-      }
-      setClaims([mockClaim])
-      setNewClaimAlert(mockClaim)
     }
     setSimulating(false)
   }
@@ -391,12 +312,6 @@ export default function Dashboard() {
         )}
 
         {/* ML Pricing Engine — compact preview */}
-        <motion.div variants={fadeUp}>
-          <div style={{ padding: '0 16px 12px' }}>
-            <MLPricingEngine compact={true} />
-          </div>
-        </motion.div>
-
         {/* Policy card — only when active */}
         {activePolicy && (
           <motion.div variants={fadeUp}>

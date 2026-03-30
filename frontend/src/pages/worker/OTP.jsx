@@ -24,63 +24,33 @@ export default function OTP() {
   const [countdown, setCountdown] = useState(30)
   const [canResend, setCanResend] = useState(false)
 
-  const displayPhone = phone || '+91 98765 43210'
+  const displayPhone = phone || '+91'
 
   useEffect(() => {
-    if (countdown <= 0) { setCanResend(true); return }
-    const t = setTimeout(() => setCountdown((c) => c - 1), 1000)
-    return () => clearTimeout(t)
+    if (countdown <= 0) {
+      setCanResend(true)
+      return
+    }
+    const timer = setTimeout(() => setCountdown((current) => current - 1), 1000)
+    return () => clearTimeout(timer)
   }, [countdown])
 
   const handleVerify = async (code) => {
-    const val = code || otp
-    if (val.length !== 4) return
+    const value = code || otp
+    if (value.length !== 6 && value.length !== 4) return
+
     setLoading(true)
     setError(false)
     setErrorMsg('')
 
-    // Demo bypass — OTP 1234 auto-logs in as Ravi Kumar
-    if (val === '1234') {
-      const { useWorkerStore } = await import('../../store/workerStore')
-      const now = new Date()
-      const weekEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      useWorkerStore.getState().login({
-        id: 'demo_worker_1',
-        name: 'Ravi Kumar',
-        phone: phone || '+919876543210',
-        city: 'Hyderabad',
-        zone: 'kondapur-hyderabad',
-        platforms: ['zepto', 'swiggy'],
-        riskScore: 0.82,
-        riskTier: 'LOW',
-        premium: 58,
-        coverageCap: 600,
-      })
-      useWorkerStore.getState().setActivePolicy({
-        id: 'POL_DEMO_001',
-        planId: 'standard',
-        planName: 'Standard',
-        price: 58,
-        coverage: 600,
-        coverageCap: 600,
-        status: 'ACTIVE',
-        weekStart: now.toISOString(),
-        weekEnd: weekEnd.toISOString(),
-        paymentId: 'MOCK_DEMO',
-      })
-      setSuccess(true)
-      setTimeout(() => navigate('/dashboard'), 600)
-      return
-    }
-
     try {
-      const res = await api.verifyOTP(phone, val)
+      const res = await api.verifyOTP(phone, value)
       login(res.worker)
       setSuccess(true)
       setTimeout(() => navigate('/zone'), 600)
     } catch (e) {
       setError(true)
-      setErrorMsg('Incorrect OTP. Please try again.')
+      setErrorMsg(e?.message || 'Incorrect OTP. Please try again.')
       setLoading(false)
     }
   }
@@ -93,79 +63,46 @@ export default function OTP() {
   }
 
   return (
-    <motion.div
-      className="min-h-screen bg-white"
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
+    <motion.div className="min-h-screen bg-white" variants={pageVariants} initial="initial" animate="animate" exit="exit">
       <TopBar showBack />
 
       <div className="px-6 pt-8">
-        <h1 className="font-display font-bold text-[26px] text-[#0F0F0F]">
-          Verify your number
-        </h1>
+        <h1 className="font-display font-bold text-[26px] text-[#0F0F0F]">Verify your number</h1>
         <p className="font-body text-[15px] text-[#6B6B6B] mt-1.5">
           {displayPhone}{' '}
-          <button
-            onClick={() => navigate('/')}
-            className="text-brand font-medium"
-          >
+          <button onClick={() => navigate('/login')} className="text-brand font-medium">
             Wrong number?
           </button>
         </p>
 
         <div className="mt-8">
-          <OTPInput
-            length={4}
-            onChange={setOtp}
-            onComplete={handleVerify}
-            error={error}
-          />
+          <OTPInput length={6} onChange={setOtp} onComplete={handleVerify} error={error} />
         </div>
 
-        {/* Countdown / resend */}
         <div className="mt-3 text-center">
           {!canResend ? (
-            <p className="text-[13px] text-[#9B9B9B] font-body">
-              Resend in {countdown}s
-            </p>
+            <p className="text-[13px] text-[#9B9B9B] font-body">Resend in {countdown}s</p>
           ) : (
-            <button
-              onClick={handleResend}
-              className="text-[13px] text-brand font-semibold font-body"
-            >
+            <button onClick={handleResend} className="text-[13px] text-brand font-semibold font-body">
               Resend OTP
             </button>
           )}
         </div>
 
-        {/* Error */}
         <AnimatePresence>
           {error && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="text-[13px] text-danger text-center mt-3 font-body"
-            >
+            <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-[13px] text-danger text-center mt-3 font-body">
               {errorMsg}
             </motion.p>
           )}
         </AnimatePresence>
 
-        {/* Success indicator */}
         <AnimatePresence>
           {success && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="flex justify-center mt-4"
-            >
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex justify-center mt-4">
               <div className="w-12 h-12 bg-success-light rounded-full flex items-center justify-center">
                 <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-                  <path d="M5 13l4 4L19 7" stroke="#12B76A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M5 13l4 4L19 7" stroke="#12B76A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
             </motion.div>
@@ -177,10 +114,6 @@ export default function OTP() {
             Verify &amp; Continue
           </Button>
         </div>
-
-        <p className="text-center text-[12px] text-[#9B9B9B] font-body mt-4">
-          Enter <strong className="text-[#6B6B6B]">1234</strong> to continue with demo
-        </p>
       </div>
     </motion.div>
   )

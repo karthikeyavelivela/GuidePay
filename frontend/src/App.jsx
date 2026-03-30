@@ -64,13 +64,19 @@ function getNearestCity(lat, lng) {
 
 function ProtectedRoute({ children }) {
   const isAuthenticated = useWorkerStore((s) => s.isAuthenticated)
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  const logout = useWorkerStore((s) => s.logout)
+  const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
+  if (!isAuthenticated || !token) {
+    if (isAuthenticated && !token) logout()
+    return <Navigate to="/login" replace />
+  }
   return children
 }
 
 function PublicRoute({ children }) {
   const isAuthenticated = useWorkerStore((s) => s.isAuthenticated)
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />
+  const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
+  if (isAuthenticated && token) return <Navigate to="/dashboard" replace />
   return children
 }
 

@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { Check } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
-import { Check, ShieldCheck } from 'lucide-react'
-import { createPaymentOrder, verifyPayment } from '../../services/api'
-import { MLPricingEngine } from '../../components/premium/MLPricingEngine'
+import { createPaymentOrder, getMyPremiumBreakdown, USE_MOCK, verifyPayment } from '../../services/api'
 
 const PLANS = [
   {
@@ -15,17 +14,14 @@ const PLANS = [
     badge: null,
     description: 'For low-risk zones',
     features: [
-      'Up to ₹600/week coverage',
+      'Up to Rs600/week coverage',
       'IMD flood trigger',
       'Platform outage trigger',
       'Govt curfew trigger',
       'UPI instant payout',
       'Basic risk score',
     ],
-    notIncluded: [
-      'AI 24h advance forecast',
-      'Priority claim review',
-    ],
+    notIncluded: ['AI 24h advance forecast', 'Priority claim review'],
     borderColor: '#E4E4E7',
     bgColor: 'white',
   },
@@ -37,12 +33,11 @@ const PLANS = [
     badge: 'Most Popular',
     description: 'Best for most workers',
     features: [
-      'Up to ₹600/week coverage',
-      'All 3 triggers included',
+      'Up to Rs600/week coverage',
+      'All 5 triggers included',
       'UPI payout under 2 hours',
       'AI 24h flood forecast',
       'Worker risk score tracking',
-      'Activity verification',
       'Priority claim review',
       'Flood alert notifications',
     ],
@@ -59,15 +54,14 @@ const PLANS = [
     badge: 'Best Protection',
     description: 'For high-risk flood zones',
     features: [
-      'Up to ₹600/week coverage',
-      'All 3 triggers included',
+      'Up to Rs600/week coverage',
+      'All 5 triggers included',
       'UPI payout under 1 hour',
       'AI 7-day flood forecast',
       'Auto coverage extension',
       'Priority fraud protection',
       'Dedicated claim tracking',
       'WhatsApp alerts',
-      '24/7 support priority',
     ],
     notIncluded: [],
     borderColor: '#0F0F0F',
@@ -77,278 +71,171 @@ const PLANS = [
 
 export default function Coverage() {
   const navigate = useNavigate()
+  const worker = useWorkerStore((s) => s.worker)
+  const setActivePolicy = useWorkerStore((s) => s.setActivePolicy)
   const [selectedPlan, setSelectedPlan] = useState('standard')
   const [loading, setLoading] = useState(false)
-  const [dynamicPremium, setDynamicPremium] = useState(null)
-  const setActivePolicy = useWorkerStore(s => s.setActivePolicy)
-  const worker = useWorkerStore(s => s.worker)
+  const [mlPremium, setMlPremium] = useState(null)
 
-  const plan = PLANS.find(p => p.id === selectedPlan)
+  const plan = PLANS.find((entry) => entry.id === selectedPlan)
+
+  useEffect(() => {
+    const loadPremium = async () => {
+      if (!worker?.zone || USE_MOCK) return
+      try {
+        const data = await getMyPremiumBreakdown(worker.zone)
+        setMlPremium(data)
+      } catch {}
+    }
+    loadPremium()
+  }, [worker?.zone])
+
+  const getAdjustedPrice = (basePlanPrice) => {
+    if (!mlPremium?.final_premium) return basePlanPrice
+    const ratio = mlPremium.final_premium / 58
+    return Math.max(35, Math.round(basePlanPrice * ratio))
+  }
 
   const handleBuy = async () => {
     setLoading(true)
-    const plan = PLANS.find(p => p.id === selectedPlan)
+    const selected = PLANS.find((entry) => entry.id === selectedPlan)
+    const finalPrice = getAdjustedPrice(selected.price)
 
     try {
-      const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
+      const order = await createPaymentOrder(selected.id, finalPrice)
+      const mockPaymentId = `pay_MOCK_${Date.now()}`
+      const mockSignature = `sig_MOCK_${Date.now()}`
+      const result = await verifyPayment({
+        razorpay_order_id: order.order_id,
+        razorpay_payment_id: mockPaymentId,
+        razorpay_signature: mockSignature,
+        plan_id: selected.id,
+        amount: order.amount || finalPrice,
+      })
 
-      if (token) {
-        // Try backend flow: create order -> verify payment -> get real policy
-        const order = await createPaymentOrder(plan.id, plan.price)
-        const mockPaymentId = `pay_MOCK_${Date.now()}`
-        const mockSignature = `sig_MOCK_${Date.now()}`
-
-        const result = await verifyPayment({
-          razorpay_order_id: order.order_id,
-          razorpay_payment_id: mockPaymentId,
-          razorpay_signature: mockSignature,
-          plan_id: plan.id,
+      if (result?.policy) {
+        setActivePolicy({
+          planId: result.policy.plan_id || selected.id,
+          planName: result.policy.plan_name || selected.name,
+          price: result.policy.weekly_premium || order.amount || finalPrice,
+          coverage: result.policy.coverage_cap || selected.coverage,
+          weekStart: result.policy.week_start,
+          weekEnd: result.policy.week_end,
+          paymentId: result.payment_id || mockPaymentId,
+          status: result.policy.status || 'ACTIVE',
         })
-
-        if (result?.policy) {
-          setActivePolicy({
-            planId: result.policy.plan_id || plan.id,
-            planName: result.policy.plan_name || plan.name,
-            price: result.policy.weekly_premium || plan.price,
-            coverage: result.policy.coverage_cap || plan.coverage,
-            weekStart: result.policy.week_start || new Date().toISOString(),
-            weekEnd: result.policy.week_end || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-            paymentId: result.payment_id || mockPaymentId,
-            status: result.policy.status || 'ACTIVE',
-          })
-          setLoading(false)
-          navigate('/payment-success')
-          return
-        }
+        navigate('/payment-success')
       }
     } catch (e) {
-      console.warn('[Coverage] Backend payment failed, using local fallback:', e.message)
-    }
-
-    // Graceful fallback: activate locally if backend unavailable
-    setTimeout(() => {
-      setActivePolicy({
-        planId: plan.id,
-        planName: plan.name,
-        price: plan.price,
-        coverage: plan.coverage,
-        weekStart: new Date().toISOString(),
-        weekEnd: new Date(
-          Date.now() + 7 * 24 * 60 * 60 * 1000
-        ).toISOString(),
-        paymentId: 'GP_' + Date.now(),
-        status: 'ACTIVE',
-      })
+      console.error('[Coverage] Payment flow failed:', e)
+    } finally {
       setLoading(false)
-      navigate('/payment-success')
-    }, 800)
+    }
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg-secondary)',
-      paddingBottom: 140,
-    }}>
-      {/* TopBar */}
-      <div style={{
-        background: 'var(--bg-card)',
-        borderBottom: '1px solid var(--border-light)',
-        padding: '16px',
-      }}>
-        <h1 style={{
-          fontFamily: 'Bricolage Grotesque',
-          fontSize: 20, fontWeight: 800,
-          color: 'var(--text-primary)',
-          margin: 0,
-        }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-secondary)', paddingBottom: 140 }}>
+      <div style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-light)', padding: '16px' }}>
+        <h1 style={{ fontFamily: 'Bricolage Grotesque', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Choose your plan
         </h1>
-        <p style={{
-          fontSize: 13, color: 'var(--text-secondary)',
-          fontFamily: 'Inter', margin: '2px 0 0',
-        }}>
-          All plans include ₹600/week coverage cap
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: '2px 0 0' }}>
+          All plans include Rs600/week coverage cap
         </p>
       </div>
 
       <div style={{ padding: '16px' }}>
-
-        <div style={{ padding: '0 16px 16px' }}>
-          <MLPricingEngine
-            compact={false}
-            onPremiumCalculated={(price) => setDynamicPremium(price)}
-          />
+        <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 18, border: '1px solid var(--border-light)', marginBottom: 18 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 10px' }}>
+            Current zone pricing
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div>
+              <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 22, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                {worker?.city || mlPremium?.city || 'Your city'}
+              </p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: '2px 0 0' }}>
+                Stable backend premium for your current zone
+              </p>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 34, fontWeight: 800, color: '#D97757', margin: 0 }}>
+                Rs{mlPremium?.final_premium || 58}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>
+                /week
+              </p>
+            </div>
+          </div>
+          {mlPremium && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>Base</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Inter', margin: '4px 0 0' }}>
+                  Rs{mlPremium.base_premium}
+                </p>
+              </div>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>Zone</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: mlPremium.zone_adjustment >= 0 ? '#F04438' : '#12B76A', fontFamily: 'Inter', margin: '4px 0 0' }}>
+                  {mlPremium.zone_adjustment >= 0 ? '+' : '-'}Rs{Math.abs(mlPremium.zone_adjustment)}
+                </p>
+              </div>
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 12px' }}>
+                <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>Worker</p>
+                <p style={{ fontSize: 15, fontWeight: 700, color: mlPremium.worker_adjustment <= 0 ? '#12B76A' : '#F04438', fontFamily: 'Inter', margin: '4px 0 0' }}>
+                  {mlPremium.worker_adjustment >= 0 ? '+' : '-'}Rs{Math.abs(mlPremium.worker_adjustment)}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* PLAN CARDS */}
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 12,
-          marginBottom: 20,
-        }}>
-          {PLANS.map(p => {
-            const isSelected = selectedPlan === p.id
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+          {PLANS.map((entry) => {
+            const isSelected = selectedPlan === entry.id
+            const adjustedPrice = getAdjustedPrice(entry.price)
             return (
-              <motion.div
-                key={p.id}
-                onClick={() => setSelectedPlan(p.id)}
-                whileTap={{ scale: 0.99 }}
-                style={{
-                  background: isSelected ? p.bgColor : 'var(--bg-card)',
-                  border: isSelected
-                    ? `2px solid ${p.borderColor}`
-                    : '2px solid var(--border)',
-                  borderRadius: 16,
-                  padding: 18,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  position: 'relative',
-                }}
-              >
-                {/* Badge */}
-                {p.badge && (
-                  <div style={{
-                    position: 'absolute',
-                    top: -11,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: p.popular ? '#D97757' : '#0F0F0F',
-                    color: 'white',
-                    fontSize: 10, fontWeight: 700,
-                    fontFamily: 'Inter',
-                    padding: '3px 12px',
-                    borderRadius: 999,
-                    whiteSpace: 'nowrap',
-                    letterSpacing: '0.5px',
-                  }}>
-                    {p.badge}
+              <motion.div key={entry.id} onClick={() => setSelectedPlan(entry.id)} whileTap={{ scale: 0.99 }} style={{ background: isSelected ? entry.bgColor : 'var(--bg-card)', border: isSelected ? `2px solid ${entry.borderColor}` : '2px solid var(--border)', borderRadius: 16, padding: 18, cursor: 'pointer', position: 'relative' }}>
+                {entry.badge && (
+                  <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: entry.popular ? '#D97757' : '#0F0F0F', color: 'white', fontSize: 10, fontWeight: 700, fontFamily: 'Inter', padding: '3px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                    {entry.badge}
                   </div>
                 )}
 
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: 12,
-                }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
-                    <p style={{
-                      fontFamily: 'Bricolage Grotesque',
-                      fontSize: 18, fontWeight: 800,
-                      color: 'var(--text-primary)',
-                      margin: '0 0 2px',
-                    }}>
-                      {p.name}
-                    </p>
-                    <p style={{
-                      fontSize: 12,
-                      color: 'var(--text-tertiary)',
-                      fontFamily: 'Inter', margin: 0,
-                    }}>
-                      {p.description}
-                    </p>
+                    <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 2px' }}>{entry.name}</p>
+                    <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>{entry.description}</p>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      gap: 2,
-                      justifyContent: 'flex-end',
-                    }}>
-                      <span style={{
-                        fontFamily: 'Bricolage Grotesque',
-                        fontSize: 28, fontWeight: 800,
-                        color: isSelected ? '#D97757' : 'var(--text-primary)',
-                        letterSpacing: -1,
-                      }}>
-                        ₹{p.price}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, justifyContent: 'flex-end' }}>
+                      <span style={{ fontFamily: 'Bricolage Grotesque', fontSize: 28, fontWeight: 800, color: isSelected ? '#D97757' : 'var(--text-primary)', letterSpacing: -1 }}>
+                        Rs{adjustedPrice}
                       </span>
-                      <span style={{
-                        fontSize: 12,
-                        color: 'var(--text-tertiary)',
-                        fontFamily: 'Inter',
-                      }}>
-                        /wk
-                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter' }}>/wk</span>
                     </div>
-                    {/* Selected indicator */}
-                    <div style={{
-                      width: 22, height: 22,
-                      borderRadius: 999,
-                      background: isSelected ? '#D97757' : 'var(--border)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginLeft: 'auto',
-                      marginTop: 4,
-                      transition: 'all 0.15s',
-                    }}>
-                      {isSelected && (
-                        <Check size={12} color="white" strokeWidth={3} />
-                      )}
+                    <div style={{ width: 22, height: 22, borderRadius: 999, background: isSelected ? '#D97757' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', marginTop: 4 }}>
+                      {isSelected && <Check size={12} color="white" strokeWidth={3} />}
                     </div>
                   </div>
                 </div>
 
-                {/* Features list */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}>
-                  {p.features.map(f => (
-                    <div key={f} style={{
-                      display: 'flex',
-                      gap: 8, alignItems: 'flex-start',
-                    }}>
-                      <div style={{
-                        width: 16, height: 16,
-                        borderRadius: 999,
-                        background: '#ECFDF3',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0, marginTop: 1,
-                      }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {entry.features.map((feature) => (
+                    <div key={feature} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 999, background: '#ECFDF3', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                         <Check size={9} color="#12B76A" strokeWidth={3} />
                       </div>
-                      <span style={{
-                        fontSize: 12, fontFamily: 'Inter',
-                        color: 'var(--text-secondary)',
-                        lineHeight: 1.4,
-                      }}>
-                        {f}
-                      </span>
+                      <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{feature}</span>
                     </div>
                   ))}
-                  {p.notIncluded.map(f => (
-                    <div key={f} style={{
-                      display: 'flex',
-                      gap: 8, alignItems: 'flex-start',
-                    }}>
-                      <div style={{
-                        width: 16, height: 16,
-                        borderRadius: 999,
-                        background: '#F7F7F8',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0, marginTop: 1,
-                      }}>
-                        <span style={{
-                          fontSize: 9, color: '#C4C4C4',
-                          lineHeight: 1,
-                        }}>✕</span>
+                  {entry.notIncluded.map((feature) => (
+                    <div key={feature} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      <div style={{ width: 16, height: 16, borderRadius: 999, background: '#F7F7F8', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                        <span style={{ fontSize: 9, color: '#C4C4C4', lineHeight: 1 }}>x</span>
                       </div>
-                      <span style={{
-                        fontSize: 12, fontFamily: 'Inter',
-                        color: 'var(--text-tertiary)',
-                        lineHeight: 1.4,
-                      }}>
-                        {f}
-                      </span>
+                      <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text-tertiary)', lineHeight: 1.4 }}>{feature}</span>
                     </div>
                   ))}
                 </div>
@@ -357,188 +244,36 @@ export default function Coverage() {
           })}
         </div>
 
-        {/* What you're getting */}
-        <div style={{
-          background: 'var(--bg-card)',
-          borderRadius: 14,
-          padding: '14px 16px',
-          border: '1px solid var(--border-light)',
-          marginBottom: 16,
-        }}>
-          <p style={{
-            fontSize: 12, fontWeight: 700,
-            fontFamily: 'Inter',
-            color: 'var(--text-tertiary)',
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            margin: '0 0 10px',
-          }}>
-            You're selecting
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '14px 16px', border: '1px solid var(--border-light)', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 10px' }}>
+            You are selecting
           </p>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-          }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
             <div>
-              <p style={{
-                fontFamily: 'Bricolage Grotesque',
-                fontSize: 18, fontWeight: 700,
-                color: 'var(--text-primary)', margin: 0,
-              }}>
-                {plan.name} Plan
-              </p>
-              <p style={{
-                fontSize: 13,
-                color: 'var(--text-secondary)',
-                fontFamily: 'Inter', margin: '2px 0 0',
-              }}>
-                Weekly · ₹600 coverage cap · Auto-renews
+              <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{plan.name} Plan</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: '2px 0 0' }}>
+                Weekly · Rs600 coverage cap · Auto-renews
               </p>
             </div>
-            <p style={{
-              fontFamily: 'Bricolage Grotesque',
-              fontSize: 24, fontWeight: 800,
-              color: '#D97757', margin: 0,
-            }}>
-              ₹{plan.price}
+            <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 24, fontWeight: 800, color: '#D97757', margin: 0 }}>
+              Rs{getAdjustedPrice(plan.price)}
             </p>
           </div>
+          {mlPremium && (
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: '10px 0 0' }}>
+              Zone-adjusted pricing active for {mlPremium.city || worker?.city || 'your zone'}
+            </p>
+          )}
         </div>
-
-        {/* WHAT HAPPENS NEXT — process explanation */}
-        <div style={{
-          background: 'var(--bg-card)',
-          borderRadius: 14,
-          padding: '14px 16px',
-          border: '1px solid var(--border-light)',
-          marginBottom: 16,
-        }}>
-          <p style={{
-            fontSize: 12, fontWeight: 700,
-            fontFamily: 'Inter',
-            color: 'var(--text-tertiary)',
-            letterSpacing: '1px',
-            textTransform: 'uppercase',
-            margin: '0 0 12px',
-          }}>
-            What happens after you buy?
-          </p>
-          {[
-            { step: '1', emoji: '🛡️', text: 'Your coverage activates instantly — valid Mon 00:00 to Sun 23:59' },
-            { step: '2', emoji: '📡', text: 'We monitor your zone 24/7 for IMD flood alerts, platform outages & curfews' },
-            { step: '3', emoji: '⚡', text: 'When a trigger event is detected, we verify your delivery activity automatically' },
-            { step: '4', emoji: '💸', text: 'Payout sent directly to your UPI within 2 hours — no claim forms needed' },
-            { step: '5', emoji: '🔄', text: 'Plan auto-renews weekly. Cancel anytime from your Profile page' },
-          ].map(item => (
-            <div key={item.step} style={{
-              display: 'flex',
-              gap: 10,
-              alignItems: 'flex-start',
-              marginBottom: 10,
-            }}>
-              <span style={{ fontSize: 16, flexShrink: 0 }}>{item.emoji}</span>
-              <p style={{
-                fontSize: 13, fontFamily: 'Inter',
-                color: 'var(--text-secondary)',
-                margin: 0, lineHeight: 1.5,
-              }}>
-                {item.text}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <p style={{
-          fontSize: 12, color: 'var(--text-tertiary)',
-          fontFamily: 'Inter', textAlign: 'center',
-          marginBottom: 12, lineHeight: 1.5,
-        }}>
-          By purchasing, you agree to our{' '}
-          <span
-            onClick={() => navigate('/terms')}
-            style={{ color: '#D97757', cursor: 'pointer' }}
-          >
-            Terms
-          </span>
-          {' '}and{' '}
-          <span
-            onClick={() => navigate('/privacy')}
-            style={{ color: '#D97757', cursor: 'pointer' }}
-          >
-            Privacy Policy
-          </span>
-        </p>
       </div>
 
-      {/* STICKY BUY BUTTON — desktop aware */}
-      <div
-        className="fixed left-0 right-0 lg:left-[240px]"
-        style={{
-          bottom: 0,
-          padding: '10px 16px',
-          paddingBottom: 'calc(72px + env(safe-area-inset-bottom))',
-          background: 'var(--bg-card)',
-          borderTop: '1px solid var(--border-light)',
-          zIndex: 60,
-        }}
-      >
+      <div className="fixed left-0 right-0 lg:left-[240px]" style={{ bottom: 64, padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom))', background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)', zIndex: 40 }}>
         <div style={{ maxWidth: 560, width: '100%', margin: '0 auto' }}>
-          <motion.button
-            onClick={handleBuy}
-            disabled={loading}
-            whileHover={!loading ? { scale: 1.01 } : {}}
-            whileTap={!loading ? { scale: 0.97 } : {}}
-            animate={!loading ? {
-              boxShadow: [
-                '0 4px 20px rgba(217,119,87,0.4)',
-                '0 4px 28px rgba(217,119,87,0.7)',
-                '0 4px 20px rgba(217,119,87,0.4)',
-              ],
-            } : {}}
-            transition={!loading ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : {}}
-            style={{
-              width: '100%',
-              padding: '15px',
-              borderRadius: 12,
-              border: 'none',
-              background: loading
-                ? '#E4E4E7'
-                : 'linear-gradient(135deg,#D97757,#B85C3A)',
-              color: loading ? '#9B9B9B' : 'white',
-              fontSize: 16, fontWeight: 700,
-              fontFamily: 'Bricolage Grotesque, sans-serif',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
-          >
-            {loading ? (
-              <>
-                <div style={{
-                  width: 18, height: 18,
-                  border: '2px solid #9B9B9B',
-                  borderTopColor: 'transparent',
-                  borderRadius: 999,
-                  animation: 'spin 0.8s linear infinite',
-                }} />
-                Opening payment...
-              </>
-            ) : (
-              <>
-                🛡️ Buy {plan.name} — ₹{plan.price}/week
-              </>
-            )}
+          <motion.button onClick={handleBuy} disabled={loading} whileHover={!loading ? { scale: 1.01 } : {}} whileTap={!loading ? { scale: 0.97 } : {}} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', background: loading ? '#E4E4E7' : 'linear-gradient(135deg,#D97757,#B85C3A)', color: loading ? '#9B9B9B' : 'white', fontSize: 16, fontWeight: 700, fontFamily: 'Bricolage Grotesque, sans-serif', cursor: loading ? 'not-allowed' : 'pointer' }}>
+            {loading ? 'Opening payment...' : `Buy ${plan.name} - Rs${getAdjustedPrice(plan.price)}/week`}
           </motion.button>
         </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   )
 }

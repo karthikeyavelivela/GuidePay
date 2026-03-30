@@ -7,7 +7,7 @@ from app.config import settings
 from app.database import connect_db, disconnect_db
 from app.routes import (
     auth, workers, policies, claims,
-    triggers, payments, forecast, admin
+    triggers, payments, forecast, admin, support, notifications
 )
 from app.services.imd_service import start_trigger_scheduler
 
@@ -17,12 +17,26 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
+    from app.ml.ml_service import load_models
+    from app.ml.train_models import train_and_save_all
+    import os
+
+    models_dir = os.path.join(os.path.dirname(__file__), "ml", "models")
+    os.makedirs(models_dir, exist_ok=True)
+
+    fraud_path = os.path.join(models_dir, "fraud_model.pkl")
+    if not os.path.exists(fraud_path):
+        logger.info("No trained ML models found; training bootstrap models")
+        try:
+            train_and_save_all()
+        except Exception as exc:
+            logger.warning(f"Model training failed: {exc}; continuing with rule-based fallback")
+
+    load_models()
     await connect_db()
     await start_trigger_scheduler()
     logger.info("Guide-Pay API started")
     yield
-    # Shutdown
     await disconnect_db()
     logger.info("Guide-Pay API stopped")
 
@@ -57,6 +71,8 @@ app.include_router(triggers.router, prefix="/api/v1/triggers", tags=["triggers"]
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["payments"])
 app.include_router(forecast.router, prefix="/api/v1/forecast", tags=["forecast"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
+app.include_router(support.router, prefix="/api/v1/support", tags=["support"])
+app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
 
 
 @app.get("/")

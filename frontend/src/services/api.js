@@ -1,36 +1,46 @@
 import axios from 'axios'
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const rawApiUrl = import.meta.env.VITE_API_URL
+const isPlaceholderUrl =
+  !rawApiUrl ||
+  rawApiUrl.includes('your-railway-app') ||
+  rawApiUrl.includes('your-app.onrender.com') ||
+  rawApiUrl.includes('your-render-url.onrender.com')
 
-const client = axios.create({
+const BASE_URL = isPlaceholderUrl ? 'http://localhost:8000' : rawApiUrl
+export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+
+const http = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
 })
 
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  if (import.meta.env.DEV) console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`)
+http.interceptors.request.use((config) => {
+  const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
 
-client.interceptors.response.use(
+http.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('gp-access-token')
       localStorage.removeItem('gp-token')
-      window.location.href = '/login'
+      localStorage.removeItem('gp-access-token')
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login'
+      }
     }
-    return Promise.reject(error)
+    return Promise.reject(error.response?.data || error)
   }
 )
 
-// AUTH
-export const loginWithFirebase = (firebaseToken, name, phone) =>
-  client.post('/auth/login', { firebase_token: firebaseToken, name, phone })
+export const loginWithFirebase = (token, name, phone) =>
+  http.post('/auth/login', { firebase_token: token, name, phone })
 
-// Named `api` object — used by Login.jsx and OTP.jsx for phone OTP flow
 export const api = {
   async sendOTP(phone) {
     const { setupRecaptcha, auth } = await import('./firebase')
@@ -45,59 +55,75 @@ export const api = {
     if (!window.__gpConfirmation) throw new Error('OTP not sent')
     const result = await window.__gpConfirmation.confirm(otp)
     const idToken = await result.user.getIdToken()
-    const data = await client.post('/auth/login', {
+    const data = await http.post('/auth/login', {
       firebase_token: idToken,
       phone: result.user.phoneNumber || phone,
     })
     localStorage.setItem('gp-access-token', data.access_token)
+    localStorage.setItem('gp-token', data.access_token)
     return { success: true, worker: data.worker, token: data.access_token }
   },
 
   async getWorker(id) {
-    return client.get(`/workers/${id}`)
+    return http.get(`/workers/${id}`)
   },
 }
 
-// WORKERS
-export const getMyProfile = () => client.get('/workers/me')
-export const updateMyProfile = (data) => client.put('/workers/me', data)
-export const getMyRiskScore = () => client.get('/workers/me/risk-score')
-export const updateLastOrder = () => client.post('/workers/me/update-last-order')
-export const getMyEarnings = () => client.get('/workers/me/earnings')
+export const getMyProfile = () => http.get('/workers/me')
+export const updateMyProfile = (data) => http.put('/workers/me', data)
+export const getMyRiskScore = () => http.get('/workers/me/risk-score')
+export const getMyPremiumBreakdown = (zone) =>
+  http.get('/workers/me/premium-breakdown', { params: { zone } })
+export const getZonePremiumCompare = () => http.get('/workers/premium-compare')
+export const getMyEarnings = () => http.get('/workers/me/earnings')
+export const getCommunityStats = () => http.get('/admin/community-stats')
+export const updateLastOrder = () => http.post('/workers/me/update-last-order')
 
-// POLICIES
-export const getActivePolicy = () => client.get('/policies/my/active')
-export const getMyPolicies = () => client.get('/policies/my')
+export const getActivePolicy = () => http.get('/policies/my/active')
+export const getMyPolicies = () => http.get('/policies/my')
 
-// PAYMENTS
-export const createPaymentOrder = (planId, amount) =>
-  client.post('/payments/create-order', { plan_id: planId, amount })
-export const verifyPayment = (data) => client.post('/payments/verify', data)
+export const createPaymentOrder = (planId, amount = 0) =>
+  http.post('/payments/create-order', { plan_id: planId, amount })
+export const verifyPayment = (data) => http.post('/payments/verify', data)
 
-// CLAIMS
-export const getMyClaims = (status, limit, skip) =>
-  client.get('/claims/my', { params: { status, limit, skip } })
-export const getClaimDetail = (claimId) => client.get(`/claims/${claimId}`)
+export const getMyClaims = (status, limit = 20, skip = 0) =>
+  http.get('/claims/my', { params: { status, limit, skip } })
+export const getClaimDetail = (id) => http.get(`/claims/${id}`)
 
-// TRIGGERS
-export const getActiveTriggers = () => client.get('/triggers/active')
-export const getMyZoneTriggers = () => client.get('/triggers/my-zone')
+export const getActiveTriggers = () => http.get('/triggers/active')
+export const getMyZoneTriggers = () => http.get('/triggers/my-zone')
+export const getTriggerTypes = () => http.get('/triggers/types')
 
-// FORECAST
-export const getZoneForecast = () => client.get('/forecast/zones')
-export const getMyZoneForecast = () => client.get('/forecast/my-zone')
-export const getZoneIntel = (zone) => client.get(`/forecast/zone-intel/${zone}`)
+export const getZoneForecast = () => http.get('/forecast/zones')
+export const getMyZoneForecast = () => http.get('/forecast/my-zone')
+export const getZoneIntel = (zone) => http.get(`/forecast/zone-intel/${zone}`)
 
-// ADMIN
-export const getAdminStats = () => client.get('/admin/stats')
-export const getClaimsQueue = (status) =>
-  client.get('/admin/claims/queue', { params: { status } })
-export const approveClaim = (claimId) => client.patch(`/admin/claims/${claimId}/approve`)
-export const rejectClaim = (claimId, reason) =>
-  client.patch(`/admin/claims/${claimId}/reject`, null, { params: { reason } })
-export const getAnalytics = (days) => client.get('/admin/analytics', { params: { days } })
-export const getCommunityStats = () => client.get('/admin/community-stats')
-export const simulateTrigger = (city, triggerType) =>
-  client.post('/admin/simulate-trigger', { city, trigger_type: triggerType })
+export const getMyNotifications = () => http.get('/notifications/me')
+export const markNotificationRead = (id) => http.patch(`/notifications/me/${id}/read`)
+export const markAllNotificationsRead = () => http.patch('/notifications/me/read-all')
 
-export default client
+export const getMySupportTickets = () => http.get('/support/my')
+export const createSupportTicket = (data) => http.post('/support/my', data)
+export const getSupportTicket = (ticketId) => http.get(`/support/my/${ticketId}`)
+export const sendSupportMessage = (ticketId, text) =>
+  http.post(`/support/my/${ticketId}/messages`, { text })
+
+export const getAdminStats = () => http.get('/admin/stats')
+export const getClaimsQueue = (status = 'ALL') =>
+  http.get('/admin/claims/queue', { params: { status } })
+export const getAdminAnalytics = (days = 30) =>
+  http.get('/admin/analytics', { params: { days } })
+export const getAnalytics = getAdminAnalytics
+export const approveClaim = (id) => http.patch(`/admin/claims/${id}/approve`)
+export const rejectClaim = (id, reason) =>
+  http.patch(`/admin/claims/${id}/reject`, null, { params: { reason } })
+export const simulateTrigger = (city, type) =>
+  http.post('/admin/simulate-trigger', { city, trigger_type: type })
+export const getAdminSupportTickets = (status = 'all') =>
+  http.get('/support/admin/tickets', { params: { status } })
+export const sendAdminSupportMessage = (ticketId, text) =>
+  http.post(`/support/admin/tickets/${ticketId}/messages`, { text })
+export const updateAdminSupportStatus = (ticketId, status) =>
+  http.patch(`/support/admin/tickets/${ticketId}/status`, { status })
+
+export default http

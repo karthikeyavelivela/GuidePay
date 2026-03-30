@@ -64,6 +64,15 @@ async def create_indexes():
     await db.payments.create_index("razorpay_payment_id", unique=True)
     await db.payments.create_index("worker_id")
 
+    # Support tickets
+    await db.support_tickets.create_index("worker_id")
+    await db.support_tickets.create_index([("worker_id", 1), ("updated_at", -1)])
+    await db.support_tickets.create_index("status")
+
+    # Notifications
+    await db.notifications.create_index("worker_id")
+    await db.notifications.create_index([("worker_id", 1), ("read", 1), ("created_at", -1)])
+
 
 def get_db():
     return db_instance.db

@@ -23,12 +23,14 @@ export const signInWithGoogle = async () => {
   provider.setCustomParameters({ prompt: 'select_account' })
   try {
     const result = await signInWithPopup(auth, provider)
+    const idToken = await result.user.getIdToken()
     return {
       uid: result.user.uid,
       name: result.user.displayName,
       email: result.user.email,
       photo: result.user.photoURL,
       phone: result.user.phoneNumber,
+      idToken,
     }
   } catch (err) {
     if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {

@@ -1,11 +1,33 @@
+import { useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useWorkerStore } from '../../store/workerStore'
+import { getMyNotifications } from '../../services/api'
 
 export const NotificationBell = () => {
   const navigate = useNavigate()
-  // Show badge for 2 default unread notifications
-  const unreadCount = 2
+  const notifications = useWorkerStore((s) => s.notifications)
+  const setNotifications = useWorkerStore((s) => s.setNotifications)
+  const unreadCount = (notifications || []).filter((item) => !item.read).length
+
+  useEffect(() => {
+    let active = true
+
+    const loadNotifications = async () => {
+      try {
+        const data = await getMyNotifications()
+        if (active) setNotifications(data.notifications || [])
+      } catch {}
+    }
+
+    loadNotifications()
+    const interval = setInterval(loadNotifications, 15000)
+    return () => {
+      active = false
+      clearInterval(interval)
+    }
+  }, [setNotifications])
 
   return (
     <motion.button

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ShieldCheck, Info } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { useWorkerStore } from '../../store/workerStore'
-import { api } from '../../services/api'
+import { api, loginWithFirebase } from '../../services/api'
 
 const container = {
   animate: { transition: { staggerChildren: 0.08 } },
@@ -37,24 +37,14 @@ export default function Login() {
     try {
       const { signInWithGoogle } = await import('../../services/firebase')
       const user = await signInWithGoogle()
+      const data = await loginWithFirebase(user.idToken, user.name, user.phone)
+      localStorage.setItem('gp-access-token', data.access_token)
+      localStorage.setItem('gp-token', data.access_token)
       const { login } = useWorkerStore.getState()
-      login({
-        name: user.name || 'Ravi Kumar',
-        phone: user.phone || '+919876543210',
-        email: user.email,
-        photo: user.photo,
-        zone: 'kondapur-hyderabad',
-        riskScore: 0.82,
-        riskTier: 'LOW',
-        premium: 58,
-        coverageCap: 600,
-        policyStatus: 'ACTIVE',
-      })
-      navigate('/dashboard')
+      login(data.worker)
+      navigate(data.is_new_user ? '/zone' : '/dashboard')
     } catch (e) {
-      const { login } = useWorkerStore.getState()
-      login(null)
-      navigate('/dashboard')
+      setError(e?.message || 'Google sign-in failed. Please try again.')
     } finally {
       setGoogleLoading(false)
     }

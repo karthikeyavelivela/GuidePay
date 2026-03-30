@@ -22,6 +22,7 @@ class VerifyPaymentRequest(BaseModel):
     razorpay_payment_id: str
     razorpay_signature: str
     plan_id: str
+    amount: float | None = None
 
 
 PLAN_CONFIG = {
@@ -43,9 +44,10 @@ async def create_order(
         raise HTTPException(status_code=400, detail="Invalid plan")
 
     mock_order_id = f"order_MOCK_{uuid.uuid4().hex[:16]}"
+    order_amount = request.amount if request.amount and request.amount > 0 else plan["price"]
     return {
         "order_id": mock_order_id,
-        "amount": plan["price"],
+        "amount": order_amount,
         "currency": "INR",
         "key": settings.razorpay_key_id,
         "mock": True,
@@ -72,12 +74,13 @@ async def verify_payment(
     )
 
     now = datetime.utcnow()
+    charge_amount = request.amount if request.amount and request.amount > 0 else plan["price"]
     policy_doc = {
         "_id": str(ObjectId()),
         "worker_id": worker_id,
         "plan_id": request.plan_id,
         "plan_name": plan["name"],
-        "weekly_premium": plan["price"],
+        "weekly_premium": charge_amount,
         "coverage_cap": 600.0,
         "status": "ACTIVE",
         "payment_id": request.razorpay_payment_id,
@@ -95,7 +98,7 @@ async def verify_payment(
         "policy_id": policy_doc["_id"],
         "razorpay_payment_id": request.razorpay_payment_id,
         "razorpay_order_id": request.razorpay_order_id,
-        "amount": plan["price"],
+        "amount": charge_amount,
         "currency": "INR",
         "status": "captured",
         "created_at": now,
