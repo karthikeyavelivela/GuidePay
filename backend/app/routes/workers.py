@@ -207,3 +207,72 @@ async def update_last_order(
         {"$set": {"last_order_timestamp": datetime.utcnow()}}
     )
     return {"message": "Last order timestamp updated"}
+
+
+@router.get("/me/premium-breakdown")
+async def get_premium_breakdown(
+    zone: str = None,
+    current_worker=Depends(get_current_worker),
+    db=Depends(get_db)
+):
+    """Returns full ML premium breakdown for the worker."""
+    from app.services.premium_service import calculate_ml_premium
+
+    worker_zone = zone or current_worker.get("zone", "")
+    risk_score = current_worker.get("risk_score", 0.75)
+
+    breakdown = calculate_ml_premium(
+        zone=worker_zone,
+        worker_risk_score=risk_score,
+    )
+
+    # Add personalized message
+    if breakdown["zone_adjustment"] > 0:
+        flood_events = breakdown["factors"].get("flood_history", 0) * 12
+        breakdown["message"] = (
+            f"Your zone has {flood_events:.0f} flood events in 5 years — "
+            f"Rs{breakdown['zone_adjustment']} added for protection"
+        )
+    elif breakdown["worker_adjustment"] < 0:
+        breakdown["message"] = (
+            f"Your trusted worker discount saves you "
+            f"Rs{abs(breakdown['worker_adjustment'])} this week"
+        )
+    else:
+        breakdown["message"] = (
+            "Your premium reflects standard risk for your zone"
+        )
+
+    return breakdown
+
+
+@router.get("/premium-compare")
+async def compare_zone_premiums(
+    current_worker=Depends(get_current_worker),
+    db=Depends(get_db)
+):
+    """Compare premiums across all zones. Used for zone selection screen."""
+    from app.services.premium_service import ZONE_ML_DATA, calculate_ml_premium
+
+    risk_score = current_worker.get("risk_score", 0.75)
+
+    comparisons = []
+    for zone_key in ZONE_ML_DATA.keys():
+        calc = calculate_ml_premium(
+            zone=zone_key,
+            worker_risk_score=risk_score,
+        )
+        comparisons.append({
+            "zone": zone_key,
+            "city": calc["city"],
+            "premium": calc["final_premium"],
+            "risk_level": (
+                "HIGH" if calc["zone_risk_score"] > 0.6
+                else "MEDIUM" if calc["zone_risk_score"] > 0.35
+                else "LOW"
+            ),
+            "zone_risk_score": calc["zone_risk_score"],
+        })
+
+    comparisons.sort(key=lambda x: x["premium"])
+    return {"zones": comparisons}

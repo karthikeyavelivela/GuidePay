@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useWorkerStore } from '../../store/workerStore'
 import { Check, ShieldCheck } from 'lucide-react'
 import { createPaymentOrder, verifyPayment } from '../../services/api'
+import { MLPricingEngine } from '../../components/premium/MLPricingEngine'
 
 const PLANS = [
   {
@@ -78,6 +79,7 @@ export default function Coverage() {
   const navigate = useNavigate()
   const [selectedPlan, setSelectedPlan] = useState('standard')
   const [loading, setLoading] = useState(false)
+  const [dynamicPremium, setDynamicPremium] = useState(null)
   const setActivePolicy = useWorkerStore(s => s.setActivePolicy)
   const worker = useWorkerStore(s => s.worker)
 
@@ -171,6 +173,13 @@ export default function Coverage() {
       </div>
 
       <div style={{ padding: '16px' }}>
+
+        <div style={{ padding: '0 16px 16px' }}>
+          <MLPricingEngine
+            compact={false}
+            onPremiumCalculated={(price) => setDynamicPremium(price)}
+          />
+        </div>
 
         {/* PLAN CARDS */}
         <div style={{

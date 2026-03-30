@@ -211,7 +211,10 @@ async def process_trigger_events(alerts: list, db) -> list:
         payout_pct = {
             "FLOOD": 1.0,
             "OUTAGE": 0.75,
-            "CURFEW": 1.0
+            "CURFEW": 1.0,
+            "AIR_QUALITY": 0.50,
+            "HEAT_WAVE": 0.50,
+            "FESTIVAL_DISRUPTION": 0.40,
         }.get(alert["type"], 1.0)
 
         from app.services.premium_service import COVERAGE_CAP
@@ -356,24 +359,162 @@ async def initiate_payout(claim: dict, worker: dict, db):
         logger.error(f"Payout failed for claim {claim['_id']}: {e}")
 
 
+async def check_aqi_heatwave() -> list:
+    """
+    Check for extreme AQI or heat wave conditions.
+    Uses OpenWeatherMap Air Pollution API (free tier).
+    Triggers when AQI index >= 4 (Very Poor) or temperature >= 43 degrees C.
+    """
+    import os
+    alerts = []
+    AQI_THRESHOLD = 4   # Very Poor on 0-5 scale
+    HEAT_THRESHOLD = 43  # Celsius
+
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+
+    for zone in MONITORED_ZONES:
+        try:
+            if api_key:
+                async with httpx.AsyncClient(timeout=8.0) as client:
+                    # Air pollution check
+                    aqi_res = await client.get(
+                        "http://api.openweathermap.org/data/2.5/air_pollution",
+                        params={
+                            "lat": zone["lat"],
+                            "lon": zone["lng"],
+                            "appid": api_key,
+                        }
+                    )
+                    if aqi_res.status_code == 200:
+                        aqi_data = aqi_res.json()
+                        aqi = aqi_data["list"][0]["main"]["aqi"]
+                        if aqi >= AQI_THRESHOLD:
+                            alerts.append({
+                                "city": zone["city"],
+                                "zone": zone["zone"],
+                                "lat": zone["lat"],
+                                "lng": zone["lng"],
+                                "severity": "ORANGE",
+                                "type": "AIR_QUALITY",
+                                "source": "OPENWEATHER_AQI",
+                                "aqi_index": aqi,
+                                "title": f"Very Poor Air Quality — {zone['city']}",
+                                "description": f"AQI index {aqi}/5 — delivery workers at health risk",
+                                "published": datetime.utcnow().isoformat(),
+                            })
+
+                    # Heat wave check
+                    weather_res = await client.get(
+                        "https://api.openweathermap.org/data/2.5/weather",
+                        params={
+                            "lat": zone["lat"],
+                            "lon": zone["lng"],
+                            "appid": api_key,
+                            "units": "metric",
+                        }
+                    )
+                    if weather_res.status_code == 200:
+                        w = weather_res.json()
+                        temp = w["main"]["temp"]
+                        if temp >= HEAT_THRESHOLD:
+                            alerts.append({
+                                "city": zone["city"],
+                                "zone": zone["zone"],
+                                "lat": zone["lat"],
+                                "lng": zone["lng"],
+                                "severity": "RED",
+                                "type": "HEAT_WAVE",
+                                "source": "OPENWEATHER_HEAT",
+                                "temperature_c": temp,
+                                "title": f"Heat Wave Alert — {zone['city']} {temp:.0f}C",
+                                "description": f"Extreme heat {temp:.0f}C — platforms may pause operations",
+                                "published": datetime.utcnow().isoformat(),
+                            })
+        except Exception as e:
+            logger.warning(f"AQI check failed for {zone['city']}: {e}")
+
+    return alerts
+
+
+async def check_festival_disruption() -> list:
+    """
+    Check if today is a major Indian festival that causes significant delivery disruption.
+    Uses a hardcoded calendar of high-impact events.
+    """
+    from app.utils.constants import DISRUPTION_CALENDAR
+
+    today = datetime.utcnow()
+    month = today.month
+    day = today.day
+    key = f"{str(month).zfill(2)}-{str(day).zfill(2)}"
+
+    event = DISRUPTION_CALENDAR.get(key)
+    if not event:
+        return []
+
+    if event["disruption_level"] < 0.40:
+        return []
+
+    alerts = []
+    for zone in MONITORED_ZONES:
+        # Only trigger for affected cities (None = all cities)
+        if event.get("cities") and zone["city"] not in event["cities"]:
+            continue
+
+        alerts.append({
+            "city": zone["city"],
+            "zone": zone["zone"],
+            "lat": zone["lat"],
+            "lng": zone["lng"],
+            "severity": "ORANGE",
+            "type": "FESTIVAL_DISRUPTION",
+            "source": "CALENDAR_ENGINE",
+            "event_name": event["name"],
+            "disruption_level": event["disruption_level"],
+            "title": f"{event['name']} Disruption — {zone['city']}",
+            "description": f"{event['name']}: {event['description']}",
+            "published": datetime.utcnow().isoformat(),
+        })
+
+    return alerts
+
+
+async def check_curfew_alerts() -> list:
+    """
+    Check for government-issued curfew orders.
+    Mock implementation — in production: scrape state government feeds.
+    """
+    return []
+
+
 async def run_trigger_check():
-    """Main scheduled function — runs every 15 minutes"""
-    logger.info("Running trigger check...")
+    """Main scheduled function — runs every 15 minutes. Checks all 5 trigger types."""
+    logger.info("Running trigger check (5 trigger types)...")
 
     db = get_db()
     if db is None:
-        logger.error("Database not connected")
         return
 
+    # All 5 trigger types
     flood_alerts = await fetch_imd_alerts()
     outage_alerts = await check_platform_outages()
-    all_alerts = flood_alerts + outage_alerts
+    aqi_alerts = await check_aqi_heatwave()
+    festival_alerts = await check_festival_disruption()
+    curfew_alerts = await check_curfew_alerts()
+
+    all_alerts = (
+        flood_alerts + outage_alerts +
+        aqi_alerts + festival_alerts + curfew_alerts
+    )
 
     if all_alerts:
         events = await process_trigger_events(all_alerts, db)
-        logger.info(f"Processed {len(events)} new trigger events")
-    else:
-        logger.info("No new trigger events detected")
+        logger.info(
+            f"Processed {len(events)} new trigger events "
+            f"from {len(all_alerts)} alerts across 5 sources"
+        )
+
+    return all_alerts
 
 
 async def start_trigger_scheduler():

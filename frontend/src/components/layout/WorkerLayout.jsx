@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, Shield, FileCheck, TrendingUp, User,
-  DollarSign, MapPin, Bot, Headphones, X, Menu,
+  DollarSign, MapPin, Bot, Headphones, X, Menu, Zap,
 } from 'lucide-react'
 import BottomNav from '../ui/BottomNav'
 import { NotificationBell } from '../ui/NotificationBell'
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { id: 'zone-intel',label: 'Zone Intel', icon: MapPin,           path: '/zone-intel' },
   { id: 'assistant', label: 'Assistant',  icon: Bot,          path: '/assistant' },
   { id: 'support',   label: 'Support',    icon: Headphones,   path: '/support' },
+  { id: 'how-it-works', label: 'How It Works', icon: Zap,        path: '/how-it-works' },
   { id: 'profile',   label: 'Profile',    icon: User,             path: '/profile' },
 ]
 
@@ -37,6 +38,7 @@ const PAGE_TITLES = {
   '/assistant': 'AI Assistant',
   '/support': 'Support',
   '/community': 'Community Stats',
+  '/how-it-works': 'How It Works',
 }
 
 function Sidebar({ onClose }) {

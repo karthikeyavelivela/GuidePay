@@ -43,3 +43,54 @@ PLAN_PRICING = {
     "standard": 58.0,
     "premium": 69.0,
 }
+
+# High-impact delivery disruption calendar
+# Disruption level: 0.0 = no impact, 1.0 = complete stop
+DISRUPTION_CALENDAR = {
+    "01-26": {
+        "name": "Republic Day",
+        "disruption_level": 0.55,
+        "description": "Road closures near parade routes. Platform orders drop 40-60% in affected areas.",
+        "cities": ["Delhi", "Mumbai", "Chennai"],
+    },
+    "03-20": {
+        "name": "Holi",
+        "disruption_level": 0.70,
+        "description": "Major disruption nationwide. Platform apps slow. Workers face safety concerns.",
+        "cities": None,  # All cities
+    },
+    "03-31": {
+        "name": "Eid ul-Fitr",
+        "disruption_level": 0.45,
+        "description": "High demand in some areas, road congestion and closures in others.",
+        "cities": None,
+    },
+    "08-15": {
+        "name": "Independence Day",
+        "disruption_level": 0.50,
+        "description": "Security restrictions near government buildings. Major road closures.",
+        "cities": ["Delhi", "Mumbai", "Chennai", "Hyderabad"],
+    },
+    "10-29": {
+        "name": "Diwali",
+        "disruption_level": 0.65,
+        "description": "Air quality restrictions. Platform delivery volumes drop 50%. Worker safety concerns.",
+        "cities": None,
+    },
+    "09-13": {
+        "name": "Ganesh Chaturthi",
+        "disruption_level": 0.60,
+        "description": "Processions block major roads for up to 10 days. Platform SLAs severely impacted.",
+        "cities": ["Mumbai", "Hyderabad", "Chennai"],
+    },
+}
+
+# Payout percentages for all 5 trigger types
+TRIGGER_PAYOUTS = {
+    "FLOOD": 1.00,               # 100% — total work stoppage
+    "OUTAGE": 0.75,              # 75% — partial work possible
+    "CURFEW": 1.00,              # 100% — cannot work legally
+    "AIR_QUALITY": 0.50,         # 50% — health risk, reduced orders
+    "HEAT_WAVE": 0.50,           # 50% — platform slowdown
+    "FESTIVAL_DISRUPTION": 0.40, # 40% — partial disruption
+}

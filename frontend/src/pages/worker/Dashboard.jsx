@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge'
 import LiveDot from '../../components/ui/LiveDot'
 import ChatWidget from '../../components/chat/ChatWidget'
 import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
+import { MLPricingEngine } from '../../components/premium/MLPricingEngine'
 import { useWorkerStore } from '../../store/workerStore'
 import { useClaimStore } from '../../store/claimStore'
 import { formatINR } from '../../utils/formatters'
@@ -389,6 +390,13 @@ export default function Dashboard() {
           </motion.div>
         )}
 
+        {/* ML Pricing Engine — compact preview */}
+        <motion.div variants={fadeUp}>
+          <div style={{ padding: '0 16px 12px' }}>
+            <MLPricingEngine compact={true} />
+          </div>
+        </motion.div>
+
         {/* Policy card — only when active */}
         {activePolicy && (
           <motion.div variants={fadeUp}>
@@ -628,6 +636,7 @@ export default function Dashboard() {
               { icon: MapPin, label: 'Zone Intel', path: '/zone-intel', color: '#2E90FA', bg: '#EFF8FF' },
               { icon: Bot, label: 'Assistant', path: '/assistant', color: '#D97757', bg: '#FDF1ED' },
               { icon: TrendingUp, label: 'Risk Score', path: '/risk-score', color: '#7A5AF8', bg: '#F4F3FF' },
+              { icon: Zap, label: 'How It Works', path: '/how-it-works', color: '#F79009', bg: '#FFFAEB' },
             ].map((action) => {
               const Icon = action.icon
               return (

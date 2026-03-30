@@ -43,6 +43,7 @@ const Reports = lazy(() => import('./pages/admin/Reports'))
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
 const AdminSupport = lazy(() => import('./pages/admin/AdminSupport'))
 const Support = lazy(() => import('./pages/worker/Support'))
+const HowItWorks = lazy(() => import('./pages/worker/HowItWorks'))
 
 const CITIES = [
   { name: 'Hyderabad', lat: 17.385, lng: 78.4867, zone: 'kondapur-hyderabad' },
@@ -132,6 +133,7 @@ function AppRoutes() {
           <Route path="/community"      element={<CommunityStats />} />
           <Route path="/assistant"      element={<CoverageAssistant />} />
           <Route path="/support"        element={<Support />} />
+          <Route path="/how-it-works"   element={<HowItWorks />} />
         </Route>
 
         {/* Admin login — standalone, no layout */}

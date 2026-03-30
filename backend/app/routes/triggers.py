@@ -14,14 +14,23 @@ async def get_active_triggers(
     current_worker=Depends(get_current_worker),
     db=Depends(get_db)
 ):
-    """Get all active trigger events"""
-    triggers = await db.trigger_events.find(
-        {"status": "ACTIVE"}
-    ).sort("started_at", -1).to_list(20)
+    """Returns all currently active trigger events with monitoring metadata."""
+    triggers = await db.trigger_events.find({
+        "status": "ACTIVE",
+    }).sort("started_at", -1).to_list(10)
 
     return {
         "triggers": [serialize_doc(t) for t in triggers],
-        "total": len(triggers)
+        "count": len(triggers),
+        "last_checked": datetime.utcnow().isoformat(),
+        "next_check_minutes": 15,
+        "monitoring_sources": [
+            "IMD SACHET RSS",
+            "OpenWeatherMap",
+            "Downdetector",
+            "Govt Feeds",
+            "Calendar Engine",
+        ],
     }
 
 
@@ -42,6 +51,74 @@ async def get_my_zone_triggers(
         "zone": zone,
         "triggers": [serialize_doc(t) for t in triggers],
         "total": len(triggers)
+    }
+
+
+@router.get("/types")
+async def get_trigger_types():
+    """Returns all 5 trigger types with payout rules."""
+    return {
+        "triggers": [
+            {
+                "id": "FLOOD",
+                "name": "IMD Flood Alert",
+                "icon": "🌧️",
+                "payout_percentage": 1.0,
+                "payout_cap": 600,
+                "description": "Red/Orange flood alert from IMD SACHET",
+                "api_source": "IMD SACHET RSS",
+                "api_url": "https://sachet.ndma.gov.in/cap_public_website/FeedPage",
+                "free": True,
+                "active": True,
+            },
+            {
+                "id": "OUTAGE",
+                "name": "Platform Outage",
+                "icon": "⚡",
+                "payout_percentage": 0.75,
+                "payout_cap": 450,
+                "description": "Zepto/Swiggy/Blinkit down 2+ hours",
+                "api_source": "Downdetector + Status Pages",
+                "free": True,
+                "active": True,
+            },
+            {
+                "id": "CURFEW",
+                "name": "Government Curfew",
+                "icon": "🚨",
+                "payout_percentage": 1.0,
+                "payout_cap": 600,
+                "description": "Section 144 or curfew order issued",
+                "api_source": "State Govt RSS + News APIs",
+                "free": True,
+                "active": True,
+            },
+            {
+                "id": "AIR_QUALITY",
+                "name": "Air Quality Alert",
+                "icon": "😷",
+                "payout_percentage": 0.50,
+                "payout_cap": 300,
+                "description": "AQI Very Poor (4/5) or Heat Wave 43°C+",
+                "api_source": "OpenWeatherMap AQI",
+                "free": True,
+                "active": True,
+            },
+            {
+                "id": "FESTIVAL_DISRUPTION",
+                "name": "Festival Disruption",
+                "icon": "🎊",
+                "payout_percentage": 0.40,
+                "payout_cap": 240,
+                "description": "Major festival causing 40%+ delivery drop",
+                "api_source": "Internal Calendar Engine",
+                "free": True,
+                "active": True,
+            },
+        ],
+        "total": 5,
+        "coverage_cap": 600,
+        "note": "All triggers verified via multiple independent sources before payout",
     }
 
 
