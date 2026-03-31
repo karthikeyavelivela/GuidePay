@@ -3,8 +3,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithPhoneNumber,
-  RecaptchaVerifier,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
 } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -40,19 +40,32 @@ export const signInWithGoogle = async () => {
   }
 }
 
-export const setupRecaptcha = (containerId) => {
-  if (!window.recaptchaVerifier) {
-    // Create container if it doesn't exist in DOM
-    let el = document.getElementById(containerId)
-    if (!el) {
-      el = document.createElement('div')
-      el.id = containerId
-      document.body.appendChild(el)
+export const signUpWithEmail = async (email, password, name) => {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password)
+    const idToken = await result.user.getIdToken()
+    return {
+      uid: result.user.uid,
+      name: name,
+      email: result.user.email,
+      idToken,
     }
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, el, {
-      size: 'invisible',
-      callback: () => {},
-    })
+  } catch (err) {
+    throw err
   }
-  return window.recaptchaVerifier
+}
+
+export const signInWithEmail = async (email, password) => {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password)
+    const idToken = await result.user.getIdToken()
+    return {
+      uid: result.user.uid,
+      name: result.user.displayName,
+      email: result.user.email,
+      idToken,
+    }
+  } catch (err) {
+    throw err
+  }
 }

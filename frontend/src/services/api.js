@@ -7,7 +7,7 @@ const isPlaceholderUrl =
   rawApiUrl.includes('your-app.onrender.com') ||
   rawApiUrl.includes('your-render-url.onrender.com')
 
-const BASE_URL = isPlaceholderUrl ? 'http://localhost:8000' : rawApiUrl
+const BASE_URL = isPlaceholderUrl ? 'http://localhost:8000' : rawApiUrl.replace(/\/$/, '')
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const http = axios.create({
@@ -42,28 +42,6 @@ export const loginWithFirebase = (token, name, phone) =>
   http.post('/auth/login', { firebase_token: token, name, phone })
 
 export const api = {
-  async sendOTP(phone) {
-    const { setupRecaptcha, auth } = await import('./firebase')
-    const { signInWithPhoneNumber } = await import('firebase/auth')
-    const verifier = setupRecaptcha('recaptcha-container')
-    const confirmation = await signInWithPhoneNumber(auth, phone, verifier)
-    window.__gpConfirmation = confirmation
-    return { success: true }
-  },
-
-  async verifyOTP(phone, otp) {
-    if (!window.__gpConfirmation) throw new Error('OTP not sent')
-    const result = await window.__gpConfirmation.confirm(otp)
-    const idToken = await result.user.getIdToken()
-    const data = await http.post('/auth/login', {
-      firebase_token: idToken,
-      phone: result.user.phoneNumber || phone,
-    })
-    localStorage.setItem('gp-access-token', data.access_token)
-    localStorage.setItem('gp-token', data.access_token)
-    return { success: true, worker: data.worker, token: data.access_token }
-  },
-
   async getWorker(id) {
     return http.get(`/workers/${id}`)
   },

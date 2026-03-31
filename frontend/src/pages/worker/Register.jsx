@@ -27,7 +27,7 @@ export default function Register() {
   const { login, setActivePolicy } = useWorkerStore()
   const [step, setStep] = useState(1)
   const [form, setForm] = useState({
-    name: '', phone: '', email: '', dob: '',
+    name: '', password: '', email: '', dob: '',
     platforms: [], zone: '', city: '',
     experience: '', avgDailyIncome: '', upiId: '',
   })
@@ -35,31 +35,42 @@ export default function Register() {
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
   const canProceed = () => {
-    if (step === 1) return form.name.trim().length >= 2 && form.phone.length === 10
+    if (step === 1) return form.name.trim().length >= 2 && form.email.length > 5 && form.password.length >= 6
     if (step === 2) return form.platforms.length > 0 && form.city
     if (step === 3) return form.upiId.trim().length > 3
     return true
   }
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < 3) {
       setStep(step + 1)
     } else {
-      const doLogin = () => {
-        login({
-          name: form.name || 'Ravi Kumar',
-          phone: `+91${form.phone}`,
-          email: form.email,
-          zone: form.zone || 'kondapur-hyderabad',
-          riskScore: 0.82,
-          riskTier: 'LOW',
-          premium: 58,
-          coverageCap: 600,
-          policyStatus: 'ACTIVE',
-          platforms: form.platforms,
-        })
-        setActivePolicy(true)
-        navigate('/payment-success')
+      const doLogin = async () => {
+        try {
+          const { signUpWithEmail } = await import('../../services/firebase')
+          const { loginWithFirebase } = await import('../../services/api')
+          const user = await signUpWithEmail(form.email, form.password, form.name)
+          const data = await loginWithFirebase(user.idToken, form.name, '')
+          
+          localStorage.setItem('gp-access-token', data.access_token)
+          localStorage.setItem('gp-token', data.access_token)
+
+          login({
+            ...data.worker,
+            zone: form.zone || 'kondapur-hyderabad',
+            riskScore: 0.82,
+            riskTier: 'LOW',
+            premium: 58,
+            coverageCap: 600,
+            policyStatus: 'ACTIVE',
+            platforms: form.platforms,
+          })
+          setActivePolicy(true)
+          navigate('/dashboard')
+        } catch (error) {
+          console.error("Signup failed", error)
+          alert("Signup failed: " + error.message)
+        }
       }
 
       if (window.Razorpay) {
@@ -70,7 +81,7 @@ export default function Register() {
           name: 'GuidePay',
           description: 'First Week Income Protection',
           handler: doLogin,
-          prefill: { name: form.name, email: form.email, contact: `+91${form.phone}` },
+          prefill: { name: form.name, email: form.email },
           theme: { color: '#D97757' },
         })
         rzp.open()
@@ -150,30 +161,14 @@ export default function Register() {
                     value={form.name} onChange={e => update('name', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Mobile number</label>
-                  <div style={{
-                    display: 'flex', borderRadius: 12,
-                    border: '1.5px solid #E4E4E7', overflow: 'hidden', background: 'white',
-                  }}>
-                    <div style={{
-                      padding: '0 14px', height: 52, display: 'flex', alignItems: 'center',
-                      background: '#F7F7F8', borderRight: '1px solid #E4E4E7',
-                      fontSize: 15, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F',
-                    }}>
-                      +91
-                    </div>
-                    <input
-                      style={{ flex: 1, padding: '0 14px', border: 'none', outline: 'none', fontSize: 15, fontFamily: 'Inter, sans-serif', height: 52, background: 'transparent' }}
-                      placeholder="98765 43210" type="tel" maxLength={10}
-                      value={form.phone}
-                      onChange={e => update('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    />
-                  </div>
-                </div>
-                <div>
                   <label style={labelStyle}>Email address</label>
                   <input style={inputStyle} placeholder="ravi@example.com" type="email"
                     value={form.email} onChange={e => update('email', e.target.value)} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Password</label>
+                  <input style={inputStyle} placeholder="••••••••" type="password"
+                    value={form.password} onChange={e => update('password', e.target.value)} />
                 </div>
                 <div>
                   <label style={labelStyle}>Date of birth</label>

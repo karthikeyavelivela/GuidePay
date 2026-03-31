@@ -83,7 +83,7 @@ async def login(request: FirebaseAuthRequest, db=Depends(get_db)):
                      or "Delivery Partner"),
             "phone": (request.phone
                       or firebase_user.get("phone")
-                      or ""),
+                      or f"{firebase_user['uid']}@nophone.local"),
             "email": firebase_user.get("email"),
             "photo_url": firebase_user.get("photo_url"),
             "city": "",

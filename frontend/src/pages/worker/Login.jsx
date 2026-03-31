@@ -25,8 +25,8 @@ const GoogleLogo = () => (
 
 export default function Login() {
   const navigate = useNavigate()
-  const { setPhone } = useWorkerStore()
-  const [phone, setPhoneLocal] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
@@ -50,29 +50,27 @@ export default function Login() {
     }
   }
 
-  const handleSendOTP = async () => {
-    const cleaned = phone.replace(/\D/g, '')
-    if (cleaned.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number')
+  const handleEmailLogin = async () => {
+    if (!email || !password) {
+      setError('Please enter both email and password')
       return
     }
     setError('')
     setLoading(true)
     try {
-      await api.sendOTP(`+91${cleaned}`)
-      setPhone(`+91${cleaned}`)
-      navigate('/otp')
-    } catch {
-      setError('Failed to send OTP. Please try again.')
+      const { signInWithEmail } = await import('../../services/firebase')
+      const user = await signInWithEmail(email, password)
+      const data = await loginWithFirebase(user.idToken, user.name || '', user.phone || '')
+      localStorage.setItem('gp-access-token', data.access_token)
+      localStorage.setItem('gp-token', data.access_token)
+      const { login } = useWorkerStore.getState()
+      login(data.worker)
+      navigate(data.is_new_user ? '/zone' : '/dashboard')
+    } catch (e) {
+      setError('Invalid email or password. Please try again.')
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatDisplay = (val) => {
-    const d = val.replace(/\D/g, '').slice(0, 10)
-    if (d.length > 5) return `${d.slice(0, 5)} ${d.slice(5)}`
-    return d
   }
 
   return (
@@ -268,29 +266,39 @@ export default function Login() {
             <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
           </div>
 
-          {/* Phone input */}
+          {/* Email input */}
           <label className="block text-[13px] font-medium font-body mb-1.5" style={{ color: 'var(--text-secondary)' }}>
-            Mobile number
+            Email address
+          </label>
+          <div
+            className="flex items-center rounded-input overflow-hidden h-[52px] transition-all mb-4"
+            style={{ border: error ? '1.5px solid var(--danger)' : '1.5px solid var(--border)' }}
+          >
+            <input
+              type="email"
+              placeholder="ravi@example.com"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleEmailLogin()}
+              className="flex-1 h-full px-4 text-[15px] font-body outline-none"
+              style={{ background: 'transparent', color: 'var(--text-primary)' }}
+            />
+          </div>
+
+          {/* Password input */}
+          <label className="block text-[13px] font-medium font-body mb-1.5" style={{ color: 'var(--text-secondary)' }}>
+            Password
           </label>
           <div
             className="flex items-center rounded-input overflow-hidden h-[52px] transition-all"
-            style={{
-              border: error ? '1.5px solid var(--danger)' : '1.5px solid var(--border)',
-            }}
+            style={{ border: error ? '1.5px solid var(--danger)' : '1.5px solid var(--border)' }}
           >
-            <div
-              className="flex items-center justify-center px-3.5 h-full text-[15px] font-semibold font-body flex-shrink-0"
-              style={{ background: 'var(--bg-secondary)', borderRight: '1.5px solid var(--border)', color: 'var(--text-primary)' }}
-            >
-              +91
-            </div>
             <input
-              type="tel"
-              inputMode="numeric"
-              placeholder="98765 43210"
-              value={formatDisplay(phone)}
-              onChange={(e) => { setPhoneLocal(e.target.value); setError('') }}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendOTP()}
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setError('') }}
+              onKeyDown={(e) => e.key === 'Enter' && handleEmailLogin()}
               className="flex-1 h-full px-4 text-[15px] font-body outline-none"
               style={{ background: 'transparent', color: 'var(--text-primary)' }}
             />
@@ -310,16 +318,9 @@ export default function Login() {
             )}
           </AnimatePresence>
 
-          {!error && (
-            <div className="flex items-center gap-1.5 mt-2">
-              <Info size={12} style={{ color: 'var(--text-tertiary)' }} />
-              <span className="text-[12px] font-body" style={{ color: 'var(--text-tertiary)' }}>OTP sent via SMS</span>
-            </div>
-          )}
-
-          <div className="mt-3">
-            <Button onClick={handleSendOTP} loading={loading} fullWidth>
-              Send OTP
+          <div className="mt-5">
+            <Button onClick={handleEmailLogin} loading={loading} fullWidth>
+              Sign In
             </Button>
           </div>
         </motion.div>
