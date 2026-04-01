@@ -279,11 +279,22 @@ async def simulate_trigger(
     }
 
     events = await process_trigger_events([mock_alert], db)
+    total_claims = sum(event.get("claims_count", 0) for event in events)
+    total_payouts = await db.claims.count_documents({
+        "trigger_event_id": {"$in": [event["_id"] for event in events]},
+        "status": "PAID",
+    })
+    logger.info(
+        f"Admin simulated {request.trigger_type} in {request.city}: "
+        f"{len(events)} events, {total_claims} claims, {total_payouts} payouts"
+    )
 
     return {
         "success": True,
         "message": f"Simulated {request.trigger_type} in {request.city}",
         "events_created": len(events),
+        "claims_created": total_claims,
+        "payouts_credited": total_payouts,
         "events": [serialize_doc(e) for e in events],
     }
 

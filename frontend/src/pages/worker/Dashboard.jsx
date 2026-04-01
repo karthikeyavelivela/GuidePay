@@ -8,7 +8,6 @@ import LiveDot from '../../components/ui/LiveDot'
 import ChatWidget from '../../components/chat/ChatWidget'
 import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
 import { useWorkerStore } from '../../store/workerStore'
-import { useClaimStore } from '../../store/claimStore'
 import { formatINR } from '../../utils/formatters'
 import { getMyClaims, getMyProfile, getMyZoneForecast, simulateTrigger, USE_MOCK } from '../../services/api'
 
@@ -35,7 +34,6 @@ export default function Dashboard() {
   const setShowTour = useWorkerStore((s) => s.setShowTour)
   const setWorker = useWorkerStore((s) => s.setWorker)
   const setActivePolicy = useWorkerStore((s) => s.setActivePolicy)
-  const payouts = useClaimStore((s) => s.payouts)
   const now = new Date()
   const weekStartDate = new Date(now)
   weekStartDate.setDate(now.getDate() - now.getDay() + 1)
@@ -137,6 +135,7 @@ export default function Dashboard() {
   const prevClaimCountRef = useRef(0)
   const claims = useWorkerStore(s => s.claims)
   const setClaims = useWorkerStore(s => s.setClaims)
+  const paidClaims = claims.filter((claim) => claim.status === 'PAID')
 
   // Show alert only when we have real zone data or after timeout
   useEffect(() => {
@@ -217,7 +216,7 @@ export default function Dashboard() {
     : null
   const displayTotalProtected = totalPayouts > 0
     ? totalPayouts
-    : payouts.reduce((sum, p) => sum + (p.amount || 0), 0)
+    : paidClaims.reduce((sum, claim) => sum + (claim.amount || 0), 0)
 
   const riskTierLabel = w.riskTier === 'LOW' ? 'Low' : w.riskTier === 'HIGH' ? 'High' : 'Medium'
   const riskDiscount = w.riskTier === 'LOW' ? '₹7 discount' : w.riskTier === 'HIGH' ? 'Higher premium' : 'Standard rate'
@@ -592,12 +591,12 @@ export default function Dashboard() {
         <motion.div variants={fadeUp}>
           <div className="flex items-center justify-between mb-2">
             <p className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>Recent payouts</p>
-            {payouts.length > 0 && (
+            {paidClaims.length > 0 && (
               <button className="text-[13px] text-brand font-semibold font-body" onClick={() => navigate('/claims')}>View all claims</button>
             )}
           </div>
           <div className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>
-            {payouts.length === 0 ? (
+            {paidClaims.length === 0 ? (
               <div style={{ padding: '28px 16px', textAlign: 'center' }}>
                 <span style={{ fontSize: 32, display: 'block', marginBottom: 10 }}>💸</span>
                 <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Bricolage Grotesque, sans-serif', color: 'var(--text-primary)', margin: '0 0 4px' }}>
@@ -608,13 +607,13 @@ export default function Dashboard() {
                 </p>
               </div>
             ) : (
-              payouts.slice(0, 2).map((payout, i) => (
+              paidClaims.slice(0, 2).map((payout, i) => (
                 <motion.button
                   key={payout.id}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => navigate(`/claim/${payout.id || 'cl-001'}`)}
                   className="w-full flex items-center justify-between px-4 py-3.5 text-left"
-                  style={{ borderBottom: i < Math.min(payouts.length, 2) - 1 ? '1px solid var(--border-light)' : 'none' }}
+                  style={{ borderBottom: i < Math.min(paidClaims.length, 2) - 1 ? '1px solid var(--border-light)' : 'none' }}
                 >
                   <div>
                     <div className="flex items-center gap-2">

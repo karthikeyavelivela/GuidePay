@@ -1,6 +1,7 @@
 import feedparser
 import httpx
 import asyncio
+import re
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta
 from app.config import settings
@@ -9,6 +10,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 scheduler = AsyncIOScheduler()
+
+
+def _escape_regex(value: str) -> str:
+    return re.escape((value or "").strip())
 
 # Known flood-prone cities with coordinates
 MONITORED_ZONES = [
@@ -194,10 +199,18 @@ async def process_trigger_events(alerts: list, db) -> list:
         if existing:
             continue  # Skip duplicate
 
-        workers_in_zone = await db.workers.find({
-            "zone": alert["zone"],
-            "is_active": True
-        }).to_list(1000)
+        city_pattern = _escape_regex(alert.get("city", ""))
+        zone_pattern = _escape_regex(alert.get("zone", ""))
+        worker_query = {
+            "is_active": True,
+            "$or": [
+                {"zone": alert["zone"]},
+                {"city": {"$regex": f"^{city_pattern}$", "$options": "i"}},
+                {"city": {"$regex": city_pattern, "$options": "i"}},
+                {"zone": {"$regex": zone_pattern, "$options": "i"}},
+            ],
+        }
+        workers_in_zone = await db.workers.find(worker_query).to_list(1000)
 
         active_worker_ids = []
         for worker in workers_in_zone:
@@ -243,6 +256,11 @@ async def process_trigger_events(alerts: list, db) -> list:
         }
 
         await db.trigger_events.insert_one(event_doc)
+        logger.info(
+            f"Trigger matched {len(workers_in_zone)} workers "
+            f"and {len(active_worker_ids)} active policies "
+            f"for {alert['type']} in {alert['city']}"
+        )
 
         for worker in workers_in_zone:
             if str(worker["_id"]) in active_worker_ids:
@@ -286,7 +304,20 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db):
         db=db
     )
 
-    if fraud_result["decision"] == "REJECTED":
+    is_admin_simulation = (
+        trigger_event.get("source") == "ADMIN_SIMULATION" or
+        trigger_event.get("source_data", {}).get("source") == "ADMIN_SIMULATION"
+    )
+
+    if is_admin_simulation:
+        status = "AUTO_APPROVED"
+        fraud_result = {
+            "score": 0.0,
+            "flags": [],
+            "checks": {"simulation": {"result": "BYPASS", "score": 0.0}},
+            "decision": "AUTO_APPROVED",
+        }
+    elif fraud_result["decision"] == "REJECTED":
         status = "REJECTED"
     elif fraud_result["decision"] == "AUTO_APPROVED":
         status = "AUTO_APPROVED"
@@ -315,6 +346,10 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db):
     }
 
     await db.claims.insert_one(claim_doc)
+    logger.info(
+        f"Claim created for worker {worker_id} "
+        f"with status {status} and amount {payout_amount}"
+    )
 
     await db.trigger_events.update_one(
         {"_id": str(trigger_event["_id"])},
@@ -352,6 +387,10 @@ async def initiate_payout(claim: dict, worker: dict, db):
                     "total_claims": 1,
                     "total_payouts": claim["amount"]
                 }}
+            )
+            logger.info(
+                f"Payout credited for worker {worker.get('_id')} "
+                f"claim {claim.get('_id')} amount {claim['amount']}"
             )
             return payout_id
 

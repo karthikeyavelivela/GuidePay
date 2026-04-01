@@ -8,10 +8,11 @@ const isPlaceholderUrl =
   rawApiUrl.includes('your-render-url.onrender.com')
 
 const BASE_URL = isPlaceholderUrl ? 'http://localhost:8000' : rawApiUrl.replace(/\/$/, '')
+export const API_URL = `${BASE_URL}/api/v1`
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const http = axios.create({
-  baseURL: `${BASE_URL}/api/v1`,
+  baseURL: API_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 })
@@ -39,12 +40,20 @@ http.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  console.log(`[API] ${String(config.method || 'GET').toUpperCase()} ${config.baseURL}${config.url}`)
   return config
 })
 
 http.interceptors.response.use(
   (response) => response.data,
   (error) => {
+    console.error(
+      '[API ERROR]',
+      error?.config?.method?.toUpperCase(),
+      `${error?.config?.baseURL || ''}${error?.config?.url || ''}`,
+      error?.response?.status || error?.code || 'UNKNOWN',
+      error?.response?.data || error?.message
+    )
     if (error.response?.status === 401) {
       localStorage.removeItem('gp-token')
       localStorage.removeItem('gp-access-token')
@@ -57,7 +66,11 @@ http.interceptors.response.use(
 )
 
 export const loginWithFirebase = (token, name, phone) =>
-  http.post('/auth/login', { firebase_token: token, name, phone })
+  http.post(
+    '/auth/login',
+    { firebase_token: token, name, phone },
+    { timeout: 30000 }
+  )
 
 export const api = {
   async getWorker(id) {
