@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from 'firebase/app'
+import { initializeApp, getApp, getApps } from 'firebase/app'
 import {
   getAuth,
   GoogleAuthProvider,
@@ -14,8 +14,24 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-// Only init if not already initialized
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0]
+const requiredConfigKeys = ['apiKey', 'authDomain', 'projectId', 'appId']
+
+const ensureFirebaseConfig = () => {
+  const missingKeys = requiredConfigKeys.filter((key) => !firebaseConfig[key])
+  if (missingKeys.length) {
+    throw new Error(`Firebase is not configured: missing ${missingKeys.join(', ')}`)
+  }
+}
+
+const getFirebaseApp = () => {
+  ensureFirebaseConfig()
+  if (!getApps().length) {
+    return initializeApp(firebaseConfig)
+  }
+  return getApp()
+}
+
+const app = getFirebaseApp()
 export const auth = getAuth(app)
 
 export const signInWithGoogle = async () => {

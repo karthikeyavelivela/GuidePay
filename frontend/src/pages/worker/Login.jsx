@@ -5,6 +5,7 @@ import { ShieldCheck, Info } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { useWorkerStore } from '../../store/workerStore'
 import { api, loginWithFirebase } from '../../services/api'
+import { signInWithEmail, signInWithGoogle } from '../../services/firebase'
 
 const container = {
   animate: { transition: { staggerChildren: 0.08 } },
@@ -35,7 +36,6 @@ export default function Login() {
     setGoogleLoading(true)
     setError('')
     try {
-      const { signInWithGoogle } = await import('../../services/firebase')
       const user = await signInWithGoogle()
       const data = await loginWithFirebase(user.idToken, user.name, user.phone)
       localStorage.setItem('gp-access-token', data.access_token)
@@ -58,7 +58,6 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const { signInWithEmail } = await import('../../services/firebase')
       const user = await signInWithEmail(email, password)
       const data = await loginWithFirebase(user.idToken, user.name || '', user.phone || '')
       localStorage.setItem('gp-access-token', data.access_token)

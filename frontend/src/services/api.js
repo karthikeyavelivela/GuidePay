@@ -16,6 +16,24 @@ const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+const isTimeoutError = (error) =>
+  error?.code === 'ECONNABORTED' || error?.name === 'AbortError' || /timeout/i.test(error?.message || '')
+
+const requestWithRetry = async (requestFn, retries = 1) => {
+  let lastError
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      return await requestFn()
+    } catch (error) {
+      lastError = error
+      if (attempt === retries || !isTimeoutError(error)) {
+        throw error
+      }
+    }
+  }
+  throw lastError
+}
+
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
   if (token) {
@@ -47,7 +65,7 @@ export const api = {
   },
 }
 
-export const getMyProfile = () => http.get('/workers/me')
+export const getMyProfile = () => requestWithRetry(() => http.get('/workers/me'))
 export const updateMyProfile = (data) => http.put('/workers/me', data)
 export const getMyRiskScore = () => http.get('/workers/me/risk-score')
 export const getMyPremiumBreakdown = (zone) =>

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
+import { loginWithFirebase } from '../../services/api'
+import { signUpWithEmail } from '../../services/firebase'
 
 const STEPS = [
   { id: 1, label: 'Account' },
@@ -47,8 +49,6 @@ export default function Register() {
     } else {
       const doLogin = async () => {
         try {
-          const { signUpWithEmail } = await import('../../services/firebase')
-          const { loginWithFirebase } = await import('../../services/api')
           const user = await signUpWithEmail(form.email, form.password, form.name)
           const data = await loginWithFirebase(user.idToken, form.name, '')
           
