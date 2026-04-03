@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1775229340/u4qsxq76ijd9vw6yjhwj.gif" height="56" alt="GuidePay"/>
+<img src="https://res.cloudinary.com/dqwm8wgg8/video/upload/q_auto/f_auto/v1775229907/gznyes9x60tenshgdmgi.mp4" height="56" alt="GuidePay"/>
 
 # GuidePay
 
