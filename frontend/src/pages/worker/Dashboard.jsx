@@ -9,7 +9,7 @@ import ChatWidget from '../../components/chat/ChatWidget'
 import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
 import { useWorkerStore } from '../../store/workerStore'
 import { formatINR } from '../../utils/formatters'
-import { getMyClaims, getMyProfile, getMyZoneForecast, simulateTrigger, USE_MOCK } from '../../services/api'
+import { getMyClaims, getMyProfile, getMyZoneForecast } from '../../services/api'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -57,6 +57,10 @@ export default function Dashboard() {
         ])
 
         if (profile) {
+          if (!profile.city || !profile.zone) {
+            navigate('/complete-profile', { replace: true })
+            return
+          }
           setProfileData(profile)
           setWorker({
             ...worker,
@@ -129,9 +133,7 @@ export default function Dashboard() {
 
   const [showAlert, setShowAlert] = useState(false)
   const [showWelcome, setShowWelcome] = useState(false)
-  const [simulateSuccess, setSimulateSuccess] = useState(false)
   const [newClaimAlert, setNewClaimAlert] = useState(null)
-  const [simulating, setSimulating] = useState(false)
   const prevClaimCountRef = useRef(0)
   const claims = useWorkerStore(s => s.claims)
   const setClaims = useWorkerStore(s => s.setClaims)
@@ -165,7 +167,7 @@ export default function Dashboard() {
   }, [showAlert])
 
   useEffect(() => {
-    if (!activePolicy || USE_MOCK) return
+    if (!activePolicy) return
 
     const poll = async () => {
       try {
@@ -179,28 +181,9 @@ export default function Dashboard() {
       } catch (e) {}
     }
 
-    const interval = setInterval(poll, 5000)
+    const interval = setInterval(poll, 20000)
     return () => clearInterval(interval)
   }, [activePolicy])
-
-  const handleSimulateTrigger = async () => {
-    setSimulating(true)
-    try {
-      await simulateTrigger(worker?.city || 'Hyderabad', 'FLOOD')
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      const data = await getMyClaims(null, 5, 0)
-      if (data?.claims?.length) {
-        setClaims(data.claims)
-        setNewClaimAlert(data.claims[0])
-        prevClaimCountRef.current = data.claims.length
-      }
-      setSimulateSuccess(true)
-      setTimeout(() => setSimulateSuccess(false), 4000)
-    } catch (e) {
-      console.error('Simulate error:', e)
-    }
-    setSimulating(false)
-  }
 
   const greeting = () => {
     const h = new Date().getHours()
@@ -439,46 +422,6 @@ export default function Dashboard() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Feature 4: Simulate Flood Trigger (dashed border version) */}
-        {activePolicy && (
-          <motion.div variants={fadeUp}>
-            <motion.button
-              onClick={handleSimulateTrigger}
-              disabled={simulating}
-              whileTap={{ scale: 0.97 }}
-              style={{
-                width: '100%',
-                padding: '13px',
-                borderRadius: 12,
-                border: '1.5px dashed rgba(217,119,87,0.4)',
-                background: 'rgba(217,119,87,0.06)',
-                color: '#D97757',
-                fontSize: 13, fontWeight: 700,
-                fontFamily: 'Inter', cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              {simulating ? (
-                <>
-                  <div style={{
-                    width: 14, height: 14,
-                    border: '2px solid #D97757',
-                    borderTopColor: 'transparent',
-                    borderRadius: 999,
-                    animation: 'spin 0.8s linear infinite',
-                  }}/>
-                  Simulating flood trigger...
-                </>
-              ) : (
-                <>🎬 Demo: Simulate Flood Trigger</>
-              )}
-            </motion.button>
-          </motion.div>
-        )}
 
         {/* Animated alert banner — driven by real zone forecast */}
         <AnimatePresence>

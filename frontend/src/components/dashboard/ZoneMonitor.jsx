@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Shield, Clock } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
-import { getActiveTriggers, USE_MOCK } from '../../services/api'
+import { getActiveTriggers } from '../../services/api'
 
 const CHECKS = [
   { id: 'imd', label: 'IMD Flood Check', icon: '🌧️' },
@@ -37,15 +37,13 @@ export const ZoneMonitor = () => {
     })
 
     try {
-      if (!USE_MOCK) {
-        const data = await getActiveTriggers()
-        if (data.triggers && data.triggers.length > 0) {
-          setHasAlert(true)
-          setAlertData(data.triggers[0])
-        } else {
-          setHasAlert(false)
-          setAlertData(null)
-        }
+      const data = await getActiveTriggers()
+      if (data.triggers && data.triggers.length > 0) {
+        setHasAlert(true)
+        setAlertData(data.triggers[0])
+      } else {
+        setHasAlert(false)
+        setAlertData(null)
       }
     } catch (e) {
       setHasAlert(false)
@@ -266,7 +264,7 @@ export const ZoneMonitor = () => {
           fontSize: 11, fontFamily: 'Inter',
           color: 'var(--text-tertiary)',
         }}>
-          Watching: {worker?.zone || 'Kondapur, Hyderabad'}
+          Watching: {worker?.zone || worker?.city || ''}
         </span>
       </div>
     </motion.div>

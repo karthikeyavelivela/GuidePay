@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ShieldCheck, Info } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { useWorkerStore } from '../../store/workerStore'
-import { api, loginWithFirebase } from '../../services/api'
+import { getUserByUid, loginWithFirebase } from '../../services/api'
 import { signInWithEmail, signInWithGoogle } from '../../services/firebase'
 
 const container = {
@@ -37,12 +37,18 @@ export default function Login() {
     setError('')
     try {
       const user = await signInWithGoogle()
+      const existing = await getUserByUid(user.uid)
+      if (!existing?.user) {
+        sessionStorage.setItem('gp-pending-profile', JSON.stringify(user))
+        navigate('/complete-profile')
+        return
+      }
       const data = await loginWithFirebase(user.idToken, user.name, user.phone)
       localStorage.setItem('gp-access-token', data.access_token)
       localStorage.setItem('gp-token', data.access_token)
       const { login } = useWorkerStore.getState()
       login(data.worker)
-      navigate(data.is_new_user ? '/zone' : '/dashboard')
+      navigate(data.requires_profile ? '/complete-profile' : '/dashboard')
     } catch (e) {
       setError(e?.message || 'Google sign-in failed. Please try again.')
     } finally {
@@ -64,7 +70,7 @@ export default function Login() {
       localStorage.setItem('gp-token', data.access_token)
       const { login } = useWorkerStore.getState()
       login(data.worker)
-      navigate(data.is_new_user ? '/zone' : '/dashboard')
+      navigate(data.requires_profile ? '/complete-profile' : '/dashboard')
     } catch (e) {
       setError('Invalid email or password. Please try again.')
     } finally {

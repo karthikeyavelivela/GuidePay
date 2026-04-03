@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime, timedelta
-from jose import JWTError, jwt
+from datetime import datetime
 from app.config import settings
 from app.database import get_db
 from app.services.firebase_service import verify_firebase_token
+from app.services.auth_service import create_access_token, decode_token
 import logging
 
 router = APIRouter()
@@ -20,47 +20,55 @@ class FirebaseAuthRequest(BaseModel):
     phone: Optional[str] = None
 
 
-def create_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(
-        minutes=settings.access_token_expire_minutes
-    )
-    to_encode.update({"exp": expire})
-    return jwt.encode(
-        to_encode,
-        settings.secret_key,
-        algorithm=settings.algorithm
-    )
+class CreateUserRequest(BaseModel):
+    firebase_token: str
+    name: str
+    phone: str
+    city: str
+    zone: str
+    upi_id: Optional[str] = None
+    zone_lat: float = 0.0
+    zone_lng: float = 0.0
+
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
 
 
 async def get_current_worker(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db=Depends(get_db)
 ):
-    try:
-        token = credentials.credentials
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.algorithm]
-        )
-        worker_id = payload.get("sub")
-        if not worker_id:
-            raise HTTPException(status_code=401, detail="Invalid token")
+    token = credentials.credentials
+    payload = decode_token(token)
+    if payload.get("role") != "worker":
+        raise HTTPException(status_code=403, detail="Worker token required")
 
-        worker = await db.workers.find_one({"_id": worker_id})
-        if not worker:
-            raise HTTPException(status_code=404, detail="Worker not found")
-        return worker
-    except JWTError:
+    worker_id = payload.get("sub")
+    if not worker_id:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+    worker = await db.workers.find_one({"_id": worker_id})
+    if not worker:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    return worker
+
+
+async def get_current_admin(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    payload = decode_token(credentials.credentials)
+    if payload.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin token required")
+    return payload
 
 
 @router.post("/login")
 async def login(request: FirebaseAuthRequest, db=Depends(get_db)):
     """
     Verify Firebase token and return JWT + worker data.
-    Creates worker if first time.
+    If the profile does not exist yet, frontend must complete profile first.
     """
     try:
         firebase_user = await verify_firebase_token(request.firebase_token)
@@ -74,51 +82,35 @@ async def login(request: FirebaseAuthRequest, db=Depends(get_db)):
     is_new_user = worker is None
 
     if is_new_user:
-        from bson import ObjectId
-        worker_doc = {
-            "_id": str(ObjectId()),
-            "firebase_uid": firebase_user["uid"],
-            "name": (request.name
-                     or firebase_user.get("name")
-                     or "Delivery Partner"),
-            "phone": (request.phone
-                      or firebase_user.get("phone")
-                      or f"{firebase_user['uid']}@nophone.local"),
-            "email": firebase_user.get("email"),
-            "photo_url": firebase_user.get("photo_url"),
-            "city": "",
-            "zone": "",
-            "zone_lat": 0.0,
-            "zone_lng": 0.0,
-            "platforms": [],
-            "risk_score": 0.75,
-            "risk_tier": "MEDIUM",
-            "premium_amount": 58.0,
-            "is_active": True,
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow(),
-            "total_claims": 0,
-            "total_payouts": 0.0,
+        return {
+            "access_token": None,
+            "token_type": "bearer",
+            "is_new_user": True,
+            "requires_profile": True,
+            "uid": firebase_user["uid"],
+            "worker": None,
         }
-        await db.workers.insert_one(worker_doc)
-        worker = worker_doc
 
-    access_token = create_access_token({
-        "sub": str(worker["_id"]),
-        "uid": firebase_user["uid"],
-    })
+    access_token = create_access_token(
+        subject=str(worker["_id"]),
+        uid=firebase_user["uid"],
+        role="worker",
+    )
 
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "is_new_user": is_new_user,
+        "requires_profile": not worker.get("city") or not worker.get("zone"),
         "worker": {
             "id": str(worker["_id"]),
+            "firebase_uid": worker.get("firebase_uid"),
             "name": worker.get("name"),
             "phone": worker.get("phone"),
             "email": worker.get("email"),
             "city": worker.get("city"),
             "zone": worker.get("zone"),
+            "upi_id": worker.get("upi_id"),
             "platforms": worker.get("platforms", []),
             "risk_score": worker.get("risk_score", 0.75),
             "premium_amount": worker.get("premium_amount", 58.0),
@@ -127,6 +119,112 @@ async def login(request: FirebaseAuthRequest, db=Depends(get_db)):
     }
 
 
+@router.get("/user/{uid}")
+async def get_user_by_uid(uid: str, db=Depends(get_db)):
+    worker = await db.workers.find_one({"firebase_uid": uid})
+    return {
+        "user": {
+            "id": str(worker["_id"]),
+            "firebase_uid": worker.get("firebase_uid"),
+            "name": worker.get("name"),
+            "phone": worker.get("phone"),
+            "email": worker.get("email"),
+            "city": worker.get("city"),
+            "zone": worker.get("zone"),
+            "upi_id": worker.get("upi_id"),
+            "platforms": worker.get("platforms", []),
+            "risk_score": worker.get("risk_score", 0.75),
+            "premium_amount": worker.get("premium_amount", 58.0),
+            "photo_url": worker.get("photo_url"),
+        } if worker else None
+    }
+
+
+@router.post("/create-user")
+async def create_user(request: CreateUserRequest, db=Depends(get_db)):
+    try:
+        firebase_user = await verify_firebase_token(request.firebase_token)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+
+    existing = await db.workers.find_one({"firebase_uid": firebase_user["uid"]})
+    if existing:
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    from bson import ObjectId
+    worker_doc = {
+        "_id": str(ObjectId()),
+        "firebase_uid": firebase_user["uid"],
+        "name": request.name,
+        "phone": request.phone,
+        "email": firebase_user.get("email"),
+        "photo_url": firebase_user.get("photo_url"),
+        "city": request.city,
+        "zone": request.zone,
+        "upi_id": request.upi_id,
+        "zone_lat": request.zone_lat,
+        "zone_lng": request.zone_lng,
+        "platforms": [],
+        "risk_score": 0.75,
+        "risk_tier": "MEDIUM",
+        "premium_amount": 58.0,
+        "is_active": True,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "total_claims": 0,
+        "total_payouts": 0.0,
+    }
+    await db.workers.insert_one(worker_doc)
+
+    access_token = create_access_token(
+        subject=str(worker_doc["_id"]),
+        uid=firebase_user["uid"],
+        role="worker",
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "is_new_user": True,
+        "requires_profile": False,
+        "worker": {
+            "id": str(worker_doc["_id"]),
+            "firebase_uid": worker_doc.get("firebase_uid"),
+            "name": worker_doc.get("name"),
+            "phone": worker_doc.get("phone"),
+            "email": worker_doc.get("email"),
+            "city": worker_doc.get("city"),
+            "zone": worker_doc.get("zone"),
+            "upi_id": worker_doc.get("upi_id"),
+            "platforms": worker_doc.get("platforms", []),
+            "risk_score": worker_doc.get("risk_score", 0.75),
+            "premium_amount": worker_doc.get("premium_amount", 58.0),
+            "photo_url": worker_doc.get("photo_url"),
+        }
+    }
+
+
 @router.post("/logout")
 async def logout():
     return {"message": "Logged out successfully"}
+
+
+@router.post("/admin/login")
+async def admin_login(request: AdminLoginRequest):
+    if (
+        request.username != settings.admin_username
+        or request.password != settings.admin_password
+    ):
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+
+    token = create_access_token(
+        subject=request.username,
+        role="admin",
+        expires_minutes=settings.admin_access_token_expire_minutes,
+    )
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": "admin",
+        "username": request.username,
+    }

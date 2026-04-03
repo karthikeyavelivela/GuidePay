@@ -21,6 +21,7 @@ export default function Profile() {
   const [photo, setPhoto] = useState(worker?.photoURL || null)
   const fileRef = useRef()
   const [realStats, setRealStats] = useState(null)
+  const [profileData, setProfileData] = useState(null)
 
   // Fetch real profile stats on mount
   useEffect(() => {
@@ -29,6 +30,7 @@ export default function Profile() {
         const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
         if (!token) return
         const data = await getMyProfile()
+        setProfileData(data)
         if (data?.stats) setRealStats(data.stats)
       } catch (e) {
         // Silent — will use fallback values
@@ -37,14 +39,12 @@ export default function Profile() {
     fetchStats()
   }, [])
 
-  const w = worker || {
-    name: 'Ravi Kumar',
-    phone: '98765 43210',
-    city: 'Kondapur, Hyderabad',
-    riskScore: 0.82,
-  }
+  const w = profileData || worker || {}
+  const coverageLabel = w.active_policy?.coverage_cap
+    ? `Active - Rs${w.active_policy.coverage_cap}/week`
+    : 'Manage protection'
 
-  const initials = (w.name || 'Ravi Kumar')
+  const initials = (w.name || '?')
     .split(' ')
     .map(n => n[0])
     .join('')
@@ -83,8 +83,19 @@ export default function Profile() {
     {
       title: 'Coverage',
       items: [
-        { icon: Shield, label: 'My coverage plan', sub: 'Active · ₹600/week', action: () => navigate('/coverage') },
+        { icon: Shield, label: 'My coverage plan', sub: coverageLabel, action: () => navigate('/coverage') },
         { icon: Bell, label: 'Notifications', sub: 'Manage alerts' },
+      ],
+    },
+    {
+      title: 'Settings',
+      items: [
+        {
+          icon: FileText,
+          label: 'Edit profile details',
+          sub: w.upi_id ? `UPI: ${w.upi_id}` : 'Update name, phone, region, UPI',
+          action: () => navigate('/complete-profile'),
+        },
       ],
     },
     {
@@ -307,7 +318,7 @@ export default function Profile() {
             textShadow: isGif ? '0 2px 8px rgba(0,0,0,0.4)' : 'none',
             letterSpacing: -0.5,
           }}>
-            {w.name || 'Ravi Kumar'}
+            {w.name || ''}
           </h2>
 
           {/* Zone */}
@@ -322,7 +333,7 @@ export default function Profile() {
               fontSize: 13, fontFamily: 'Inter',
               color: textSecondary,
             }}>
-              {w.city || 'Kondapur, Hyderabad'}
+              {w.city || ''}
             </span>
           </div>
 
@@ -332,9 +343,9 @@ export default function Profile() {
             color: textTertiary,
           }}>
             {(() => {
-              const raw = w.phone || '98765 43210'
+              const raw = w.phone || ''
               const clean = raw.replace(/^\+91/, '').replace(/^91/, '').replace(/\s/g, '').slice(-10)
-              return `+91 ${clean}`
+              return clean ? `+91 ${clean}` : ''
             })()}
           </span>
 
@@ -353,8 +364,8 @@ export default function Profile() {
           }}>
             {[
               { label: 'Protected', value: realStats ? formatINR(realStats.total_payouts) : '₹0' },
-              { label: 'Payouts', value: realStats ? String(realStats.total_claims) : '0' },
-              { label: 'Risk score', value: String(w.riskScore || 0.75) },
+              { label: 'Claims', value: realStats ? String(realStats.total_claims) : '0' },
+              { label: 'Paid', value: realStats ? String(realStats.paid_claims || 0) : '0' },
             ].map((stat, i) => (
               <div key={i} style={{
                 flex: 1,

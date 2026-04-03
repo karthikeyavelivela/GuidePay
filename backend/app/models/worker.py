@@ -37,6 +37,7 @@ class WorkerCreate(BaseModel):
 
 class WorkerUpdate(BaseModel):
     name: Optional[str] = None
+    phone: Optional[str] = None
     email: Optional[str] = None
     city: Optional[str] = None
     zone: Optional[str] = None

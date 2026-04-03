@@ -11,6 +11,7 @@ import { AnimatedBackground } from './components/ui/AnimatedBackground'
 import Landing from './pages/Landing'
 import Login from './pages/worker/Login'
 import Register from './pages/worker/Register'
+import CompleteProfile from './pages/worker/CompleteProfile'
 
 // Lazy-loaded routes
 const Onboarding = lazy(() => import('./pages/Onboarding'))
@@ -36,6 +37,7 @@ const Privacy = lazy(() => import('./pages/Privacy'))
 const Maintenance = lazy(() => import('./pages/Maintenance'))
 const NotFound = lazy(() => import('./pages/NotFound'))
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
+const ActuarialDashboard = lazy(() => import('./pages/admin/ActuarialDashboard'))
 const ClaimsQueue = lazy(() => import('./pages/admin/ClaimsQueue'))
 const Analytics = lazy(() => import('./pages/admin/Analytics'))
 const InsurerDashboard = lazy(() => import('./pages/admin/InsurerDashboard'))
@@ -107,6 +109,7 @@ function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+        <Route path="/complete-profile" element={<CompleteProfile />} />
         <Route path="/otp" element={<PublicRoute><OTP /></PublicRoute>} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/onboarding" element={<Onboarding />} />
@@ -148,6 +151,7 @@ function AppRoutes() {
         {/* Admin routes — nested under AdminLayout */}
         <Route element={<AdminLayout />}>
           <Route path="/admin"              element={<AdminDashboard />} />
+          <Route path="/admin/actuarial"    element={<ActuarialDashboard />} />
           <Route path="/admin/claims"       element={<ClaimsQueue />} />
           <Route path="/admin/analytics"    element={<Analytics />} />
           <Route path="/admin/reports"      element={<Reports />} />

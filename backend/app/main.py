@@ -11,7 +11,9 @@ from app.routes import (
     auth, workers, policies, claims,
     triggers, payments, forecast, admin, support, notifications
 )
+from app.routes import actuarial
 from app.services.imd_service import start_trigger_scheduler
+from app.services.auth_service import decode_token
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -73,6 +75,27 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestLoggingMiddleware)
 
+
+class AdminVerificationMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        protected_prefixes = ("/api/v1/admin", "/api/v1/actuarial", "/api/v1/support/admin")
+        excluded_paths = {"/api/v1/auth/admin/login"}
+
+        if request.url.path.startswith(protected_prefixes) and request.url.path not in excluded_paths:
+            auth_header = request.headers.get("Authorization", "")
+            if not auth_header.startswith("Bearer "):
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "Admin authorization required"}, status_code=401)
+            payload = decode_token(auth_header.replace("Bearer ", "", 1))
+            if payload.get("role") != "admin":
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "Admin token required"}, status_code=403)
+            request.state.admin = payload
+        return await call_next(request)
+
+
+app.add_middleware(AdminVerificationMiddleware)
+
 # CORS
 app.add_middleware(
     CORSMiddleware,
@@ -96,6 +119,7 @@ app.include_router(triggers.router, prefix="/api/v1/triggers", tags=["triggers"]
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["payments"])
 app.include_router(forecast.router, prefix="/api/v1/forecast", tags=["forecast"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
+app.include_router(actuarial.router, prefix="/api/v1/actuarial", tags=["actuarial"])
 app.include_router(support.router, prefix="/api/v1/support", tags=["support"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
 

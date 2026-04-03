@@ -19,6 +19,7 @@ class TriggerEventInDB(BaseModel):
     lng: float
     severity: str  # RED, ORANGE, YELLOW
     source: str  # IMD_SACHET, DOWNDETECTOR, ADMIN
+    event_hash: Optional[str] = None
     source_data: dict = {}
     status: TriggerStatus = TriggerStatus.active
 

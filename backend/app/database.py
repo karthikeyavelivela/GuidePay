@@ -55,10 +55,16 @@ async def create_indexes():
     await db.claims.create_index("worker_id")
     await db.claims.create_index("trigger_event_id")
     await db.claims.create_index([("worker_id", 1), ("created_at", -1)])
+    await db.claims.create_index(
+        [("worker_id", 1), ("trigger_event_id", 1)],
+        unique=True,
+    )
+    await db.claims.create_index([("policy_id", 1), ("created_at", -1)])
 
     # Trigger events
     await db.trigger_events.create_index([("city", 1), ("created_at", -1)])
     await db.trigger_events.create_index("status")
+    await db.trigger_events.create_index("event_hash", unique=True, sparse=True)
 
     # Payments
     await db.payments.create_index("razorpay_payment_id", unique=True)
@@ -72,6 +78,9 @@ async def create_indexes():
     # Notifications
     await db.notifications.create_index("worker_id")
     await db.notifications.create_index([("worker_id", 1), ("read", 1), ("created_at", -1)])
+
+    # Payout audits
+    await db.payout_audit_logs.create_index([("claim_id", 1), ("created_at", -1)])
 
 
 def get_db():

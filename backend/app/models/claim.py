@@ -45,6 +45,10 @@ class ClaimInDB(BaseModel):
 
     # Payment
     razorpay_payout_id: Optional[str] = None
+    payout_status: str = "NOT_STARTED"
+    payout_audit_log: List[Dict] = []
+    payout_attempts: int = 0
+    policy_week_remaining_after_claim: Optional[float] = None
     paid_at: Optional[datetime] = None
 
     created_at: datetime = Field(default_factory=datetime.utcnow)

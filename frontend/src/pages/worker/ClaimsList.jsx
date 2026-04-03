@@ -53,8 +53,10 @@ export default function ClaimsList() {
           </div>
         ) : (
           <div style={{ borderRadius: 16, overflow: 'hidden', background: 'var(--bg-card)', boxShadow: 'var(--shadow-card)' }}>
-            {claims.map((claim, index) => (
-              <motion.button key={claim._id} onClick={() => navigate(`/claim/${claim._id}`)} whileTap={{ scale: 0.98 }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: index < claims.length - 1 ? '1px solid var(--border-light)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
+            {claims.map((claim, index) => {
+              const claimId = claim.id || claim._id
+              return (
+              <motion.button key={claimId} onClick={() => navigate(`/claim/${claimId}`)} whileTap={{ scale: 0.98 }} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: 'transparent', border: 'none', borderBottom: index < claims.length - 1 ? '1px solid var(--border-light)' : 'none', cursor: 'pointer', textAlign: 'left' }}>
                 <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
                   {typeIcon(claim.trigger_type)}
                 </div>
@@ -75,7 +77,7 @@ export default function ClaimsList() {
                   <Badge variant={statusVariant(claim.status)}>{claim.status}</Badge>
                 </div>
               </motion.button>
-            ))}
+            )})}
           </div>
         )}
       </div>

@@ -212,8 +212,8 @@ async def approve_claim(
 
     worker = await db.workers.find_one({"_id": claim["worker_id"]})
     if worker:
-        from app.services.imd_service import initiate_payout
-        await initiate_payout(claim=claim, worker=worker, db=db)
+        from app.services.imd_service import process_payout_transfer
+        await process_payout_transfer(claim=claim, worker=worker, db=db)
 
     return {"success": True, "claim_id": claim_id}
 

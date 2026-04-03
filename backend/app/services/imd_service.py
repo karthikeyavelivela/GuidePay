@@ -2,10 +2,13 @@ import feedparser
 import httpx
 import asyncio
 import re
+import hashlib
+from pymongo.errors import DuplicateKeyError
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime, timedelta
 from app.config import settings
 from app.database import get_db
+from app.services.payout_audit_service import append_payout_audit
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,6 +17,45 @@ scheduler = AsyncIOScheduler()
 
 def _escape_regex(value: str) -> str:
     return re.escape((value or "").strip())
+
+
+def _build_event_hash(alert: dict) -> str:
+    parts = [
+        (alert.get("city") or "").strip().lower(),
+        (alert.get("zone") or "").strip().lower(),
+        (alert.get("type") or "").strip().upper(),
+        (alert.get("severity") or "").strip().upper(),
+        (alert.get("source") or "").strip().upper(),
+        str(alert.get("published") or "")[:13],
+    ]
+    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+
+
+async def _get_active_policies_by_worker(db, worker_ids: list[str]) -> dict[str, dict]:
+    if not worker_ids:
+        return {}
+    policies = await db.policies.find({
+        "worker_id": {"$in": worker_ids},
+        "status": "ACTIVE",
+    }).to_list(len(worker_ids))
+    return {policy["worker_id"]: policy for policy in policies}
+
+
+async def _calculate_remaining_weekly_coverage(db, policy: dict) -> float:
+    reserved_statuses = ["PENDING", "VERIFYING", "AUTO_APPROVED", "MANUAL_REVIEW", "PAID"]
+    rows = await db.claims.aggregate([
+        {"$match": {
+            "policy_id": str(policy["_id"]),
+            "created_at": {
+                "$gte": policy["week_start"],
+                "$lte": policy["week_end"],
+            },
+            "status": {"$in": reserved_statuses},
+        }},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}},
+    ]).to_list(1)
+    used = float(rows[0]["total"]) if rows else 0.0
+    return round(max(0.0, float(policy.get("coverage_cap", 600.0)) - used), 2)
 
 # Known flood-prone cities with coordinates
 MONITORED_ZONES = [
@@ -188,15 +230,11 @@ async def process_trigger_events(alerts: list, db) -> list:
     created_events = []
 
     for alert in alerts:
-        two_hours_ago = datetime.utcnow() - timedelta(hours=2)
-        existing = await db.trigger_events.find_one({
-            "city": alert["city"],
-            "trigger_type": alert["type"],
-            "started_at": {"$gte": two_hours_ago},
-            "status": "ACTIVE"
-        })
+        event_hash = _build_event_hash(alert)
+        existing = await db.trigger_events.find_one({"event_hash": event_hash})
 
         if existing:
+            created_events.append(existing)
             continue  # Skip duplicate
 
         city_pattern = _escape_regex(alert.get("city", ""))
@@ -211,15 +249,9 @@ async def process_trigger_events(alerts: list, db) -> list:
             ],
         }
         workers_in_zone = await db.workers.find(worker_query).to_list(1000)
-
-        active_worker_ids = []
-        for worker in workers_in_zone:
-            policy = await db.policies.find_one({
-                "worker_id": str(worker["_id"]),
-                "status": "ACTIVE"
-            })
-            if policy:
-                active_worker_ids.append(str(worker["_id"]))
+        worker_ids = [str(worker["_id"]) for worker in workers_in_zone]
+        active_policies = await _get_active_policies_by_worker(db, worker_ids)
+        active_worker_ids = list(active_policies.keys())
 
         payout_pct = {
             "FLOOD": 1.0,
@@ -230,8 +262,9 @@ async def process_trigger_events(alerts: list, db) -> list:
             "FESTIVAL_DISRUPTION": 0.40,
         }.get(alert["type"], 1.0)
 
-        from app.services.premium_service import COVERAGE_CAP
-        total_exposure = len(active_worker_ids) * COVERAGE_CAP * payout_pct
+        total_exposure = 0.0
+        for policy in active_policies.values():
+            total_exposure += float(policy.get("coverage_cap", 600.0)) * payout_pct
 
         from bson import ObjectId
         event_doc = {
@@ -243,6 +276,7 @@ async def process_trigger_events(alerts: list, db) -> list:
             "lng": alert.get("lng", 0),
             "severity": alert.get("severity", "ORANGE"),
             "source": alert.get("source", "IMD_SACHET"),
+            "event_hash": event_hash,
             "source_data": alert,
             "status": "ACTIVE",
             "payout_percentage": payout_pct,
@@ -255,7 +289,14 @@ async def process_trigger_events(alerts: list, db) -> list:
             "expires_at": datetime.utcnow() + timedelta(hours=24),
         }
 
-        await db.trigger_events.insert_one(event_doc)
+        try:
+            await db.trigger_events.insert_one(event_doc)
+        except DuplicateKeyError:
+            existing = await db.trigger_events.find_one({"event_hash": event_hash})
+            if existing:
+                created_events.append(existing)
+                continue
+            raise
         logger.info(
             f"Trigger matched {len(workers_in_zone)} workers "
             f"and {len(active_worker_ids)} active policies "
@@ -267,7 +308,8 @@ async def process_trigger_events(alerts: list, db) -> list:
                 await create_automatic_claim(
                     worker=worker,
                     trigger_event=event_doc,
-                    db=db
+                    db=db,
+                    policy=active_policies[str(worker["_id"])],
                 )
 
         created_events.append(event_doc)
@@ -280,14 +322,15 @@ async def process_trigger_events(alerts: list, db) -> list:
     return created_events
 
 
-async def create_automatic_claim(worker: dict, trigger_event: dict, db):
+async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: dict | None = None):
     """Create and process a claim automatically"""
     from app.services.fraud_service import calculate_fraud_score
+    from app.services.underwriting_service import evaluate_worker_eligibility
     from bson import ObjectId
 
     worker_id = str(worker["_id"])
 
-    policy = await db.policies.find_one({
+    policy = policy or await db.policies.find_one({
         "worker_id": worker_id,
         "status": "ACTIVE"
     })
@@ -295,8 +338,13 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db):
     if not policy:
         return
 
-    from app.services.premium_service import COVERAGE_CAP
-    payout_amount = round(COVERAGE_CAP * trigger_event["payout_percentage"], 2)
+    eligibility = await evaluate_worker_eligibility(worker, policy, trigger_event, db)
+    remaining_coverage = await _calculate_remaining_weekly_coverage(db, policy)
+    proposed_payout = round(
+        float(policy.get("coverage_cap", 600.0)) * trigger_event["payout_percentage"],
+        2,
+    )
+    payout_amount = round(min(proposed_payout, remaining_coverage), 2)
 
     fraud_result = await calculate_fraud_score(
         worker=worker,
@@ -314,8 +362,28 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db):
         fraud_result = {
             "score": 0.0,
             "flags": [],
-            "checks": {"simulation": {"result": "BYPASS", "score": 0.0}},
+            "checks": {
+                "simulation": {"result": "BYPASS", "score": 0.0},
+                "underwriting": {"result": "BYPASS", "score": 0.0},
+            },
             "decision": "AUTO_APPROVED",
+            "explanation": ["Admin simulation bypassed fraud checks"],
+        }
+    elif payout_amount <= 0:
+        status = "REJECTED"
+        fraud_result["flags"].append("WEEKLY_CAP_EXHAUSTED")
+        fraud_result["checks"]["coverage_cap"] = {
+            "result": "FAIL",
+            "remaining": remaining_coverage,
+            "score": 1.0,
+        }
+    elif not eligibility["eligible"]:
+        status = "REJECTED"
+        fraud_result["flags"].extend(eligibility["reasons"])
+        fraud_result["checks"]["underwriting"] = {
+            "result": "FAIL",
+            "reasons": eligibility["reasons"],
+            "score": 1.0,
         }
     elif fraud_result["decision"] == "REJECTED":
         status = "REJECTED"
@@ -341,11 +409,54 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db):
         "zone_correlation_ratio": trigger_event.get(
             "claims_count", 0
         ) / max(trigger_event.get("total_workers_in_zone", 1), 1),
+        "payout_status": (
+            "INITIATED"
+            if status == "AUTO_APPROVED" and policy.get("auto_payout", False)
+            else "NOT_STARTED"
+        ),
+        "payout_audit_log": [],
+        "payout_attempts": 0,
+        "policy_week_remaining_after_claim": round(max(0.0, remaining_coverage - payout_amount), 2),
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow(),
     }
 
-    await db.claims.insert_one(claim_doc)
+    try:
+        await db.claims.insert_one(claim_doc)
+    except DuplicateKeyError:
+        logger.info(
+            f"Skipped duplicate claim for worker {worker_id} trigger {trigger_event['_id']}"
+        )
+        return
+
+    await append_payout_audit(
+        db=db,
+        claim_id=claim_doc["_id"],
+        step="TRIGGER_CONFIRMED",
+        status="SUCCESS",
+        message=f"{trigger_event['trigger_type']} trigger confirmed in {trigger_event['city']}",
+        meta={"trigger_event_id": str(trigger_event["_id"])},
+    )
+    await append_payout_audit(
+        db=db,
+        claim_id=claim_doc["_id"],
+        step="ELIGIBILITY_CHECK",
+        status="SUCCESS" if eligibility["eligible"] or is_admin_simulation else "FAILED",
+        message="Worker eligibility evaluated",
+        meta=eligibility,
+    )
+    await append_payout_audit(
+        db=db,
+        claim_id=claim_doc["_id"],
+        step="PAYOUT_CALCULATED",
+        status="SUCCESS" if payout_amount > 0 else "FAILED",
+        message=f"Payout calculated at Rs{payout_amount}",
+        meta={
+            "proposed_payout": proposed_payout,
+            "remaining_coverage": remaining_coverage,
+            "weekly_cap": float(policy.get("coverage_cap", 600.0)),
+        },
+    )
     logger.info(
         f"Claim created for worker {worker_id} "
         f"with status {status} and amount {payout_amount}"
@@ -356,8 +467,9 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db):
         {"$inc": {"claims_count": 1}}
     )
 
-    if status == "AUTO_APPROVED":
-        await initiate_payout(claim=claim_doc, worker=worker, db=db)
+    should_force_demo_payout = is_admin_simulation
+    if status == "AUTO_APPROVED" and (policy.get("auto_payout", False) or should_force_demo_payout):
+        await process_payout_transfer(claim=claim_doc, worker=worker, db=db)
 
 
 async def initiate_payout(claim: dict, worker: dict, db):
@@ -396,6 +508,81 @@ async def initiate_payout(claim: dict, worker: dict, db):
 
     except Exception as e:
         logger.error(f"Payout failed for claim {claim['_id']}: {e}")
+
+
+async def process_payout_transfer(claim: dict, worker: dict, db):
+    """Hardened payout flow with state transitions and audit logging."""
+    import os
+
+    try:
+        await append_payout_audit(
+            db=db,
+            claim_id=str(claim["_id"]),
+            step="TRANSFER_INITIATED",
+            status="PROCESSING",
+            message="Payout transfer initiated",
+            meta={"upi_id": worker.get("upi_id")},
+        )
+        await db.claims.update_one(
+            {"_id": str(claim["_id"])},
+            {
+                "$set": {
+                    "payout_status": "PROCESSING",
+                    "updated_at": datetime.utcnow(),
+                },
+                "$inc": {"payout_attempts": 1},
+            }
+        )
+
+        mock_mode = os.getenv("RAZORPAY_MOCK_MODE", "true") == "true"
+        if not mock_mode:
+            raise RuntimeError("Real payout provider not configured")
+
+        payout_id = f"MOCK_GP_{str(claim['_id'])[:8].upper()}"
+        await db.claims.update_one(
+            {"_id": str(claim["_id"])},
+            {"$set": {
+                "status": "PAID",
+                "paid_at": datetime.utcnow(),
+                "razorpay_payout_id": payout_id,
+                "payout_status": "SUCCESS",
+                "updated_at": datetime.utcnow(),
+            }}
+        )
+        await db.workers.update_one(
+            {"_id": str(worker["_id"])},
+            {"$inc": {
+                "total_claims": 1,
+                "total_payouts": claim["amount"],
+            }}
+        )
+        await append_payout_audit(
+            db=db,
+            claim_id=str(claim["_id"]),
+            step="PAYMENT_SUCCESS",
+            status="SUCCESS",
+            message=f"Mock payout succeeded with id {payout_id}",
+            meta={"payout_id": payout_id, "amount": claim["amount"]},
+        )
+        return payout_id
+    except Exception as exc:
+        await db.claims.update_one(
+            {"_id": str(claim["_id"])},
+            {"$set": {
+                "payout_status": "FAILED",
+                "status": "AUTO_APPROVED",
+                "updated_at": datetime.utcnow(),
+            }}
+        )
+        await append_payout_audit(
+            db=db,
+            claim_id=str(claim["_id"]),
+            step="PAYMENT_FAILED",
+            status="FAILED",
+            message=f"Payout failed: {exc}",
+            meta={"error": str(exc)},
+        )
+        raise
 
 
 async def check_aqi_heatwave() -> list:

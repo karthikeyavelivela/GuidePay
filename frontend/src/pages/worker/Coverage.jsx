@@ -10,18 +10,17 @@ const PLANS = [
     id: 'basic',
     name: 'Basic',
     price: 49,
-    coverage: 600,
+    coverage: 400,
     badge: null,
     description: 'For low-risk zones',
     features: [
-      'Up to Rs600/week coverage',
+      'Up to Rs400/week coverage',
       'IMD flood trigger',
-      'Platform outage trigger',
-      'Govt curfew trigger',
-      'UPI instant payout',
+      'Limited triggers',
+      'Payout in 24 hours',
       'Basic risk score',
     ],
-    notIncluded: ['AI 24h advance forecast', 'Priority claim review'],
+    notIncluded: ['All triggers', 'Auto payout'],
     borderColor: '#E4E4E7',
     bgColor: 'white',
   },
@@ -36,7 +35,6 @@ const PLANS = [
       'Up to Rs600/week coverage',
       'All 5 triggers included',
       'UPI payout under 2 hours',
-      'AI 24h flood forecast',
       'Worker risk score tracking',
       'Priority claim review',
       'Flood alert notifications',
@@ -50,15 +48,14 @@ const PLANS = [
     id: 'premium',
     name: 'Premium',
     price: 69,
-    coverage: 600,
+    coverage: 1000,
     badge: 'Best Protection',
     description: 'For high-risk flood zones',
     features: [
-      'Up to Rs600/week coverage',
+      'Up to Rs1000/week coverage',
       'All 5 triggers included',
       'UPI payout under 1 hour',
-      'AI 7-day flood forecast',
-      'Auto coverage extension',
+      'Auto payout included',
       'Priority fraud protection',
       'Dedicated claim tracking',
       'WhatsApp alerts',
@@ -78,6 +75,10 @@ export default function Coverage() {
   const [mlPremium, setMlPremium] = useState(null)
 
   const plan = PLANS.find((entry) => entry.id === selectedPlan)
+  const avgIncome = Number(worker?.avg_daily_income || worker?.avgDailyIncome || 800)
+  const triggerProbability = Number(mlPremium?.zone_risk_score || 0.42)
+  const exposedDays = plan?.id === 'premium' ? 2 : 1
+  const formulaPremium = Math.round(triggerProbability * avgIncome * exposedDays * 0.1)
 
   useEffect(() => {
     const loadPremium = async () => {
@@ -140,7 +141,7 @@ export default function Coverage() {
           Choose your plan
         </h1>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: '2px 0 0' }}>
-          All plans include Rs600/week coverage cap
+          Select the plan that matches your protection needs
         </p>
       </div>
 
@@ -189,6 +190,32 @@ export default function Coverage() {
               </div>
             </div>
           )}
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 18, border: '1px solid var(--border-light)', marginBottom: 18 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 10px' }}>
+            Pricing Transparency
+          </p>
+          <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px' }}>
+            Premium = trigger probability × income loss/day × days exposed
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 12px' }}>
+              <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>Trigger probability</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Inter', margin: '4px 0 0' }}>{Math.round(triggerProbability * 100)}%</p>
+            </div>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 12px' }}>
+              <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>Income loss/day</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Inter', margin: '4px 0 0' }}>Rs{avgIncome}</p>
+            </div>
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '10px 12px' }}>
+              <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>Days exposed</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Inter', margin: '4px 0 0' }}>{exposedDays}</p>
+            </div>
+          </div>
+          <p style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: 0 }}>
+            Raw expected-loss premium: Rs{formulaPremium}. Final premium is plan-adjusted and capped with reserve margin, underwriting rules, and zone risk controls.
+          </p>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
@@ -252,7 +279,7 @@ export default function Coverage() {
             <div>
               <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{plan.name} Plan</p>
               <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: '2px 0 0' }}>
-                Weekly · Rs600 coverage cap · Auto-renews
+                Weekly - Rs{plan.coverage} coverage cap - Auto-renews
               </p>
             </div>
             <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 24, fontWeight: 800, color: '#D97757', margin: 0 }}>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Shield } from 'lucide-react'
+import { adminLogin } from '../../services/api'
 
 export default function AdminLogin() {
   const navigate = useNavigate()
@@ -11,20 +12,21 @@ export default function AdminLogin() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    setTimeout(() => {
-      if (username === 'admin' && password === 'admin') {
-        localStorage.setItem('gp-admin-auth', 'true')
-        localStorage.setItem('gp-admin-user', username)
-        navigate('/admin', { replace: true })
-      } else {
-        setError('Invalid credentials')
-        setLoading(false)
-      }
-    }, 600)
+    try {
+      const data = await adminLogin(username, password)
+      localStorage.setItem('gp-admin-token', data.access_token)
+      localStorage.setItem('gp-admin-access-token', data.access_token)
+      localStorage.setItem('gp-admin-auth', 'true')
+      localStorage.setItem('gp-admin-user', data.username || username)
+      navigate('/admin', { replace: true })
+    } catch (e) {
+      setError(e?.detail || 'Invalid credentials')
+      setLoading(false)
+    }
   }
 
   return (

@@ -3,11 +3,12 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, FileCheck, BarChart2, FileText,
-  Menu, X, RefreshCw, Bell, LogOut, Headphones,
+  Menu, X, RefreshCw, Bell, LogOut, Headphones, Activity,
 } from 'lucide-react'
 
 const ADMIN_NAV = [
   { label: 'Overview',       icon: LayoutDashboard, path: '/admin' },
+  { label: 'Actuarial',      icon: Activity,         path: '/admin/actuarial' },
   { label: 'Claims',         icon: FileCheck,        path: '/admin/claims' },
   { label: 'Analytics',      icon: BarChart2,        path: '/admin/analytics' },
   { label: 'Insurer View',   icon: FileText,         path: '/admin/insurer' },
@@ -17,6 +18,7 @@ const ADMIN_NAV = [
 
 const PAGE_TITLES = {
   '/admin': 'Overview',
+  '/admin/actuarial': 'Actuarial Dashboard',
   '/admin/claims': 'Claims Queue',
   '/admin/analytics': 'Analytics',
   '/admin/reports': 'Reports',
@@ -130,7 +132,7 @@ export default function AdminLayout() {
 
   // Auth guard
   useEffect(() => {
-    if (!localStorage.getItem('gp-admin-auth')) {
+    if (!localStorage.getItem('gp-admin-token')) {
       navigate('/admin/login', { replace: true })
     }
   }, [location.pathname])
@@ -144,6 +146,8 @@ export default function AdminLayout() {
   }
 
   const handleLogout = () => {
+    localStorage.removeItem('gp-admin-token')
+    localStorage.removeItem('gp-admin-access-token')
     localStorage.removeItem('gp-admin-auth')
     localStorage.removeItem('gp-admin-user')
     navigate('/admin/login', { replace: true })

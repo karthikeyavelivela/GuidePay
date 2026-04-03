@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
-import { loginWithFirebase } from '../../services/api'
+import { createUserProfile } from '../../services/api'
 import { signUpWithEmail } from '../../services/firebase'
 
 const STEPS = [
@@ -50,7 +50,15 @@ export default function Register() {
       const doLogin = async () => {
         try {
           const user = await signUpWithEmail(form.email, form.password, form.name)
-          const data = await loginWithFirebase(user.idToken, form.name, '')
+          const data = await createUserProfile({
+            firebase_token: user.idToken,
+            name: form.name,
+            phone: '',
+            city: form.city,
+            zone: form.zone || form.city,
+            zone_lat: 0,
+            zone_lng: 0,
+          })
           
           localStorage.setItem('gp-access-token', data.access_token)
           localStorage.setItem('gp-token', data.access_token)

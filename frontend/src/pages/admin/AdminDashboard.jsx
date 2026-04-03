@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { BrainCircuit } from 'lucide-react'
 import Badge from '../../components/ui/Badge'
-import { getAdminStats, getZoneForecast, simulateTrigger, USE_MOCK } from '../../services/api'
+import { getAdminStats, getZoneForecast, simulateTrigger } from '../../services/api'
 import { formatINRShort } from '../../utils/formatters'
 
 const pageVariants = {
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
               <option value="OUTAGE">Platform Outage</option>
               <option value="CURFEW">Government Curfew</option>
             </select>
-            <motion.button onClick={handleSimulate} disabled={simulating || USE_MOCK} whileTap={{ scale: 0.97 }} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: simulating || USE_MOCK ? '#333' : '#D97757', color: simulating || USE_MOCK ? 'rgba(255,255,255,0.4)' : 'white', fontSize: 13, fontWeight: 700, fontFamily: 'Inter', cursor: simulating || USE_MOCK ? 'not-allowed' : 'pointer' }}>
+            <motion.button onClick={handleSimulate} disabled={simulating} whileTap={{ scale: 0.97 }} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: simulating ? '#333' : '#D97757', color: simulating ? 'rgba(255,255,255,0.4)' : 'white', fontSize: 13, fontWeight: 700, fontFamily: 'Inter', cursor: simulating ? 'not-allowed' : 'pointer' }}>
               {simulating ? 'Simulating...' : 'Fire Trigger'}
             </motion.button>
             {simResult && (

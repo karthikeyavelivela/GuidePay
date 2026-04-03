@@ -36,7 +36,12 @@ const requestWithRetry = async (requestFn, retries = 1) => {
 }
 
 http.interceptors.request.use((config) => {
-  const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
+  const isAdminRequest = (config.url || '').startsWith('/admin')
+    || (config.url || '').startsWith('/actuarial')
+    || (config.url || '').startsWith('/support/admin')
+  const token = isAdminRequest
+    ? (localStorage.getItem('gp-admin-token') || localStorage.getItem('gp-admin-access-token'))
+    : (localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token'))
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -71,6 +76,11 @@ export const loginWithFirebase = (token, name, phone) =>
     { firebase_token: token, name, phone },
     { timeout: 30000 }
   )
+export const getUserByUid = (uid) => http.get(`/auth/user/${uid}`)
+export const createUserProfile = (data) =>
+  http.post('/auth/create-user', data, { timeout: 30000 })
+export const adminLogin = (username, password) =>
+  http.post('/auth/admin/login', { username, password }, { timeout: 30000 })
 
 export const api = {
   async getWorker(id) {
@@ -118,6 +128,10 @@ export const sendSupportMessage = (ticketId, text) =>
   http.post(`/support/my/${ticketId}/messages`, { text })
 
 export const getAdminStats = () => http.get('/admin/stats')
+export const getActuarialSummary = () => http.get('/actuarial/summary')
+export const getActuarialExposure = () => http.get('/actuarial/exposure')
+export const getActuarialReserve = () => http.get('/actuarial/reserve')
+export const simulateActuarialScenario = (payload) => http.post('/actuarial/simulate', payload)
 export const getClaimsQueue = (status = 'ALL') =>
   http.get('/admin/claims/queue', { params: { status } })
 export const getAdminAnalytics = (days = 30) =>

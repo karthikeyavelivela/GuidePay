@@ -28,6 +28,10 @@ async def get_my_profile(
 
     total_claims = await db.claims.count_documents({
         "worker_id": worker_id,
+        "status": {"$ne": "REJECTED"}
+    })
+    paid_claims = await db.claims.count_documents({
+        "worker_id": worker_id,
         "status": "PAID"
     })
 
@@ -42,6 +46,7 @@ async def get_my_profile(
     result["active_policy"] = serialize_doc(policy) if policy else None
     result["stats"] = {
         "total_claims": total_claims,
+        "paid_claims": paid_claims,
         "total_payouts": total_payouts,
     }
     return result

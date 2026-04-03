@@ -42,7 +42,7 @@ export default function AdminSupport() {
 
   useEffect(() => {
     refresh(filter)
-    const interval = setInterval(() => refresh(filter), 6000)
+    const interval = setInterval(() => refresh(filter), 15000)
     return () => clearInterval(interval)
   }, [filter])
 

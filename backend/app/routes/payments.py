@@ -26,9 +26,27 @@ class VerifyPaymentRequest(BaseModel):
 
 
 PLAN_CONFIG = {
-    "basic": {"name": "Basic", "price": 49.0},
-    "standard": {"name": "Standard", "price": 58.0},
-    "premium": {"name": "Premium", "price": 69.0},
+    "basic": {
+        "name": "Basic",
+        "price": 49.0,
+        "coverage_cap": 400.0,
+        "payout_window": "24h",
+        "auto_payout": False,
+    },
+    "standard": {
+        "name": "Standard",
+        "price": 58.0,
+        "coverage_cap": 600.0,
+        "payout_window": "2h",
+        "auto_payout": False,
+    },
+    "premium": {
+        "name": "Premium",
+        "price": 69.0,
+        "coverage_cap": 1000.0,
+        "payout_window": "1h",
+        "auto_payout": True,
+    },
 }
 
 
@@ -81,7 +99,9 @@ async def verify_payment(
         "plan_id": request.plan_id,
         "plan_name": plan["name"],
         "weekly_premium": charge_amount,
-        "coverage_cap": 600.0,
+        "coverage_cap": plan["coverage_cap"],
+        "payout_window": plan["payout_window"],
+        "auto_payout": plan["auto_payout"],
         "status": "ACTIVE",
         "payment_id": request.razorpay_payment_id,
         "week_start": now,

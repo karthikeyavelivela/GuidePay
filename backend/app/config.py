@@ -19,9 +19,13 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 10080
+    admin_access_token_expire_minutes: int = 720
 
     frontend_url: str
     frontend_url_local: str = "http://localhost:5173"
+
+    admin_username: str = "admin"
+    admin_password: str = "admin"
 
     environment: str = "development"
     trigger_poll_interval_minutes: int = 15
