@@ -42,11 +42,9 @@ function AdminSidebar({ onClose }) {
     }}>
       {/* Logo */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 10px', marginBottom: 28 }}>
-        <img
-          src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
-          alt="GuidePay"
-          style={{ height: 52, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
-        />
+        <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 24, fontWeight: 400, color: 'white', letterSpacing: '-0.02em' }}>
+          GuidePay
+        </span>
         <p style={{ fontSize: 10, color: '#6B6B6B', fontFamily: 'Inter', margin: 0, marginLeft: 2 }}>
           Admin
         </p>

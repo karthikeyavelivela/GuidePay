@@ -134,11 +134,9 @@ export default function Login() {
             borderRadius: 10,
             padding: '6px 12px',
           }}>
-            <img
-              src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
-              alt="GuidePay"
-              style={{ height: 56, width: 'auto', filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
-            />
+            <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 24, fontWeight: 400, color: 'white', letterSpacing: '-0.02em', paddingTop: 8, paddingBottom: 8 }}>
+              GuidePay
+            </span>
           </div>
         </div>
 

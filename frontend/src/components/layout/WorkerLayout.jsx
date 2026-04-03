@@ -56,11 +56,9 @@ function Sidebar({ onClose }) {
       }}
     >
       <div className="flex items-center gap-2 px-3 mb-8">
-        <img
-          src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
-          alt="GuidePay"
-          style={{ height: 56, width: 'auto', objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
-        />
+        <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 24, fontWeight: 400, color: 'white', letterSpacing: '-0.02em', paddingTop: 8, paddingBottom: 8 }}>
+          GuidePay
+        </span>
         {onClose && (
           <button onClick={onClose} className="ml-auto lg:hidden">
             <X size={20} style={{ color: 'var(--text-tertiary)' }} />

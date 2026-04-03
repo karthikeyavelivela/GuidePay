@@ -76,11 +76,9 @@ export const LandingNav = () => {
               flexShrink: 0,
             }}
           >
-            <img
-              src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
-              alt="GuidePay"
-              style={{ height: 44, width: 'auto', filter: 'none', objectFit: 'contain' }}
-            />
+            <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 24, fontWeight: 400, color: '#D97757', letterSpacing: '-0.02em' }}>
+              GuidePay
+            </span>
           </motion.div>
 
           {/* CENTER: Nav links — desktop */}
@@ -241,11 +239,9 @@ export const LandingNav = () => {
                 alignItems: 'center',
                 marginBottom: 32,
               }}>
-                <img
-                  src="https://res.cloudinary.com/dqwm8wgg8/image/upload/v1774700124/fyoozql4veqn4tafbowk.png"
-                  alt="GuidePay"
-                  style={{ height: 44, width: 'auto', filter: 'brightness(0) invert(1)', objectFit: 'contain' }}
-                />
+                <span style={{ fontFamily: 'Barlow, sans-serif', fontSize: 24, fontWeight: 800, color: 'white', letterSpacing: '-0.02em' }}>
+                  GuidePay
+                </span>
                 <motion.button
                   onClick={() => setMobileOpen(false)}
                   whileTap={{ scale: 0.9 }}
