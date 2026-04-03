@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://res.cloudinary.com/dqwm8wgg8/video/upload/q_auto/f_auto/v1775229907/gznyes9x60tenshgdmgi.mp4" height="56" alt="GuidePay"/>
+<img src="https://res.cloudinary.com/dqwm8wgg8/image/upload/q_auto/f_auto/v1775229340/u4qsxq76ijd9vw6yjhwj.gif" height="560" width="560" alt="GuidePay"/>
 
 # GuidePay
 
@@ -260,19 +260,7 @@ uvicorn app.main:app --reload --port 8000   # http://localhost:8000/docs
 
 ---
 
-## Team
 
-**Team SentinelX** · KL University, Vijayawada
-
-| Member | Role |
-|---|---|
-| **Karthikeya Velivela** | Founder & Full-Stack Engineer |
-
-3rd year B.Tech CSE, KL University (CGPA 9.46) · AppSec Intern at PETZU · GSoC 2026 Contributor (2 PRs merged) · Founder of FYRO (transport & labour marketplace) · Founder of Development Studio
-
-The founding insight for GuidePay came from FYRO — RK Cement Corporation, a building materials business in Tirupati, was the first customer for logistics. Watching delivery workers lose income during rain delays led directly to this product.
-
----
 
 <div align="center">
 
