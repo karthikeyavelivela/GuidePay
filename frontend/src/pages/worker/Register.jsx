@@ -177,6 +177,11 @@ export default function Register() {
                   <label style={labelStyle}>Password</label>
                   <input style={inputStyle} placeholder="••••••••" type="password"
                     value={form.password} onChange={e => update('password', e.target.value)} />
+                  {form.password && form.password.length < 6 && (
+                    <p style={{ fontSize: 13, color: '#F04438', fontFamily: 'Inter, sans-serif', marginTop: 4 }}>
+                      Password must be at least 6 characters
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label style={labelStyle}>Date of birth</label>

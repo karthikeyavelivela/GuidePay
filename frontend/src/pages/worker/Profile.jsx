@@ -339,8 +339,8 @@ export default function Profile() {
 
           {/* Phone */}
           <span style={{
-            fontSize: 13, fontFamily: 'Inter',
-            color: textTertiary,
+            fontSize: 13, fontFamily: 'Inter', fontWeight: 500,
+            color: textSecondary,
           }}>
             {(() => {
               const raw = w.phone || ''

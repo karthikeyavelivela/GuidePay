@@ -121,13 +121,13 @@ export default function CompleteProfile() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, fontFamily: 'Inter, sans-serif', color: '#6B6B6B', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F', marginBottom: 6 }}>
                 Phone
               </label>
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                style={{ width: '100%', padding: '0 14px', height: 52, border: '1.5px solid #E4E4E7', borderRadius: 12, fontSize: 15, fontFamily: 'Inter, sans-serif', color: '#0F0F0F', outline: 'none', background: 'white', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0 14px', height: 52, border: '1.5px solid #E4E4E7', borderRadius: 12, fontSize: 15, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#0F0F0F', outline: 'none', background: 'white', boxSizing: 'border-box' }}
               />
             </div>
 

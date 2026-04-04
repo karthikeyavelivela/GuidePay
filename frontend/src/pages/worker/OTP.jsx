@@ -68,9 +68,9 @@ export default function OTP() {
 
       <div className="px-6 pt-8">
         <h1 className="font-display font-bold text-[26px] text-[#0F0F0F]">Verify your number</h1>
-        <p className="font-body text-[15px] text-[#6B6B6B] mt-1.5">
+        <p className="font-body text-[15px] text-[#0F0F0F] font-semibold mt-1.5">
           {displayPhone}{' '}
-          <button onClick={() => navigate('/login')} className="text-brand font-medium">
+          <button onClick={() => navigate('/login')} className="text-brand font-medium ml-1">
             Wrong number?
           </button>
         </p>
