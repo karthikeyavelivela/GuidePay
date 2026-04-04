@@ -28,18 +28,18 @@ Go to render.com → Sign up with GitHub
 In Render dashboard → Environment tab:
 
 ```
-MONGODB_URL = mongodb+srv://2300032330:karthikeya%232005@cluster0.fsioiuq.mongodb.net/guidepay
+MONGODB_URL = mongodb+srv://USERNAME:PASSWORD@cluster.mongodb.net/guidepay
 MONGODB_DB_NAME = guidepay
-FIREBASE_PROJECT_ID = guide-pay
-FIREBASE_PRIVATE_KEY_ID = c1655b0cb1b3f6ad10bc06fdaea1cc18fa15309f
+FIREBASE_PROJECT_ID = your-firebase-project-id
+FIREBASE_PRIVATE_KEY_ID = your-private-key-id
 FIREBASE_PRIVATE_KEY = (paste entire private key with \n)
-FIREBASE_CLIENT_EMAIL = firebase-adminsdk-fbsvc@guide-pay.iam.gserviceaccount.com
-FIREBASE_CLIENT_ID = 105610383101752899067
-RAZORPAY_KEY_ID = rzp_test_mock_guidepay
-RAZORPAY_KEY_SECRET = mock_secret_guidepay_2026
+FIREBASE_CLIENT_EMAIL = firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+FIREBASE_CLIENT_ID = your-client-id
+RAZORPAY_KEY_ID = rzp_test_your_key_here
+RAZORPAY_KEY_SECRET = your_secret_here
 RAZORPAY_MOCK_MODE = true
-SECRET_KEY = guidepay-sentinelx-klu-devtrails-2026-phase2-secret-key
-FRONTEND_URL = https://guidepayklu.vercel.app
+SECRET_KEY = generate-a-random-64-char-string-here
+FRONTEND_URL = https://your-app.vercel.app
 ENVIRONMENT = production
 TRIGGER_POLL_INTERVAL_MINUTES = 15
 ```

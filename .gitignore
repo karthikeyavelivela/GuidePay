@@ -1,40 +1,58 @@
-# Environments
+============================================
+SECRETS — NEVER COMMIT THESE
+============================================
 .env
 .env.local
+.env.production
+.env.development
+frontend/.env
+frontend/.env.local
+backend/.env
+backend/.env.local
 
-# Editor directories and files
-.claude
-.vscode
-.idea
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Python
+============================================
+DEPENDENCIES
+============================================
+node_modules/
 __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
 venv/
 .venv/
+env/
 *.egg-info/
 dist/
 build/
+.eggs/
 
-# Node
-node_modules/
+============================================
+BUILD OUTPUT
+============================================
 frontend/dist/
+frontend/.vite/
+*.pkl
+*.joblib
 
-# Environment files (more specific)
-backend/.env
-frontend/.env
-*.env.local
-*.env.production
-
-# ML model files
+============================================
+ML MODELS (large binary files)
+============================================
 backend/app/ml/models/*.pkl
 backend/app/ml/models/*.joblib
 
-# Logs
+============================================
+IDE
+============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+============================================
+LOGS
+============================================
 *.log
+logs/
+npm-debug.log
