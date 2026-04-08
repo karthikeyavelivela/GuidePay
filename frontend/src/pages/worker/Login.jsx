@@ -64,8 +64,16 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      const user = await signInWithEmail(email, password)
-      const data = await loginWithFirebase(user.idToken, user.name || '', user.phone || '')
+      // Try direct login first (no Firebase dependency)
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+      const res = await fetch(`${API_URL}/api/v1/auth/direct-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'Login failed')
+
       localStorage.setItem('gp-access-token', data.access_token)
       localStorage.setItem('gp-token', data.access_token)
       const { login } = useWorkerStore.getState()

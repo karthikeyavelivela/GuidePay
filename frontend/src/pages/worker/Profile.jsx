@@ -22,6 +22,8 @@ export default function Profile() {
   const fileRef = useRef()
   const [realStats, setRealStats] = useState(null)
   const [profileData, setProfileData] = useState(null)
+  const [showLangMenu, setShowLangMenu] = useState(false)
+  const [selectedLang, setSelectedLang] = useState('en')
 
   // Fetch real profile stats on mount
   useEffect(() => {
@@ -109,13 +111,14 @@ export default function Profile() {
         {
           icon: Globe,
           label: 'Language',
-          sub: 'English',
+          sub: selectedLang === 'en' ? 'English' : selectedLang === 'hi' ? 'हिन्दी' : selectedLang === 'te' ? 'తెలుగు' : selectedLang === 'ta' ? 'தமிழ்' : 'English',
+          action: () => setShowLangMenu(!showLangMenu),
           right: (
             <span style={{
               fontSize: 12,
               color: textTertiary,
               fontFamily: 'Inter',
-            }}>EN ▾</span>
+            }}>{selectedLang.toUpperCase()} ▾</span>
           ),
         },
       ],
@@ -476,6 +479,58 @@ export default function Profile() {
               </div>
             </div>
           ))}
+
+          {/* Language dropdown */}
+          {showLangMenu && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: cardBg,
+                backdropFilter: isGif ? 'blur(16px)' : 'none',
+                border: cardBorder,
+                borderRadius: 14,
+                overflow: 'hidden',
+                marginBottom: 16,
+              }}
+            >
+              {[
+                { code: 'en', label: 'English', native: 'English' },
+                { code: 'hi', label: 'Hindi', native: 'हिन्दी' },
+                { code: 'te', label: 'Telugu', native: 'తెలుగు' },
+                { code: 'ta', label: 'Tamil', native: 'தமிழ்' },
+              ].map((lang, i, arr) => (
+                <motion.div
+                  key={lang.code}
+                  onClick={() => { setSelectedLang(lang.code); setShowLangMenu(false) }}
+                  whileTap={{ opacity: 0.7 }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 16px',
+                    cursor: 'pointer',
+                    borderBottom: i < arr.length - 1
+                      ? isGif ? '1px solid rgba(255,255,255,0.1)' : '1px solid var(--border-light)'
+                      : 'none',
+                    background: selectedLang === lang.code ? 'rgba(217,119,87,0.1)' : 'transparent',
+                  }}
+                >
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, fontFamily: 'Inter', color: textPrimary, margin: 0 }}>
+                      {lang.native}
+                    </p>
+                    <p style={{ fontSize: 11, fontFamily: 'Inter', color: textTertiary, margin: '2px 0 0' }}>
+                      {lang.label}
+                    </p>
+                  </div>
+                  {selectedLang === lang.code && (
+                    <span style={{ fontSize: 14, color: '#D97757', fontWeight: 700 }}>✓</span>
+                  )}
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
 
           {/* Sign out */}
           <motion.button

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 import { createUserProfile } from '../../services/api'
-import { signUpWithEmail } from '../../services/firebase'
 
 const STEPS = [
   { id: 1, label: 'Account' },
@@ -49,17 +48,25 @@ export default function Register() {
     } else {
       const doLogin = async () => {
         try {
-          const user = await signUpWithEmail(form.email, form.password, form.name)
-          const data = await createUserProfile({
-            firebase_token: user.idToken,
-            name: form.name,
-            phone: '',
-            city: form.city,
-            zone: form.zone || form.city,
-            zone_lat: 0,
-            zone_lng: 0,
+          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+          const res = await fetch(`${API_URL}/api/v1/auth/direct-signup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: form.name,
+              email: form.email,
+              password: form.password,
+              phone: '',
+              city: form.city,
+              zone: form.zone || form.city,
+              upi_id: form.upiId || null,
+              zone_lat: 0,
+              zone_lng: 0,
+            }),
           })
-          
+          const data = await res.json()
+          if (!res.ok) throw new Error(data.detail || 'Signup failed')
+
           localStorage.setItem('gp-access-token', data.access_token)
           localStorage.setItem('gp-token', data.access_token)
 

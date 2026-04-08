@@ -96,16 +96,11 @@ class AdminVerificationMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(AdminVerificationMiddleware)
 
-# CORS
+# CORS — allow all origins for competition demo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,
-        settings.frontend_url_local,
-        "http://localhost:5173",
-        "http://localhost:3000",
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -130,7 +125,7 @@ async def root():
         "service": "Guide-Pay API",
         "version": "2.0.0",
         "status": "operational",
-        "phase": "Phase 2 — Scale"
+        "phase": "Phase 3 — Competition Ready"
     }
 
 

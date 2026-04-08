@@ -31,6 +31,23 @@ class CreateUserRequest(BaseModel):
     zone_lng: float = 0.0
 
 
+class DirectSignupRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+    phone: Optional[str] = ""
+    city: str
+    zone: str
+    upi_id: Optional[str] = None
+    zone_lat: float = 0.0
+    zone_lng: float = 0.0
+
+
+class DirectLoginRequest(BaseModel):
+    email: str
+    password: str
+
+
 class AdminLoginRequest(BaseModel):
     username: str
     password: str
@@ -200,6 +217,113 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
             "risk_score": worker_doc.get("risk_score", 0.75),
             "premium_amount": worker_doc.get("premium_amount", 58.0),
             "photo_url": worker_doc.get("photo_url"),
+        }
+    }
+
+
+@router.post("/direct-signup")
+async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
+    """
+    Direct signup without Firebase. Uses email + password stored in MongoDB.
+    For competition demo when Firebase keys are unavailable.
+    """
+    import hashlib
+
+    existing = await db.workers.find_one({"email": request.email})
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already registered")
+
+    from bson import ObjectId
+    worker_id = str(ObjectId())
+    password_hash = hashlib.sha256(request.password.encode()).hexdigest()
+
+    worker_doc = {
+        "_id": worker_id,
+        "name": request.name,
+        "email": request.email,
+        "password_hash": password_hash,
+        "phone": request.phone or "",
+        "city": request.city,
+        "zone": request.zone,
+        "upi_id": request.upi_id,
+        "zone_lat": request.zone_lat,
+        "zone_lng": request.zone_lng,
+        "platforms": [],
+        "risk_score": 0.75,
+        "risk_tier": "MEDIUM",
+        "premium_amount": 58.0,
+        "is_active": True,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "total_claims": 0,
+        "total_payouts": 0.0,
+    }
+    await db.workers.insert_one(worker_doc)
+
+    access_token = create_access_token(
+        subject=worker_id,
+        uid=worker_id,
+        role="worker",
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "is_new_user": True,
+        "requires_profile": False,
+        "worker": {
+            "id": worker_id,
+            "name": request.name,
+            "email": request.email,
+            "phone": request.phone,
+            "city": request.city,
+            "zone": request.zone,
+            "upi_id": request.upi_id,
+            "platforms": [],
+            "risk_score": 0.75,
+            "premium_amount": 58.0,
+        }
+    }
+
+
+@router.post("/direct-login")
+async def direct_login(request: DirectLoginRequest, db=Depends(get_db)):
+    """
+    Direct login without Firebase. Matches email + password hash.
+    """
+    import hashlib
+
+    worker = await db.workers.find_one({"email": request.email})
+    if not worker:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    password_hash = hashlib.sha256(request.password.encode()).hexdigest()
+    if worker.get("password_hash") != password_hash:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    access_token = create_access_token(
+        subject=str(worker["_id"]),
+        uid=str(worker["_id"]),
+        role="worker",
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "is_new_user": False,
+        "requires_profile": not worker.get("city") or not worker.get("zone"),
+        "worker": {
+            "id": str(worker["_id"]),
+            "name": worker.get("name"),
+            "email": worker.get("email"),
+            "phone": worker.get("phone"),
+            "city": worker.get("city"),
+            "zone": worker.get("zone"),
+            "upi_id": worker.get("upi_id"),
+            "platforms": worker.get("platforms", []),
+            "risk_score": worker.get("risk_score", 0.75),
+            "premium_amount": worker.get("premium_amount", 58.0),
+            "photo_url": worker.get("photo_url"),
         }
     }
 
