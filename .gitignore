@@ -56,3 +56,4 @@ LOGS
 *.log
 logs/
 npm-debug.log
+.worktrees/
