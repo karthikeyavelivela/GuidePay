@@ -25,6 +25,7 @@ const Coverage = lazy(() => import('./pages/worker/Coverage'))
 const Dashboard = lazy(() => import('./pages/worker/Dashboard'))
 const ClaimStatus = lazy(() => import('./pages/worker/ClaimStatus'))
 const PayoutSuccess = lazy(() => import('./pages/worker/PayoutSuccess'))
+const PayoutReceipt = lazy(() => import('./pages/worker/PayoutReceipt'))
 const Profile = lazy(() => import('./pages/worker/Profile'))
 const ClaimsList = lazy(() => import('./pages/worker/ClaimsList'))
 const NotificationsPage = lazy(() => import('./pages/worker/NotificationsPage'))
@@ -134,6 +135,7 @@ function AppRoutes() {
           <Route path="/dashboard"      element={<Dashboard />} />
           <Route path="/claim/:id"      element={<ClaimStatus />} />
           <Route path="/payout-success" element={<PayoutSuccess />} />
+          <Route path="/payout/:claimId" element={<PayoutReceipt />} />
           <Route path="/profile"        element={<Profile />} />
           <Route path="/claims"         element={<ClaimsList />} />
           <Route path="/notifications"  element={<NotificationsPage />} />

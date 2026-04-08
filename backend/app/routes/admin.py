@@ -375,3 +375,25 @@ async def get_analytics(
         "plan_breakdown": plan_breakdown,
         "period_days": days,
     }
+
+
+@router.get("/predictive-analytics")
+async def get_predictive_analytics(
+    db=Depends(get_admin_db)
+):
+    """
+    ML-powered prediction for next week's claims.
+    Uses weather forecasts + historical patterns.
+    """
+    from app.ml.predictive_model import (
+        predict_next_week_claims
+    )
+    import os
+
+    api_key = os.getenv("OPENWEATHER_API_KEY")
+
+    result = await predict_next_week_claims(
+        db=db,
+        openweather_key=api_key,
+    )
+    return result

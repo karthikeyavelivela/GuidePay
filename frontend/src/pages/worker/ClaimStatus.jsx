@@ -7,6 +7,7 @@ import Badge from '../../components/ui/Badge'
 import BottomNav from '../../components/ui/BottomNav'
 import ChatWidget from '../../components/chat/ChatWidget'
 import { ClaimTimeline } from '../../components/claims/ClaimTimeline'
+import { AdvancedFraudPanel } from '../../components/claims/AdvancedFraudPanel'
 import { useClaimStore } from '../../store/claimStore'
 import { useWorkerStore } from '../../store/workerStore'
 import { getClaimDetail } from '../../services/api'
@@ -19,6 +20,7 @@ const pageVariants = {
 
 export default function ClaimStatus() {
   const { id } = useParams()
+  const navigate = useNavigate()
   const storeClaim = useClaimStore((s) => s.activeClaim)
   const workerClaims = useWorkerStore((s) => s.claims)
   const [apiClaim, setApiClaim] = useState(null)
@@ -128,6 +130,24 @@ export default function ClaimStatus() {
 
         {/* Feature 2: Claim Timeline */}
         <ClaimTimeline claim={claim} />
+
+        <AdvancedFraudPanel claim={claim} />
+
+        {claim?.status === 'AUTO_APPROVED' && !claim?.paid_at && (
+          <motion.button
+            onClick={() => navigate(`/payout/${claim.id || claim._id}`)}
+            style={{
+              width: '100%', padding: '14px',
+              borderRadius: 12, border: 'none',
+              background: '#12B76A',
+              color: 'white', fontSize: 15,
+              fontWeight: 700, fontFamily: 'Inter',
+              cursor: 'pointer', marginTop: 12,
+            }}
+          >
+            💰 Receive ₹{claim.amount} via UPI →
+          </motion.button>
+        )}
       </div>
 
       <ChatWidget />

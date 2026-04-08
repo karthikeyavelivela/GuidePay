@@ -60,9 +60,63 @@ const MOCK_DATA = {
   ],
 }
 
+const DEMO_PREDICTIONS = {
+  portfolio_summary: {
+    active_policies: 634,
+    weekly_premium_income: 47770,
+    expected_claims: 47,
+    expected_payout: 28200,
+    projected_loss_ratio: 0.591,
+    monsoon_intensity: 0.72,
+  },
+  city_predictions: [
+    { city: 'Hyderabad', flood_probability: 0.72, expected_claims: 18, expected_payout: 10800, risk_level: 'HIGH', active_policies: 312 },
+    { city: 'Mumbai', flood_probability: 0.85, expected_claims: 16, expected_payout: 9600, risk_level: 'HIGH', active_policies: 198 },
+    { city: 'Chennai', flood_probability: 0.58, expected_claims: 8, expected_payout: 4800, risk_level: 'MEDIUM', active_policies: 143 },
+    { city: 'Delhi', flood_probability: 0.22, expected_claims: 3, expected_payout: 1800, risk_level: 'LOW', active_policies: 67 },
+    { city: 'Bengaluru', flood_probability: 0.12, expected_claims: 2, expected_payout: 1200, risk_level: 'LOW', active_policies: 127 },
+  ],
+  recommendations: [
+    { severity: 'MEDIUM', action: 'Pre-position reserves for Mumbai and Hyderabad', detail: 'High flood probability next week' },
+    { severity: 'INFO', action: 'Peak monsoon season active', detail: 'Monsoon intensity 72% — elevated claims expected' },
+  ],
+}
+
 const InsurerDashboard = () => {
   const [data, setData] = useState(MOCK_DATA)
   const [period, setPeriod] = useState('month')
+  const [predictions, setPredictions] = useState(null)
+  const [predLoading, setPredLoading] = useState(true)
+
+  useEffect(() => {
+    loadPredictions()
+  }, [])
+
+  const loadPredictions = async () => {
+    setPredLoading(true)
+    try {
+      const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+      if (!USE_MOCK) {
+        const token = localStorage.getItem('gp-token')
+        const res = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/v1/admin/predictive-analytics`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+        if (res.ok) {
+          const data = await res.json()
+          setPredictions(data)
+        } else {
+          setPredictions(DEMO_PREDICTIONS)
+        }
+      } else {
+        setPredictions(DEMO_PREDICTIONS)
+      }
+    } catch (e) {
+      setPredictions(DEMO_PREDICTIONS)
+    } finally {
+      setPredLoading(false)
+    }
+  }
 
   return (
     <div style={{
@@ -172,6 +226,175 @@ const InsurerDashboard = () => {
               </p>
             </div>
           ))}
+        </div>
+
+        {/* Predictive Analytics Section */}
+        <div style={{
+          background: '#1A1A1A',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 14, padding: 20,
+          marginBottom: 16,
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center', marginBottom: 16,
+          }}>
+            <div>
+              <p style={{
+                fontFamily: 'Bricolage Grotesque',
+                fontSize: 16, fontWeight: 700,
+                color: 'white', margin: '0 0 3px',
+              }}>
+                🔮 Next Week Prediction
+              </p>
+              <p style={{
+                fontSize: 12, fontFamily: 'Inter',
+                color: 'rgba(255,255,255,0.4)', margin: 0,
+              }}>
+                ML forecast · Updated every 6 hours
+              </p>
+            </div>
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              fontFamily: 'Inter', color: '#D97757',
+              background: 'rgba(217,119,87,0.12)',
+              padding: '4px 10px', borderRadius: 999,
+              border: '1px solid rgba(217,119,87,0.25)',
+            }}>
+              PREDICTIVE v3
+            </span>
+          </div>
+
+          {predictions && (
+            <>
+              {/* Portfolio summary */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 10, marginBottom: 16,
+              }}>
+                {[
+                  { label: 'Expected Claims', value: predictions.portfolio_summary.expected_claims, color: '#F79009' },
+                  { label: 'Expected Payout', value: `₹${(predictions.portfolio_summary.expected_payout/1000).toFixed(1)}K`, color: '#F04438' },
+                  { label: 'Projected Loss Ratio', value: `${Math.round(predictions.portfolio_summary.projected_loss_ratio * 100)}%`, color: predictions.portfolio_summary.projected_loss_ratio > 0.65 ? '#F04438' : '#12B76A' },
+                ].map(stat => (
+                  <div key={stat.label} style={{
+                    background: '#111', borderRadius: 10, padding: '12px 14px',
+                  }}>
+                    <p style={{
+                      fontFamily: 'Bricolage Grotesque',
+                      fontSize: 20, fontWeight: 800,
+                      color: stat.color, margin: '0 0 3px',
+                    }}>
+                      {stat.value}
+                    </p>
+                    <p style={{
+                      fontSize: 10, fontFamily: 'Inter',
+                      color: 'rgba(255,255,255,0.35)', margin: 0,
+                    }}>
+                      {stat.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* City predictions table */}
+              <div style={{
+                background: '#111', borderRadius: 10,
+                overflow: 'hidden', marginBottom: 14,
+              }}>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr 0.8fr',
+                  padding: '8px 14px',
+                  fontSize: 9, fontWeight: 700,
+                  fontFamily: 'Inter',
+                  color: 'rgba(255,255,255,0.3)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1.5px',
+                  borderBottom: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  {['City', 'Flood Risk', 'Expected Claims', 'Expected Payout', 'Risk Level'].map(h => (
+                    <span key={h}>{h}</span>
+                  ))}
+                </div>
+                {predictions.city_predictions.map((city, i) => (
+                  <div key={city.city} style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 0.8fr 0.8fr 0.8fr 0.8fr',
+                    padding: '10px 14px', alignItems: 'center',
+                    borderBottom: i < predictions.city_predictions.length - 1
+                      ? '1px solid rgba(255,255,255,0.04)' : 'none',
+                  }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter', color: 'white' }}>
+                      {city.city}
+                    </span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 700, fontFamily: 'Inter',
+                      color: city.flood_probability > 0.65 ? '#F04438'
+                        : city.flood_probability > 0.35 ? '#F79009' : '#12B76A',
+                    }}>
+                      {Math.round(city.flood_probability * 100)}%
+                    </span>
+                    <span style={{ fontSize: 13, fontFamily: 'Inter', color: 'rgba(255,255,255,0.6)' }}>
+                      ~{city.expected_claims}
+                    </span>
+                    <span style={{ fontSize: 13, fontFamily: 'Inter', color: 'rgba(255,255,255,0.6)' }}>
+                      ₹{(city.expected_payout/1000).toFixed(1)}K
+                    </span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, fontFamily: 'Inter',
+                      color: city.risk_level === 'HIGH' ? '#F04438'
+                        : city.risk_level === 'MEDIUM' ? '#F79009' : '#12B76A',
+                      background: city.risk_level === 'HIGH' ? 'rgba(240,68,56,0.1)'
+                        : city.risk_level === 'MEDIUM' ? 'rgba(247,144,9,0.1)'
+                        : 'rgba(18,183,106,0.1)',
+                      padding: '2px 8px', borderRadius: 999,
+                    }}>
+                      {city.risk_level}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Recommendations */}
+              {predictions.recommendations.map((rec, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: 10,
+                  padding: '10px 12px',
+                  background: rec.severity === 'HIGH' ? 'rgba(240,68,56,0.08)'
+                    : rec.severity === 'MEDIUM' ? 'rgba(247,144,9,0.08)'
+                    : 'rgba(46,144,250,0.08)',
+                  border: `1px solid ${rec.severity === 'HIGH' ? 'rgba(240,68,56,0.2)'
+                    : rec.severity === 'MEDIUM' ? 'rgba(247,144,9,0.2)'
+                    : 'rgba(46,144,250,0.2)'}`,
+                  borderRadius: 8,
+                  marginBottom: i < predictions.recommendations.length - 1 ? 8 : 0,
+                }}>
+                  <span style={{ fontSize: 16 }}>
+                    {rec.severity === 'HIGH' ? '🚨' : rec.severity === 'MEDIUM' ? '⚠️' : 'ℹ️'}
+                  </span>
+                  <div>
+                    <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter', color: 'white', margin: '0 0 2px' }}>
+                      {rec.action}
+                    </p>
+                    <p style={{ fontSize: 11, fontFamily: 'Inter', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                      {rec.detail}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {predLoading && !predictions && (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <p style={{ color: 'rgba(255,255,255,0.3)', fontFamily: 'Inter', fontSize: 13 }}>
+                Loading predictions...
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Revenue vs Payouts chart */}

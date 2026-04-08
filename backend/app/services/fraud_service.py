@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 
 async def calculate_fraud_score(
@@ -194,6 +194,47 @@ async def calculate_fraud_score(
     else:
         checks["zone_history"] = {"result": "PASS", "score": 0.0}
 
+    # CHECK 8 — Advanced GPS Spoofing
+    if claim_gps_lat and claim_gps_lng:
+        from app.services.gps_fraud_service import (
+            run_advanced_gps_checks
+        )
+        gps_result = await run_advanced_gps_checks(
+            worker=worker,
+            claim={},
+            db=db,
+            claim_lat=claim_gps_lat,
+            claim_lng=claim_gps_lng,
+        )
+        checks["gps_spoofing"] = gps_result
+        score += gps_result["gps_fraud_score"] * 0.5
+        if gps_result["gps_spoofing_detected"]:
+            flags.extend(gps_result["gps_flags"])
+
+    # CHECK 9 — Historical Weather Validation
+    from app.services.weather_validation import (
+        validate_weather_claim
+    )
+    zone = worker.get("zone", "")
+    zone_lat = worker.get("zone_lat", 0)
+    zone_lng = worker.get("zone_lng", 0)
+    trigger_type = trigger_event.get(
+        "trigger_type", "FLOOD"
+    )
+
+    weather_result = await validate_weather_claim(
+        zone_lat=zone_lat,
+        zone_lng=zone_lng,
+        claim_date=datetime.utcnow(),
+        trigger_type=trigger_type,
+        db=db,
+        zone=zone,
+    )
+    checks["weather_validation"] = weather_result
+    score += weather_result["fraud_score_contribution"]
+    if weather_result["decision"] == "WEATHER_UNCONFIRMED":
+        flags.append("WEATHER_NOT_CONFIRMED")
+
     final_score = round(max(0.0, min(1.0, score)), 3)
     decision = "AUTO_APPROVED" if final_score < 0.70 else "MANUAL_REVIEW"
     explanation.append(
@@ -208,4 +249,5 @@ async def calculate_fraud_score(
         "checks": checks,
         "decision": decision,
         "explanation": explanation,
+        "fraud_version": "v3_advanced",
     }
