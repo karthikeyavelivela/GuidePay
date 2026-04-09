@@ -8,6 +8,7 @@ const PayoutReceipt = () => {
   const { claimId } = useParams()
   const navigate = useNavigate()
   const worker = useWorkerStore(s => s.worker)
+  const activePolicy = useWorkerStore(s => s.activePolicy)
   const claims = useWorkerStore(s => s.claims)
   const [claim, setClaim] = useState(null)
   const [paying, setPaying] = useState(false)
@@ -15,6 +16,13 @@ const PayoutReceipt = () => {
   const [payoutData, setPayoutData] = useState(null)
 
   useEffect(() => {
+    // Must have an active policy to access payout
+    const hasPolicy = !!(activePolicy && activePolicy.status === 'ACTIVE')
+    if (!hasPolicy) {
+      navigate('/coverage', { replace: true })
+      return
+    }
+
     const found = claims.find(
       c => (c.id || c._id) === claimId
     )
@@ -22,9 +30,21 @@ const PayoutReceipt = () => {
       setClaim(found)
       if (found.status === 'PAID') {
         setPaid(true)
+        if (found.razorpay_payout_id || found.upi_transaction_id) {
+          setPayoutData({
+            payout_id: found.razorpay_payout_id,
+            transaction_id: found.upi_transaction_id,
+            upi_id: found.upi_id,
+            amount: found.amount,
+            status: 'PROCESSED',
+            processed_at: found.paid_at,
+          })
+        }
       }
+    } else {
+      navigate('/claims', { replace: true })
     }
-  }, [claimId, claims])
+  }, [claimId, claims, activePolicy])
 
   const handleSimulatePayout = async () => {
     setPaying(true)

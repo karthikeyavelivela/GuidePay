@@ -22,11 +22,13 @@ export const useWorkerStore = create(
       claims: [],
       notifications: [],
       detectedCity: null,
+      language: 'en',
 
       // Setters
       setWorker: (worker) => set({ worker }),
       setAuthenticated: (val) => set({ isAuthenticated: val }),
       setPhone: (phone) => set({ phone }),
+      setLanguage: (lang) => set({ language: lang }),
 
       // THIS IS THE CRITICAL ONE:
       setActivePolicy: (policy) => {
@@ -70,6 +72,7 @@ export const useWorkerStore = create(
         notifications: [],
         detectedCity: null,
         profileBg: 'plain',
+        language: 'en',
       }),
     }),
     {

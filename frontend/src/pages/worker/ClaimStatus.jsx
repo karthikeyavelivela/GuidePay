@@ -23,8 +23,10 @@ export default function ClaimStatus() {
   const navigate = useNavigate()
   const storeClaim = useClaimStore((s) => s.activeClaim)
   const workerClaims = useWorkerStore((s) => s.claims)
+  const activePolicy = useWorkerStore((s) => s.activePolicy)
   const [apiClaim, setApiClaim] = useState(null)
   const [loading, setLoading] = useState(true)
+  const hasActivePolicy = !!(activePolicy && activePolicy.status === 'ACTIVE')
 
   // Fetch real claim data from backend
   useEffect(() => {
@@ -133,7 +135,7 @@ export default function ClaimStatus() {
 
         <AdvancedFraudPanel claim={claim} />
 
-        {claim?.status === 'AUTO_APPROVED' && !claim?.paid_at && (
+        {hasActivePolicy && claim?.status === 'AUTO_APPROVED' && !claim?.paid_at && (
           <motion.button
             onClick={() => navigate(`/payout/${claim.id || claim._id}`)}
             style={{

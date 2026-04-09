@@ -169,11 +169,13 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
         raise HTTPException(status_code=409, detail="User already exists")
 
     from bson import ObjectId
+    worker_id = str(ObjectId())
+    
     worker_doc = {
-        "_id": str(ObjectId()),
+        "_id": worker_id,
         "firebase_uid": firebase_user["uid"],
         "name": request.name,
-        "phone": request.phone,
+        "phone": request.phone if request.phone else f"temp_{worker_id[:8]}",
         "email": firebase_user.get("email"),
         "photo_url": firebase_user.get("photo_url"),
         "city": request.city,
@@ -242,7 +244,7 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
         "name": request.name,
         "email": request.email,
         "password_hash": password_hash,
-        "phone": request.phone or "",
+        "phone": request.phone if request.phone else f"temp_{worker_id[:8]}",
         "city": request.city,
         "zone": request.zone,
         "upi_id": request.upi_id,

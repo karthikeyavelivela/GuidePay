@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
-import { createUserProfile } from '../../services/api'
+import { createUserProfile, loginWithFirebase } from '../../services/api'
+import { signInWithEmail, signUpWithEmail } from '../../services/firebase'
 
 const STEPS = [
   { id: 1, label: 'Account' },
@@ -35,6 +36,36 @@ export default function Register() {
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
+  const completeWorkerLogin = (data) => {
+    localStorage.setItem('gp-access-token', data.access_token)
+    localStorage.setItem('gp-token', data.access_token)
+
+    login({
+      ...data.worker,
+      zone: data.worker?.zone || form.zone || 'kondapur-hyderabad',
+      riskScore: data.worker?.risk_score ?? 0.82,
+      riskTier: data.worker?.risk_tier || 'LOW',
+      premium: data.worker?.premium_amount ?? 58,
+      coverageCap: 600,
+      policyStatus: 'ACTIVE',
+      platforms: data.worker?.platforms?.length ? data.worker.platforms : form.platforms,
+    })
+    setActivePolicy(true)
+    navigate(data.requires_profile ? '/complete-profile' : '/dashboard')
+  }
+
+  const isFirebaseEmailAlreadyUsed = (error) =>
+    error?.code === 'auth/email-already-in-use'
+
+  const isUserAlreadyCreated = (error) =>
+    error?.status === 409
+    || error?.response?.status === 409
+    || error?.detail === 'User already exists'
+
+  const isBackendNetworkError = (error) =>
+    error?.code === 'ERR_NETWORK'
+    || /network error/i.test(error?.message || '')
+
   const canProceed = () => {
     if (step === 1) return form.name.trim().length >= 2 && form.email.length > 5 && form.password.length >= 6
     if (step === 2) return form.platforms.length > 0 && form.city
@@ -48,43 +79,44 @@ export default function Register() {
     } else {
       const doLogin = async () => {
         try {
-          const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-          const res = await fetch(`${API_URL}/api/v1/auth/direct-signup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          let user
+          try {
+            user = await signUpWithEmail(form.email, form.password, form.name)
+          } catch (signupError) {
+            if (!isFirebaseEmailAlreadyUsed(signupError)) {
+              throw signupError
+            }
+            user = await signInWithEmail(form.email, form.password)
+          }
+
+          try {
+            const data = await createUserProfile({
+              firebase_token: user.idToken,
               name: form.name,
-              email: form.email,
-              password: form.password,
               phone: '',
               city: form.city,
               zone: form.zone || form.city,
               upi_id: form.upiId || null,
               zone_lat: 0,
               zone_lng: 0,
-            }),
-          })
-          const data = await res.json()
-          if (!res.ok) throw new Error(data.detail || 'Signup failed')
+            })
 
-          localStorage.setItem('gp-access-token', data.access_token)
-          localStorage.setItem('gp-token', data.access_token)
-
-          login({
-            ...data.worker,
-            zone: form.zone || 'kondapur-hyderabad',
-            riskScore: 0.82,
-            riskTier: 'LOW',
-            premium: 58,
-            coverageCap: 600,
-            policyStatus: 'ACTIVE',
-            platforms: form.platforms,
-          })
-          setActivePolicy(true)
-          navigate('/dashboard')
+            completeWorkerLogin(data)
+            return
+          } catch (profileError) {
+            if (isUserAlreadyCreated(profileError)) {
+              const data = await loginWithFirebase(user.idToken, form.name, '')
+              completeWorkerLogin(data)
+              return
+            }
+            throw profileError
+          }
         } catch (error) {
           console.error("Signup failed", error)
-          alert("Signup failed: " + error.message)
+          const message = isBackendNetworkError(error)
+            ? 'Signup failed: backend is not reachable at http://127.0.0.1:8000. Start the API server and try again.'
+            : `Signup failed: ${error?.detail || error?.message || 'Unknown error'}`
+          alert(message)
         }
       }
 

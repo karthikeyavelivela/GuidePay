@@ -7,7 +7,7 @@ const isPlaceholderUrl =
   rawApiUrl.includes('your-app.onrender.com') ||
   rawApiUrl.includes('your-render-url.onrender.com')
 
-const BASE_URL = isPlaceholderUrl ? 'http://localhost:8000' : rawApiUrl.replace(/\/$/, '')
+const BASE_URL = isPlaceholderUrl ? 'http://127.0.0.1:8000' : rawApiUrl.replace(/\/$/, '')
 export const API_URL = `${BASE_URL}/api/v1`
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -60,10 +60,21 @@ http.interceptors.response.use(
       error?.response?.data || error?.message
     )
     if (error.response?.status === 401) {
-      localStorage.removeItem('gp-token')
-      localStorage.removeItem('gp-access-token')
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login'
+      const url = error?.config?.url || ''
+      const isAdminRoute = url.startsWith('/admin') || url.startsWith('/actuarial') || url.startsWith('/support/admin')
+      if (isAdminRoute) {
+        localStorage.removeItem('gp-admin-token')
+        localStorage.removeItem('gp-admin-access-token')
+        localStorage.removeItem('gp-admin-auth')
+        if (!window.location.pathname.includes('/admin/login')) {
+          window.location.href = '/admin/login'
+        }
+      } else {
+        localStorage.removeItem('gp-token')
+        localStorage.removeItem('gp-access-token')
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
       }
     }
     return Promise.reject(error.response?.data || error)
@@ -137,6 +148,8 @@ export const getClaimsQueue = (status = 'ALL') =>
 export const getAdminAnalytics = (days = 30) =>
   http.get('/admin/analytics', { params: { days } })
 export const getAnalytics = getAdminAnalytics
+export const getWorkers = (status = 'ALL', search = '', limit = 50, skip = 0) =>
+  http.get('/admin/workers', { params: { status, search, limit, skip } })
 export const approveClaim = (id) => http.patch(`/admin/claims/${id}/approve`)
 export const rejectClaim = (id, reason) =>
   http.patch(`/admin/claims/${id}/reject`, null, { params: { reason } })

@@ -397,3 +397,75 @@ async def get_predictive_analytics(
         openweather_key=api_key,
     )
     return result
+
+
+@router.get("/workers")
+async def get_all_workers(
+    status: str = "ALL",
+    search: str = "",
+    limit: int = Query(50, le=200),
+    skip: int = 0,
+    db=Depends(get_admin_db)
+):
+    """Get workers list for admin management"""
+    query = {}
+    
+    if status == "ACTIVE":
+        query["is_active"] = True
+    elif status == "INACTIVE":
+        query["is_active"] = False
+
+    if search:
+        query["$or"] = [
+            {"name": {"$regex": search, "$options": "i"}},
+            {"phone": {"$regex": search, "$options": "i"}},
+            {"city": {"$regex": search, "$options": "i"}},
+        ]
+
+    workers = await db.workers.find(query).sort(
+        "created_at", -1
+    ).skip(skip).limit(limit).to_list(limit)
+
+    total = await db.workers.count_documents(query)
+
+    return {
+        "workers": [serialize_doc(w) for w in workers],
+        "total": total,
+    }
+
+
+class SuspendWorkerRequest(BaseModel):
+    suspended: bool
+
+
+@router.patch("/workers/{worker_id}/suspend")
+async def suspend_worker(
+    worker_id: str,
+    request: SuspendWorkerRequest,
+    db=Depends(get_admin_db)
+):
+    """Suspend or unsuspend a worker"""
+    from bson.objectid import ObjectId
+    try:
+        obj_id = ObjectId(worker_id)
+    except:
+        obj_id = worker_id
+
+    worker = await db.workers.find_one({"_id": obj_id})
+    if not worker:
+        # Fallback to string id lookup if not ObjectId
+        worker = await db.workers.find_one({"_id": worker_id})
+        if not worker:
+            raise HTTPException(404, "Worker not found")
+        obj_id = worker_id
+
+    await db.workers.update_one(
+        {"_id": obj_id},
+        {"$set": {
+            "suspended": request.suspended,
+            "is_active": not request.suspended, # if suspended, set is_active to False
+            "updated_at": datetime.utcnow(),
+        }}
+    )
+
+    return {"success": True, "worker_id": str(obj_id), "suspended": request.suspended}

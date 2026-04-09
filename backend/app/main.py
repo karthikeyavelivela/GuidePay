@@ -78,17 +78,19 @@ app.add_middleware(RequestLoggingMiddleware)
 
 class AdminVerificationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
+        from fastapi.responses import JSONResponse
         protected_prefixes = ("/api/v1/admin", "/api/v1/actuarial", "/api/v1/support/admin")
         excluded_paths = {"/api/v1/auth/admin/login"}
 
         if request.url.path.startswith(protected_prefixes) and request.url.path not in excluded_paths:
             auth_header = request.headers.get("Authorization", "")
             if not auth_header.startswith("Bearer "):
-                from fastapi.responses import JSONResponse
                 return JSONResponse({"detail": "Admin authorization required"}, status_code=401)
-            payload = decode_token(auth_header.replace("Bearer ", "", 1))
+            try:
+                payload = decode_token(auth_header.replace("Bearer ", "", 1))
+            except Exception:
+                return JSONResponse({"detail": "Admin token expired or invalid. Please log in again."}, status_code=401)
             if payload.get("role") != "admin":
-                from fastapi.responses import JSONResponse
                 return JSONResponse({"detail": "Admin token required"}, status_code=403)
             request.state.admin = payload
         return await call_next(request)

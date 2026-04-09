@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { useState } from 'react'
+import { Outlet, useNavigate, useLocation, Navigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, FileCheck, BarChart2, FileText,
-  Menu, X, RefreshCw, Bell, LogOut, Headphones, Activity,
+  Menu, X, RefreshCw, Bell, LogOut, Headphones, Activity, Users,
 } from 'lucide-react'
 
 const ADMIN_NAV = [
@@ -11,6 +11,7 @@ const ADMIN_NAV = [
   { label: 'Actuarial',      icon: Activity,         path: '/admin/actuarial' },
   { label: 'Claims',         icon: FileCheck,        path: '/admin/claims' },
   { label: 'Analytics',      icon: BarChart2,        path: '/admin/analytics' },
+  { label: 'Workers',        icon: Users,            path: '/admin/workers' },
   { label: 'Insurer View',   icon: FileText,         path: '/admin/insurer' },
   { label: 'Reports',        icon: FileText,         path: '/admin/reports' },
   { label: 'Support Inbox',  icon: Headphones,       path: '/admin/support', badge: 'live' },
@@ -24,6 +25,36 @@ const PAGE_TITLES = {
   '/admin/reports': 'Reports',
   '/admin/insurer': 'Insurer View',
   '/admin/support': 'Support Inbox',
+}
+
+function checkAdminAuth() {
+  const token = localStorage.getItem('gp-admin-token')
+  if (token) {
+    // Decode the JWT payload (base64) and check expiry without a library
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      if (payload.exp && payload.exp * 1000 < Date.now()) {
+        // Expired — wipe it so the login page is shown
+        localStorage.removeItem('gp-admin-token')
+        localStorage.removeItem('gp-admin-access-token')
+        localStorage.removeItem('gp-admin-auth')
+        return false
+      }
+      return true
+    } catch {
+      localStorage.removeItem('gp-admin-token')
+      return false
+    }
+  }
+  const authRaw = localStorage.getItem('gp-admin-auth')
+  if (!authRaw) return false
+  if (authRaw === 'true') return true
+  try {
+    const auth = JSON.parse(authRaw)
+    return auth.authenticated === true
+  } catch {
+    return false
+  }
 }
 
 function AdminSidebar({ onClose }) {
@@ -128,12 +159,10 @@ export default function AdminLayout() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  // Auth guard
-  useEffect(() => {
-    if (!localStorage.getItem('gp-admin-token')) {
-      navigate('/admin/login', { replace: true })
-    }
-  }, [location.pathname])
+  // Synchronous auth guard — runs during render, no flash of admin content
+  if (!checkAdminAuth()) {
+    return <Navigate to="/admin/login" replace />
+  }
 
   const pageTitle = PAGE_TITLES[location.pathname] || 'Admin'
   const breadcrumb = `Admin / ${pageTitle}`

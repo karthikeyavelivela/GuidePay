@@ -10,6 +10,7 @@ import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
 import { useWorkerStore } from '../../store/workerStore'
 import { formatINR } from '../../utils/formatters'
 import { getMyClaims, getMyProfile, getMyZoneForecast } from '../../services/api'
+import { useTranslation } from '../../i18n/useTranslation'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -34,6 +35,7 @@ export default function Dashboard() {
   const setShowTour = useWorkerStore((s) => s.setShowTour)
   const setWorker = useWorkerStore((s) => s.setWorker)
   const setActivePolicy = useWorkerStore((s) => s.setActivePolicy)
+  const { t } = useTranslation()
   const now = new Date()
   const weekStartDate = new Date(now)
   weekStartDate.setDate(now.getDate() - now.getDay() + 1)
@@ -490,9 +492,9 @@ export default function Dashboard() {
           <div className="grid grid-cols-4 gap-2">
             {[
               { icon: ShieldCheck, label: 'Earnings', path: '/earnings', color: '#12B76A', bg: '#ECFDF3' },
-              { icon: MapPin, label: 'Zone Intel', path: '/zone-intel', color: '#2E90FA', bg: '#EFF8FF' },
-              { icon: Bot, label: 'Assistant', path: '/assistant', color: '#D97757', bg: '#FDF1ED' },
-              { icon: TrendingUp, label: 'Risk Score', path: '/risk-score', color: '#7A5AF8', bg: '#F4F3FF' },
+              { icon: MapPin, label: t('zone_intel'), path: '/zone-intel', color: '#2E90FA', bg: '#EFF8FF' },
+              { icon: Bot, label: t('assistant'), path: '/assistant', color: '#D97757', bg: '#FDF1ED' },
+              { icon: TrendingUp, label: t('risk_score'), path: '/risk-score', color: '#7A5AF8', bg: '#F4F3FF' },
               { icon: Zap, label: 'How It Works', path: '/how-it-works', color: '#F79009', bg: '#FFFAEB' },
             ].map((action) => {
               const Icon = action.icon
@@ -533,9 +535,9 @@ export default function Dashboard() {
         {/* Recent payouts */}
         <motion.div variants={fadeUp}>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>Recent payouts</p>
+            <p className="text-[14px] font-semibold font-body" style={{ color: 'var(--text-primary)' }}>{t('recent_claims')}</p>
             {paidClaims.length > 0 && (
-              <button className="text-[13px] text-brand font-semibold font-body" onClick={() => navigate('/claims')}>View all claims</button>
+              <button className="text-[13px] text-brand font-semibold font-body" onClick={() => navigate('/claims')}>{t('view_all')}</button>
             )}
           </div>
           <div className="rounded-card shadow-card overflow-hidden" style={{ background: 'var(--bg-card)' }}>

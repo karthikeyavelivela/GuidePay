@@ -45,6 +45,7 @@ const InsurerDashboard = lazy(() => import('./pages/admin/InsurerDashboard'))
 const Reports = lazy(() => import('./pages/admin/Reports'))
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
 const AdminSupport = lazy(() => import('./pages/admin/AdminSupport'))
+const WorkerManagement = lazy(() => import('./pages/admin/WorkerManagement'))
 const Support = lazy(() => import('./pages/worker/Support'))
 const HowItWorks = lazy(() => import('./pages/worker/HowItWorks'))
 
@@ -157,6 +158,7 @@ function AppRoutes() {
           <Route path="/admin/claims"       element={<ClaimsQueue />} />
           <Route path="/admin/analytics"    element={<Analytics />} />
           <Route path="/admin/reports"      element={<Reports />} />
+          <Route path="/admin/workers"      element={<WorkerManagement />} />
           <Route path="/admin/insurer"      element={<InsurerDashboard />} />
           <Route path="/admin/support"      element={<AdminSupport />} />
         </Route>
