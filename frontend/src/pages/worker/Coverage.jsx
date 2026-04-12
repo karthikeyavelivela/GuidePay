@@ -29,7 +29,7 @@ const PLANS = [
   {
     id: 'standard',
     name: 'Standard',
-    price: 58,
+    price: 62,
     coverage: 600,
     badge: 'Most Popular',
     description: 'Best for most workers',
@@ -49,7 +49,7 @@ const PLANS = [
   {
     id: 'premium',
     name: 'Premium',
-    price: 69,
+    price: 89,
     coverage: 900,
     badge: 'Best Protection',
     description: 'For high-risk flood zones',
@@ -123,7 +123,7 @@ export default function Coverage() {
 
   const getAdjustedPrice = (basePlanPrice) => {
     if (!mlPremium?.final_premium) return basePlanPrice
-    const ratio = mlPremium.final_premium / 58
+    const ratio = mlPremium.final_premium / 62
     return Math.max(35, Math.round(basePlanPrice * ratio))
   }
 
@@ -191,7 +191,7 @@ export default function Coverage() {
             </div>
             <div style={{ textAlign: 'right' }}>
               <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 34, fontWeight: 800, color: '#D97757', margin: 0 }}>
-                Rs{mlPremium?.final_premium || 58}
+                Rs{mlPremium?.final_premium || 62}
               </p>
               <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: 0 }}>
                 /week

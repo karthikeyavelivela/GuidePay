@@ -84,12 +84,12 @@ const PLANS = [
     cta: 'Get Basic',
   },
   {
-    name: 'Standard', price: 58, zone: 'Medium risk zone', popular: true,
+    name: 'Standard', price: 62, zone: 'Medium risk zone', popular: true,
     features: ['Up to ₹600/week coverage', 'All 3 triggers included', 'UPI instant payout < 2hrs', 'AI 24h flood forecast', 'Worker risk score tracking', 'Activity verification', 'Priority claim review', 'Flood alert notifications'],
     cta: 'Get Standard →',
   },
   {
-    name: 'Premium', price: 69, zone: 'High risk zone', popular: false,
+    name: 'Premium', price: 89, zone: 'High risk zone', popular: false,
     features: ['Up to ₹600/week coverage', 'All 3 triggers included', 'UPI instant payout < 1hr', 'AI 7-day forecast', 'Auto coverage extension', 'Priority fraud protection', 'Dedicated claim tracking', 'WhatsApp alerts', '24/7 support priority'],
     cta: 'Get Premium',
   },
