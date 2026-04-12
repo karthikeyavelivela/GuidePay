@@ -255,6 +255,7 @@ async def process_trigger_events(alerts: list, db) -> list:
 
         payout_pct = {
             "FLOOD": 1.0,
+            "PREDICTIVE_FLOOD": 0.50,
             "OUTAGE": 0.75,
             "CURFEW": 1.0,
             "AIR_QUALITY": 0.50,
@@ -725,43 +726,91 @@ async def check_curfew_alerts() -> list:
     return []
 
 
+async def check_predictive_triggers() -> list:
+    """
+    Evaluates ML flood probability for all zones.
+    If probability > 85%, triggers a predictive ADVANCE_PAYOUT (50%) to workers.
+    """
+    from app.ml.ml_service import predict_flood_probability
+    
+    db = get_db()
+    if db is None:
+        return []
+    
+    alerts = []
+    for zone in MONITORED_ZONES:
+        try:
+            forecast = predict_flood_probability(zone["zone"])
+            if forecast["probability"] > 0.85:
+                logger.info(f"PREDICTIVE TRIGGER: {zone['city']} flood probability {forecast['probability_percent']}%")
+                alerts.append({
+                    "city": zone["city"],
+                    "zone": zone["zone"],
+                    "lat": zone["lat"],
+                    "lng": zone["lng"],
+                    "severity": "RED",
+                    "type": "PREDICTIVE_FLOOD",
+                    "source": "ML_FORECAST",
+                    "title": f"Predictive Flood Alert ({forecast['probability_percent']}%)",
+                    "description": "ML model predicts severe flooding within 24h. Advance payout initiated.",
+                    "published": datetime.utcnow().isoformat(),
+                })
+        except Exception as e:
+            logger.warning(f"Predictive check failed for {zone['city']}: {e}")
+            
+    return alerts
+
 async def run_trigger_check():
-    """Main scheduled function — runs every 15 minutes. Checks all 5 trigger types."""
-    logger.info("Running trigger check (5 trigger types)...")
+    """Main scheduled function — runs every 15 minutes. Checks all 5 trigger types + Predictive."""
+    logger.info("Running trigger check (5 trigger types + predictive)...")
 
     db = get_db()
     if db is None:
         return
 
-    # All 5 trigger types
     flood_alerts = await fetch_imd_alerts()
     outage_alerts = await check_platform_outages()
     aqi_alerts = await check_aqi_heatwave()
     festival_alerts = await check_festival_disruption()
     curfew_alerts = await check_curfew_alerts()
+    predictive_alerts = await check_predictive_triggers()
 
     all_alerts = (
         flood_alerts + outage_alerts +
-        aqi_alerts + festival_alerts + curfew_alerts
+        aqi_alerts + festival_alerts + curfew_alerts + predictive_alerts
     )
 
     if all_alerts:
         events = await process_trigger_events(all_alerts, db)
         logger.info(
             f"Processed {len(events)} new trigger events "
-            f"from {len(all_alerts)} alerts across 5 sources"
+            f"from {len(all_alerts)} alerts across 6 sources"
         )
 
     return all_alerts
 
-
 async def start_trigger_scheduler():
     """Start the background scheduler"""
+    async def _clean_expired_policies():
+        db = get_db()
+        if db is None: return
+        now = datetime.utcnow()
+        cursor = db.policies.find({"status": "ACTIVE", "plan_type": "daily", "expires_at": {"$lt": now}})
+        async for p in cursor:
+            await db.policies.update_one({"_id": p["_id"]}, {"$set": {"status": "EXPIRED", "updated_at": now}})
+
     scheduler.add_job(
         run_trigger_check,
         "interval",
         minutes=settings.trigger_poll_interval_minutes,
         id="trigger_check",
+        replace_existing=True,
+    )
+    scheduler.add_job(
+        _clean_expired_policies,
+        "interval",
+        minutes=30,
+        id="clean_policies",
         replace_existing=True,
     )
     scheduler.start()

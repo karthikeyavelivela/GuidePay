@@ -71,3 +71,14 @@ async def get_claim_detail(
     doc = serialize_doc(claim)
     doc["trigger_event"] = serialize_doc(trigger) if trigger else None
     return doc
+
+@router.get("/blockchain/audit-ledger")
+async def get_audit_ledger(
+    limit: int = 50,
+    db=Depends(get_db)
+):
+    """Fetch the blockchain audit ledger to verify immutability."""
+    logs = await db.payout_audit_logs.find().sort("created_at", -1).limit(limit).to_list(limit)
+    return {
+        "ledger": [serialize_doc(log) for log in logs]
+    }

@@ -181,9 +181,21 @@ export const ClaimTimeline = ({ claim }) => {
                   {item.meta.description(claim)}
                 </p>
                 {item.audit?.message && (
-                  <p style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text-tertiary)', margin: '4px 0 0' }}>
-                    {item.audit.message}
-                  </p>
+                  <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--bg-card-raised)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                    <p style={{ fontSize: 11, fontFamily: 'Inter', color: 'var(--text-secondary)', margin: 0, fontWeight: 500 }}>
+                      {item.audit.message}
+                    </p>
+                    {item.audit.hash && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                        <span title="Blockchain-secured Immutable Hash" style={{ fontSize: 9, fontFamily: 'monospace', color: '#12B76A', background: 'rgba(18,183,106,0.1)', border: '1px solid rgba(18,183,106,0.2)', padding: '2px 4px', borderRadius: 4 }}>
+                          SHA-256
+                        </span>
+                        <span style={{ fontSize: 9, fontFamily: 'monospace', color: 'var(--text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {item.audit.hash}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

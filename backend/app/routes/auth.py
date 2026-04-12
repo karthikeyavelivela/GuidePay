@@ -171,6 +171,9 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
     from bson import ObjectId
     worker_id = str(ObjectId())
     
+    import h3
+    h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
+
     worker_doc = {
         "_id": worker_id,
         "firebase_uid": firebase_user["uid"],
@@ -183,6 +186,7 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
         "upi_id": request.upi_id,
         "zone_lat": request.zone_lat,
         "zone_lng": request.zone_lng,
+        "h3_zone": h3_zone,
         "platforms": [],
         "risk_score": 0.75,
         "risk_tier": "MEDIUM",
@@ -238,6 +242,9 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
     from bson import ObjectId
     worker_id = str(ObjectId())
     password_hash = hashlib.sha256(request.password.encode()).hexdigest()
+    
+    import h3
+    h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
 
     worker_doc = {
         "_id": worker_id,
@@ -250,6 +257,7 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
         "upi_id": request.upi_id,
         "zone_lat": request.zone_lat,
         "zone_lng": request.zone_lng,
+        "h3_zone": h3_zone,
         "platforms": [],
         "risk_score": 0.75,
         "risk_tier": "MEDIUM",

@@ -64,10 +64,16 @@ async def update_my_profile(
     update_data = updates.model_dump(exclude_none=True)
     update_data["updated_at"] = datetime.utcnow()
 
-    if "zone" in update_data or "city" in update_data:
+    if "zone" in update_data or "city" in update_data or "zone_lat" in update_data:
         zone = update_data.get("zone", current_worker["zone"])
         risk_score = current_worker.get("risk_score", 0.75)
-        premium = calculate_premium(zone, risk_score)
+        
+        if "zone_lat" in update_data and "zone_lng" in update_data:
+            import h3
+            update_data["h3_zone"] = h3.geo_to_h3(update_data["zone_lat"], update_data["zone_lng"], 7)
+            
+        h3_zone = update_data.get("h3_zone", current_worker.get("h3_zone"))
+        premium = calculate_premium(zone, risk_score, h3_zone=h3_zone)
         update_data["premium_amount"] = premium
 
     await db.workers.update_one(
@@ -104,7 +110,8 @@ async def get_my_risk_score(
             "risk_tier": score_data["tier"],
             "premium_amount": calculate_premium(
                 current_worker.get("zone", ""),
-                score_data["score"]
+                score_data["score"],
+                h3_zone=current_worker.get("h3_zone")
             )
         }}
     )

@@ -627,3 +627,14 @@ def search_cities(query: str) -> list:
                 "platform_coverage": zone.get("platform_coverage", []),
             })
     return results[:20]
+
+import h3
+
+def get_hex_from_coord(lat: float, lng: float, resolution: int = 7) -> str:
+    return h3.geo_to_h3(lat, lng, resolution)
+
+def calculate_zone_flood_risk(h3_index: str, city_base_risk: float) -> float:
+    # A pseudo-simulation to add hyper-local granularity
+    h = int(h3_index, 16)
+    micro_variance = (h % 100 - 50) / 100.0  # -0.5 to +0.5
+    return min(1.0, max(0.05, city_base_risk + micro_variance * 0.3))

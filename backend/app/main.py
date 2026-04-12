@@ -9,7 +9,7 @@ from app.config import settings
 from app.database import connect_db, disconnect_db
 from app.routes import (
     auth, workers, policies, claims,
-    triggers, payments, forecast, admin, support, notifications
+    triggers, payments, forecast, admin, support, notifications, public
 )
 from app.routes import actuarial, ml as ml_routes
 from app.services.imd_service import start_trigger_scheduler
@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.check_env import check_env
+    check_env()
+    
     from app.ml.ml_service import load_models
     from app.ml.train_models import train_and_save_all
     import os
@@ -119,6 +122,7 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(actuarial.router, prefix="/api/v1/actuarial", tags=["actuarial"])
 app.include_router(support.router, prefix="/api/v1/support", tags=["support"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
+app.include_router(public.router, prefix="/api/v1/public", tags=["public"])
 app.include_router(ml_routes.router, prefix="/api/v1/ml", tags=["ml"])
 
 

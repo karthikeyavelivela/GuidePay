@@ -4,10 +4,10 @@ from app.routes.auth import get_current_worker
 from app.utils.formatters import serialize_doc
 from datetime import datetime, timedelta
 import logging
+from app.core.constants import PAYOUT_TIERS
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
 
 @router.get("/active")
 async def get_active_triggers(
@@ -33,7 +33,6 @@ async def get_active_triggers(
         ],
     }
 
-
 @router.get("/my-zone")
 async def get_my_zone_triggers(
     current_worker=Depends(get_current_worker),
@@ -53,7 +52,6 @@ async def get_my_zone_triggers(
         "total": len(triggers)
     }
 
-
 @router.get("/types")
 async def get_trigger_types():
     """Returns all 5 trigger types with payout rules."""
@@ -64,7 +62,7 @@ async def get_trigger_types():
                 "name": "IMD Flood Alert",
                 "icon": "🌧️",
                 "payout_percentage": 1.0,
-                "payout_cap": 600,
+                "payout_cap": PAYOUT_TIERS["silver"]["payout_inr"],
                 "description": "Red/Orange flood alert from IMD SACHET",
                 "api_source": "IMD SACHET RSS",
                 "api_url": "https://sachet.ndma.gov.in/cap_public_website/FeedPage",
@@ -76,7 +74,7 @@ async def get_trigger_types():
                 "name": "Platform Outage",
                 "icon": "⚡",
                 "payout_percentage": 0.75,
-                "payout_cap": 450,
+                "payout_cap": PAYOUT_TIERS["silver"]["payout_inr"] * 0.75,
                 "description": "Zepto/Swiggy/Blinkit down 2+ hours",
                 "api_source": "Downdetector + Status Pages",
                 "free": True,
@@ -87,7 +85,7 @@ async def get_trigger_types():
                 "name": "Government Curfew",
                 "icon": "🚨",
                 "payout_percentage": 1.0,
-                "payout_cap": 600,
+                "payout_cap": PAYOUT_TIERS["silver"]["payout_inr"],
                 "description": "Section 144 or curfew order issued",
                 "api_source": "State Govt RSS + News APIs",
                 "free": True,
@@ -98,7 +96,7 @@ async def get_trigger_types():
                 "name": "Air Quality Alert",
                 "icon": "😷",
                 "payout_percentage": 0.50,
-                "payout_cap": 300,
+                "payout_cap": PAYOUT_TIERS["silver"]["payout_inr"] * 0.5,
                 "description": "AQI Very Poor (4/5) or Heat Wave 43°C+",
                 "api_source": "OpenWeatherMap AQI",
                 "free": True,
@@ -109,7 +107,7 @@ async def get_trigger_types():
                 "name": "Festival Disruption",
                 "icon": "🎊",
                 "payout_percentage": 0.40,
-                "payout_cap": 240,
+                "payout_cap": PAYOUT_TIERS["silver"]["payout_inr"] * 0.4,
                 "description": "Major festival causing 40%+ delivery drop",
                 "api_source": "Internal Calendar Engine",
                 "free": True,
@@ -117,10 +115,9 @@ async def get_trigger_types():
             },
         ],
         "total": 5,
-        "coverage_cap": 600,
+        "coverage_cap": PAYOUT_TIERS["silver"]["payout_inr"],
         "note": "All triggers verified via multiple independent sources before payout",
     }
-
 
 @router.get("/{trigger_id}")
 async def get_trigger_detail(

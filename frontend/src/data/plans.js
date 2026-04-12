@@ -1,120 +1,98 @@
-/**
- * Single source of truth for all GuidePay plan data.
- * Used by Landing page, Coverage page, and Dashboard.
- * Never hardcode ₹49, ₹58, ₹69 directly in JSX.
- */
-
-export const PAYOUT_TIERS = [
-  { tier: 'Bronze', orders: '< 8 orders/day', payout: 400, color: '#9CA3AF' },
-  { tier: 'Silver', orders: '8–14 orders/day', payout: 600, color: '#2E90FA' },
-  { tier: 'Gold', orders: '15+ orders/day', payout: 900, color: '#F59E0B' },
-]
-
 export const PLANS = [
   {
-    id: 'basic',
-    name: 'Basic',
-    basePrice: 49,
-    coverage: 600,
-    payoutCoverage: '100%',
+    id: "daily",
+    name: "Daily Shield",
+    price: 12,
+    period: "day",
+    display: "₹12 / day",
+    badge: "MOST AFFORDABLE",
+    badgeColor: "green",
+    coverageHours: 24,
+    payouts: { bronze: 400, silver: 600, gold: 900 },
+    features: [
+      "24-hour protection window",
+      "Income-based payout (₹400–₹900)",
+      "All 5 trigger types covered",
+      "Instant UPI payout",
+    ],
+  },
+  {
+    id: "basic",
+    name: "Basic Shield",
+    price: 49,
+    period: "week",
+    display: "₹49 / week",
     badge: null,
-    popular: false,
-    description: 'For low-risk zones',
-    zone: 'Low risk zone',
-    cta: 'Get Basic',
+    coverageHours: 168,
+    payouts: { bronze: 400, silver: 600, gold: 900 },
     features: [
-      'Up to ₹600/week coverage',
-      'IMD flood trigger',
-      'Platform outage trigger',
-      'Govt curfew trigger',
-      'UPI instant payout',
-      'Basic risk score',
-    ],
-    notIncluded: [
-      'AI 24h advance forecast',
-      'Priority claim review',
+      "7-day protection window",
+      "Income-based payout (₹400–₹900)",
+      "Flood + Air Quality triggers",
+      "Instant UPI payout",
     ],
   },
   {
-    id: 'standard',
-    name: 'Standard',
-    basePrice: 58,
-    coverage: 600,
-    badge: 'Most Popular',
-    popular: true,
-    description: 'Best for most workers',
-    zone: 'Medium risk zone',
-    cta: 'Get Standard →',
+    id: "standard",
+    name: "Standard Shield",
+    price: 62,
+    period: "week",
+    display: "₹62 / week",
+    badge: "MOST POPULAR",
+    badgeColor: "orange",
+    coverageHours: 168,
+    payouts: { bronze: 400, silver: 600, gold: 900 },
     features: [
-      'Up to ₹600/week coverage',
-      'All 5 triggers included',
-      'UPI payout under 2 hours',
-      'AI 24h flood forecast',
-      'Worker risk score tracking',
-      'Priority claim review',
-      'Festival disruption cover',
-      'Air quality cover',
+      "7-day protection window",
+      "Income-based payout (₹400–₹900)",
+      "All 5 trigger types covered",
+      "Priority claim processing",
+      "Instant UPI payout",
     ],
-    notIncluded: [],
   },
   {
-    id: 'premium',
-    name: 'Premium',
-    basePrice: 69,
-    coverage: 600,
-    badge: 'Best Protection',
-    popular: false,
-    description: 'For high-risk flood zones',
-    zone: 'High risk zone',
-    cta: 'Get Premium',
+    id: "premium",
+    name: "Premium Shield",
+    price: 89,
+    period: "week",
+    display: "₹89 / week",
+    badge: "FULL PROTECTION",
+    badgeColor: "blue",
+    coverageHours: 168,
+    payouts: { bronze: 400, silver: 600, gold: 900 },
     features: [
-      'Up to ₹900/week (Gold tier)',
-      'All 5 triggers included',
-      'UPI payout under 1 hour',
-      'AI 7-day flood forecast',
-      'Auto coverage extension',
-      'Priority fraud protection',
-      'Dedicated claim tracking',
-      'WhatsApp alerts',
-      '24/7 support priority',
+      "7-day protection window",
+      "Income-based payout (₹400–₹900)",
+      "All 5 trigger types covered",
+      "Dedicated support",
+      "Earnings analytics",
+      "Instant UPI payout",
     ],
-    notIncluded: [],
   },
-  {
-    id: 'daily',
-    name: 'Daily Shield',
-    basePrice: 12,
-    coverage: 600,
-    badge: 'MOST AFFORDABLE',
-    popular: false,
-    daily: true,
-    description: 'Perfect for workers who want flexible daily protection',
-    zone: 'Any zone',
-    cta: 'Get Daily Shield',
-    features: [
-      'Up to ₹900/day (Gold tier)',
-      'All 5 triggers included',
-      'UPI payout in 2 hours',
-      'Expires after 24 hours',
-      'Flexible — renew anytime',
-    ],
-    notIncluded: ['Weekly auto-renewal', 'AI 7-day forecast'],
-  },
-]
+];
 
-export const getPlanById = (id) =>
-  PLANS.find(p => p.id === id) || PLANS[1]
+export const PAYOUT_TIERS = {
+  bronze: { label: "Bronze", min: 0, max: 7, payout: 400, color: "#CD7F32" },
+  silver: { label: "Silver", min: 8, max: 14, payout: 600, color: "#A8A9AD" },
+  gold:   { label: "Gold",   min: 15, max: 999, payout: 900, color: "#FFD700" },
+};
 
-/**
- * Adjust plan price based on ML premium for the worker's zone.
- * @param {number} basePrice - Plan's base price
- * @param {number|null} mlPremium - ML-calculated premium from API
- * @param {number} standardBase - Standard plan base price (default 58)
- */
-export const getAdjustedPrice = (basePrice, mlPremium, standardBase = 58) => {
-  if (!mlPremium) return basePrice
-  const ratio = mlPremium / standardBase
-  return Math.max(35, Math.round(basePrice * ratio))
+export function getTierForOrders(dailyOrders) {
+  if (dailyOrders >= 15) return "gold";
+  if (dailyOrders >= 8) return "silver";
+  return "bronze";
 }
 
-export default PLANS
+export function getPayoutForOrders(dailyOrders) {
+  return PAYOUT_TIERS[getTierForOrders(dailyOrders)].payout;
+}
+
+export const getPlanById = (id) => PLANS.find(p => p.id === id) || PLANS[2];
+
+export const getAdjustedPrice = (basePrice, mlPremium, standardBase = 62) => {
+  if (!mlPremium) return basePrice;
+  const ratio = mlPremium / standardBase;
+  return Math.max(35, Math.round(basePrice * ratio));
+};
+
+export default PLANS;
