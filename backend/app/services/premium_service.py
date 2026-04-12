@@ -1,6 +1,14 @@
 import math
 from datetime import datetime
-from app.ml.ml_service import ZONE_FEATURES, predict_premium
+from app.ml.ml_service import predict_premium
+
+ZONE_FEATURES = {
+    "kondapur-hyderabad": {"flood_events_5yr": 7, "elevation_m": 505, "avg_rainfall_mm": 810},
+    "kurla-mumbai": {"flood_events_5yr": 16, "elevation_m": 11, "avg_rainfall_mm": 2400},
+    "koramangala-bengaluru": {"flood_events_5yr": 4, "elevation_m": 920, "avg_rainfall_mm": 900},
+    "tnagar-chennai": {"flood_events_5yr": 10, "elevation_m": 6, "avg_rainfall_mm": 1400},
+    "dwarka-delhi": {"flood_events_5yr": 2, "elevation_m": 216, "avg_rainfall_mm": 700},
+}
 
 ZONE_ML_DATA = {
     "kondapur-hyderabad": {

@@ -20,8 +20,16 @@ MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 _models: dict = {}
 
 def get_zone_ml_data(city_name: str) -> list:
-    from app.services.premium_service import get_zone_ml_data as get_zone_data
-    return get_zone_data(city_name)
+    mapping = {
+        "kondapur-hyderabad": "Hyderabad",
+        "kurla-mumbai": "Mumbai",
+        "koramangala-bengaluru": "Bengaluru",
+        "tnagar-chennai": "Chennai",
+        "dwarka-delhi": "Delhi",
+    }
+    canonical = mapping.get(city_name.lower(), "Hyderabad")
+    from app.ml.train_models import ZONE_TRAINING_DATA
+    return ZONE_TRAINING_DATA.get(canonical, ZONE_TRAINING_DATA["Hyderabad"])
 
 def _download_from_gridfs(model_name: str) -> Optional[object]:
     """Downloads pickled model directly into memory from MongoDB GridFS."""
