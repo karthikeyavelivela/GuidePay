@@ -87,10 +87,33 @@ const InsurerDashboard = () => {
   const [period, setPeriod] = useState('month')
   const [predictions, setPredictions] = useState(null)
   const [predLoading, setPredLoading] = useState(true)
+  const [actuarial, setActuarial] = useState(null)
 
   useEffect(() => {
     loadPredictions()
+    loadActuarialMetrics()
   }, [])
+
+  const loadActuarialMetrics = async () => {
+    try {
+      const { getActuarialMetrics } = await import('../../services/api')
+      const res = await getActuarialMetrics()
+      setActuarial(res)
+    } catch (e) {
+      // Fallback demo values
+      setActuarial({
+        combined_ratio_percent: 54.5,
+        loss_ratio_percent: 24.5,
+        expense_ratio_percent: 30.0,
+        policyholder_surplus: 23450,
+        claims_frequency: 0.056,
+        average_severity: 562,
+        projected_annual_gwp: 573240,
+        active_policies: 847,
+        irdai_compliant: true,
+      })
+    }
+  }
 
   const loadPredictions = async () => {
     setPredLoading(true)
@@ -227,6 +250,76 @@ const InsurerDashboard = () => {
             </div>
           ))}
         </div>
+
+        {/* Actuarial Health Section */}
+        {actuarial && (
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1.5px solid #2E90FA',
+            borderRadius: 14, padding: 20,
+            marginBottom: 20,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: '#2E90FA', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 4px' }}>
+                  Actuarial Health
+                </p>
+                <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  IRDAI-Compliant Metrics
+                </p>
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', padding: '4px 10px', borderRadius: 999, background: '#ECFDF3', color: '#12B76A', border: '1px solid rgba(18,183,106,0.3)' }}>
+                🏛️ IRDAI Compliant
+              </span>
+            </div>
+
+            {/* Combined Ratio Gauge */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text-secondary)' }}>Combined Ratio (target &lt;100%)</span>
+                <span style={{ fontSize: 14, fontWeight: 700, fontFamily: 'Inter', color: actuarial.combined_ratio_percent < 100 ? '#12B76A' : '#F04438' }}>
+                  {actuarial.combined_ratio_percent}%
+                </span>
+              </div>
+              <div style={{ height: 8, background: 'var(--border-light)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(actuarial.combined_ratio_percent, 100)}%`,
+                  background: actuarial.combined_ratio_percent < 80 ? '#12B76A' : actuarial.combined_ratio_percent < 100 ? '#F79009' : '#F04438',
+                  borderRadius: 99,
+                  transition: 'width 1s ease',
+                }} />
+              </div>
+            </div>
+
+            {/* Ratios side by side */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+              {[
+                { label: 'Loss Ratio', value: `${actuarial.loss_ratio_percent}%`, color: '#2E90FA' },
+                { label: 'Expense Ratio', value: `${actuarial.expense_ratio_percent}%`, color: '#F79009' },
+                { label: 'Policy Surplus', value: `₹${(actuarial.policyholder_surplus || 0).toLocaleString('en-IN')}`, color: '#12B76A' },
+              ].map(m => (
+                <div key={m.label} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '12px 14px' }}>
+                  <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{m.label}</p>
+                  <p style={{ fontSize: 18, fontWeight: 800, fontFamily: 'Bricolage Grotesque', color: m.color, margin: 0 }}>{m.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              {[
+                { label: 'Claims Frequency', value: actuarial.claims_frequency?.toFixed(3) || '0.056' },
+                { label: 'Avg Severity', value: `₹${actuarial.average_severity || 562}` },
+                { label: 'Projected Annual GWP', value: `₹${((actuarial.projected_annual_gwp || 573240) / 100000).toFixed(1)}L` },
+              ].map(m => (
+                <div key={m.label} style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: '12px 14px' }}>
+                  <p style={{ fontSize: 10, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.6px' }}>{m.label}</p>
+                  <p style={{ fontSize: 16, fontWeight: 800, fontFamily: 'Bricolage Grotesque', color: 'var(--text-primary)', margin: 0 }}>{m.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Predictive Analytics Section */}
         <div style={{

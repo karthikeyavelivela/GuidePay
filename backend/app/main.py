@@ -11,7 +11,7 @@ from app.routes import (
     auth, workers, policies, claims,
     triggers, payments, forecast, admin, support, notifications
 )
-from app.routes import actuarial
+from app.routes import actuarial, ml as ml_routes
 from app.services.imd_service import start_trigger_scheduler
 from app.services.auth_service import decode_token
 
@@ -119,6 +119,7 @@ app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 app.include_router(actuarial.router, prefix="/api/v1/actuarial", tags=["actuarial"])
 app.include_router(support.router, prefix="/api/v1/support", tags=["support"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
+app.include_router(ml_routes.router, prefix="/api/v1/ml", tags=["ml"])
 
 
 @app.get("/")

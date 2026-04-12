@@ -4,6 +4,12 @@
  * Never hardcode ₹49, ₹58, ₹69 directly in JSX.
  */
 
+export const PAYOUT_TIERS = [
+  { tier: 'Bronze', orders: '< 8 orders/day', payout: 400, color: '#9CA3AF' },
+  { tier: 'Silver', orders: '8–14 orders/day', payout: 600, color: '#2E90FA' },
+  { tier: 'Gold', orders: '15+ orders/day', payout: 900, color: '#F59E0B' },
+]
+
 export const PLANS = [
   {
     id: 'basic',
@@ -62,7 +68,7 @@ export const PLANS = [
     zone: 'High risk zone',
     cta: 'Get Premium',
     features: [
-      'Up to ₹600/week coverage',
+      'Up to ₹900/week (Gold tier)',
       'All 5 triggers included',
       'UPI payout under 1 hour',
       'AI 7-day flood forecast',
@@ -73,6 +79,26 @@ export const PLANS = [
       '24/7 support priority',
     ],
     notIncluded: [],
+  },
+  {
+    id: 'daily',
+    name: 'Daily Shield',
+    basePrice: 12,
+    coverage: 600,
+    badge: 'MOST AFFORDABLE',
+    popular: false,
+    daily: true,
+    description: 'Perfect for workers who want flexible daily protection',
+    zone: 'Any zone',
+    cta: 'Get Daily Shield',
+    features: [
+      'Up to ₹900/day (Gold tier)',
+      'All 5 triggers included',
+      'UPI payout in 2 hours',
+      'Expires after 24 hours',
+      'Flexible — renew anytime',
+    ],
+    notIncluded: ['Weekly auto-renewal', 'AI 7-day forecast'],
   },
 ]
 

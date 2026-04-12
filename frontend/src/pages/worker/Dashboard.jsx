@@ -7,9 +7,10 @@ import Badge from '../../components/ui/Badge'
 import LiveDot from '../../components/ui/LiveDot'
 import ChatWidget from '../../components/chat/ChatWidget'
 import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
+import IncomeTierBadge from '../../components/ui/IncomeTierBadge'
 import { useWorkerStore } from '../../store/workerStore'
 import { formatINR } from '../../utils/formatters'
-import { getMyClaims, getMyProfile, getMyZoneForecast } from '../../services/api'
+import { getMyClaims, getMyProfile, getMyZoneForecast, getWellnessScore } from '../../services/api'
 import { useTranslation } from '../../i18n/useTranslation'
 
 const pageVariants = {
@@ -45,6 +46,7 @@ export default function Dashboard() {
   // Real profile data from API
   const [profileData, setProfileData] = useState(null)
   const [zoneAlert, setZoneAlert] = useState(null)
+  const [wellnessData, setWellnessData] = useState(null)
 
   // Fetch real data on mount
   useEffect(() => {
@@ -119,6 +121,21 @@ export default function Dashboard() {
       }
     }
     fetchAlert()
+  }, [])
+
+  // Fetch wellness score
+  useEffect(() => {
+    const fetchWellness = async () => {
+      try {
+        const token = localStorage.getItem('gp-access-token') || localStorage.getItem('gp-token')
+        if (!token) return
+        const data = await getWellnessScore()
+        if (data?.score !== undefined) setWellnessData(data)
+      } catch (e) {
+        // Silent fallback
+      }
+    }
+    fetchWellness()
   }, [])
 
   const w = {
@@ -482,6 +499,72 @@ export default function Dashboard() {
               )}
             </div>
           ))}
+        </motion.div>
+
+        {/* Wellness Score Card */}
+        {wellnessData && (
+          <motion.div variants={fadeUp}>
+            <div
+              className="rounded-card shadow-card p-4"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: 0 }}>
+                  Wellness Score
+                </p>
+                <span style={{
+                  fontSize: 12, fontWeight: 700, fontFamily: 'Inter',
+                  padding: '3px 10px', borderRadius: 999,
+                  background: wellnessData.grade === 'A' ? '#ECFDF3' : wellnessData.grade === 'B' ? '#FFFAEB' : '#FEF3F2',
+                  color: wellnessData.grade === 'A' ? '#12B76A' : wellnessData.grade === 'B' ? '#F79009' : '#F04438',
+                }}>
+                  Grade {wellnessData.grade}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                {/* Circular progress */}
+                <div style={{ position: 'relative', width: 68, height: 68, flexShrink: 0 }}>
+                  <svg width="68" height="68" viewBox="0 0 68 68">
+                    <circle cx="34" cy="34" r="28" fill="none" stroke="var(--border-light)" strokeWidth="7" />
+                    <circle
+                      cx="34" cy="34" r="28" fill="none"
+                      stroke={wellnessData.score >= 80 ? '#12B76A' : wellnessData.score >= 50 ? '#F79009' : '#F04438'}
+                      strokeWidth="7"
+                      strokeDasharray={`${(wellnessData.score / 100) * 175.9} 175.9`}
+                      strokeLinecap="round"
+                      transform="rotate(-90 34 34)"
+                    />
+                  </svg>
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, fontFamily: 'Bricolage Grotesque, sans-serif', color: 'var(--text-primary)' }}>
+                      {wellnessData.score}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter', color: 'var(--text-primary)', margin: '0 0 4px' }}>
+                    {wellnessData.score >= 80 ? 'Excellent' : wellnessData.score >= 60 ? 'Good' : wellnessData.score >= 40 ? 'Fair' : 'Needs attention'}
+                  </p>
+                  <p style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                    💡 {wellnessData.tip}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Income Tier Badge */}
+        <motion.div variants={fadeUp}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <IncomeTierBadge dailyOrders={Number(worker?.avg_daily_orders || 8)} />
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: 0 }}>
+              Your income tier determines payout amount
+            </p>
+          </div>
         </motion.div>
 
         {/* Quick Actions */}

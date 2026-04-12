@@ -1,3 +1,5 @@
+import math
+from datetime import datetime
 from app.ml.ml_service import ZONE_FEATURES, predict_premium
 
 ZONE_ML_DATA = {
@@ -133,3 +135,95 @@ def calculate_premium(zone: str, risk_score: float = 0.75) -> float:
 
 def get_premium_breakdown(zone: str, risk_score: float = 0.75) -> dict:
     return calculate_ml_premium(zone, risk_score)
+
+
+# ---------------------------------------------------------------------------
+# Income-based payout tiers
+# ---------------------------------------------------------------------------
+
+def calculate_payout_amount(worker_daily_orders: float, base_payout: int = 600) -> dict:
+    """Return payout amount and tier based on worker's average daily orders."""
+    if worker_daily_orders >= 15:
+        return {"payout_amount": 900, "payout_tier": "Gold", "daily_orders": worker_daily_orders}
+    elif worker_daily_orders >= 8:
+        return {"payout_amount": 600, "payout_tier": "Silver", "daily_orders": worker_daily_orders}
+    else:
+        return {"payout_amount": 400, "payout_tier": "Bronze", "daily_orders": worker_daily_orders}
+
+
+def get_income_tier(daily_orders: float) -> str:
+    if daily_orders >= 15:
+        return "Gold"
+    elif daily_orders >= 8:
+        return "Silver"
+    return "Bronze"
+
+
+# ---------------------------------------------------------------------------
+# Actuarial premium with volatility adjustment
+# ---------------------------------------------------------------------------
+
+def actuarial_premium_calculation(
+    base_premium: float,
+    zone_claim_frequency: float,
+    zone_claim_severity: float,
+    seasonal_index: float = 1.0,
+) -> float:
+    """
+    Pure actuarial premium calculation with volatility loading.
+
+    Args:
+        base_premium: ML-derived base premium (ignored in final blend but kept for signature consistency)
+        zone_claim_frequency: Expected number of claims per policy period (e.g. 0.30)
+        zone_claim_severity: Average claim severity in rupees (e.g. 600)
+        seasonal_index: Multiplier for monsoon seasons (Jun-Sep = 1.4, else 1.0)
+
+    Returns:
+        Final actuarial premium clamped between 35 and 150 rupees per week.
+    """
+    expected_loss = zone_claim_frequency * zone_claim_severity
+    volatility_loading = 0.25 * math.sqrt(zone_claim_frequency) * zone_claim_severity
+    risk_premium = expected_loss + volatility_loading
+    expense_loading = risk_premium * 0.30
+    final = (risk_premium + expense_loading) * seasonal_index
+    return round(max(35.0, min(150.0, final)), 2)
+
+
+def get_seasonal_index(month: int = None) -> float:
+    """Return 1.4 during Indian monsoon months (Jun-Sep), else 1.0."""
+    if month is None:
+        month = datetime.utcnow().month
+    return 1.4 if month in (6, 7, 8, 9) else 1.0
+
+
+def calculate_hybrid_premium(zone: str, worker_risk_score: float = 0.75) -> dict:
+    """
+    Blend ML premium (60%) with actuarial premium (40%).
+    This is the primary premium model used by GuidePay.
+    """
+    ml_result = calculate_ml_premium(zone, worker_risk_score)
+    ml_premium = ml_result["final_premium"]
+
+    # Derive zone actuarial inputs from zone features
+    zone_meta = ZONE_ML_DATA.get(zone, ZONE_ML_DATA["kondapur-hyderabad"])
+    flood_events = zone_meta.get("flood_events_5yr", 5)
+    zone_claim_frequency = min(flood_events / 20.0, 0.80)  # normalise to probability
+    zone_claim_severity = 600.0  # base severity
+    seasonal_index = get_seasonal_index()
+
+    actuarial = actuarial_premium_calculation(
+        ml_premium, zone_claim_frequency, zone_claim_severity, seasonal_index
+    )
+    final_hybrid = round(0.6 * ml_premium + 0.4 * actuarial, 2)
+    final_hybrid = max(35.0, min(150.0, final_hybrid))
+
+    return {
+        **ml_result,
+        "ml_premium": ml_premium,
+        "actuarial_premium": actuarial,
+        "final_premium": final_hybrid,
+        "premium_blend": "60% ML + 40% Actuarial",
+        "zone_claim_frequency": round(zone_claim_frequency, 3),
+        "zone_claim_severity": zone_claim_severity,
+        "seasonal_index": seasonal_index,
+    }

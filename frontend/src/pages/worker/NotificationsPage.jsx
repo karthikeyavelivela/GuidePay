@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 import {
   getMyNotifications,
+  getSmartNotifications,
   markAllNotificationsRead,
   markNotificationRead,
 } from '../../services/api'
@@ -15,6 +16,12 @@ const TYPE_STYLES = {
   CLAIM: { icon: '💰', color: '#12B76A' },
   ALERT: { icon: '🌧️', color: '#F79009' },
   COVERAGE: { icon: '🛡️', color: '#7A5AF8' },
+  // Smart notification types
+  flood: { icon: '🌊', color: '#2E90FA' },
+  expiry: { icon: '⚠️', color: '#F04438' },
+  unprotected: { icon: '🛡️', color: '#F04438' },
+  paid: { icon: '✅', color: '#12B76A' },
+  forecast: { icon: '📊', color: '#F79009' },
 }
 
 const timeLabel = (iso) => {
@@ -32,14 +39,21 @@ export default function NotificationsPage() {
   const notifications = useWorkerStore((s) => s.notifications)
   const setNotifications = useWorkerStore((s) => s.setNotifications)
   const [loading, setLoading] = useState(true)
+  const [smartNotifications, setSmartNotifications] = useState([])
 
   useEffect(() => {
     let active = true
 
     const load = async () => {
       try {
-        const data = await getMyNotifications()
-        if (active) setNotifications(data.notifications || [])
+        const [data, smartData] = await Promise.allSettled([
+          getMyNotifications(),
+          getSmartNotifications(),
+        ])
+        if (active) {
+          if (data.status === 'fulfilled') setNotifications(data.value.notifications || [])
+          if (smartData.status === 'fulfilled') setSmartNotifications(smartData.value.notifications || [])
+        }
       } catch (error) {
         console.error('[Notifications] Failed to load:', error)
       } finally {
@@ -109,6 +123,35 @@ export default function NotificationsPage() {
         <div style={{ padding: 20, color: 'var(--text-tertiary)', fontFamily: 'Inter' }}>Loading notifications...</div>
       ) : (
         <div style={{ padding: '8px 0' }}>
+          {/* Smart contextual notifications */}
+          {smartNotifications.length > 0 && (
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1.5px', textTransform: 'uppercase', padding: '12px 16px 6px', margin: 0 }}>
+                Live Alerts
+              </p>
+              {smartNotifications.map((n, i) => {
+                const urgencyBg = n.urgency === 'high' ? 'rgba(240,68,56,0.06)' : n.urgency === 'medium' ? 'rgba(247,144,9,0.06)' : 'rgba(18,183,106,0.06)'
+                return (
+                  <motion.div
+                    key={n.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    style={{ display: 'flex', gap: 12, padding: '14px 16px', background: urgencyBg, borderBottom: '1px solid var(--border-light)', borderLeft: `3px solid ${n.color}` }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 12, background: `${n.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>
+                      {n.icon}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-primary)', margin: '0 0 2px' }}>{n.title}</p>
+                      <p style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text-secondary)', margin: 0 }}>{n.message}</p>
+                    </div>
+                  </motion.div>
+                )
+              })}
+            </div>
+          )}
+
           {Object.entries(groups)
             .filter(([, items]) => items.length > 0)
             .map(([group, items]) => (

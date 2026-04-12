@@ -326,6 +326,7 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
     """Create and process a claim automatically"""
     from app.services.fraud_service import calculate_fraud_score
     from app.services.underwriting_service import evaluate_worker_eligibility
+    from app.services.premium_service import calculate_payout_amount
     from bson import ObjectId
 
     worker_id = str(worker["_id"])
@@ -338,10 +339,18 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
     if not policy:
         return
 
+    # --- Income-based dynamic payout ---
+    daily_orders = float(worker.get("avg_daily_orders", worker.get("daily_orders", 8)))
+    payout_info = calculate_payout_amount(daily_orders)
+    income_payout = payout_info["payout_amount"]
+    payout_tier = payout_info["payout_tier"]
+
     eligibility = await evaluate_worker_eligibility(worker, policy, trigger_event, db)
     remaining_coverage = await _calculate_remaining_weekly_coverage(db, policy)
+
+    # Use income-based payout scaled by payout percentage, but cap at remaining coverage
     proposed_payout = round(
-        float(policy.get("coverage_cap", 600.0)) * trigger_event["payout_percentage"],
+        income_payout * trigger_event["payout_percentage"],
         2,
     )
     payout_amount = round(min(proposed_payout, remaining_coverage), 2)
@@ -399,6 +408,9 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
         "trigger_event_id": str(trigger_event["_id"]),
         "trigger_type": trigger_event["trigger_type"],
         "amount": payout_amount,
+        "payout_amount": payout_amount,
+        "payout_tier": payout_tier,
+        "daily_orders_at_claim": daily_orders,
         "status": status,
         "fraud_score": fraud_result["score"],
         "fraud_flags": fraud_result["flags"],

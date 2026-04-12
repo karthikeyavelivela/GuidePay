@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Check } from 'lucide-react'
+import { Check, Info } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 import { createPaymentOrder, getMyPremiumBreakdown, USE_MOCK, verifyPayment } from '../../services/api'
+import IncomeTierBadge from '../../components/ui/IncomeTierBadge'
+import { PAYOUT_TIERS } from '../../data/plans'
 
 const PLANS = [
   {
@@ -14,7 +16,7 @@ const PLANS = [
     badge: null,
     description: 'For low-risk zones',
     features: [
-      'Up to Rs400/week coverage',
+      'Up to ₹400/week (Bronze tier)',
       'IMD flood trigger',
       'Limited triggers',
       'Payout in 24 hours',
@@ -32,7 +34,7 @@ const PLANS = [
     badge: 'Most Popular',
     description: 'Best for most workers',
     features: [
-      'Up to Rs600/week coverage',
+      'Up to ₹900 based on your activity level',
       'All 5 triggers included',
       'UPI payout under 2 hours',
       'Worker risk score tracking',
@@ -48,11 +50,11 @@ const PLANS = [
     id: 'premium',
     name: 'Premium',
     price: 69,
-    coverage: 1000,
+    coverage: 900,
     badge: 'Best Protection',
     description: 'For high-risk flood zones',
     features: [
-      'Up to Rs1000/week coverage',
+      'Up to ₹900 based on your activity level',
       'All 5 triggers included',
       'UPI payout under 1 hour',
       'Auto payout included',
@@ -64,7 +66,32 @@ const PLANS = [
     borderColor: '#0F0F0F',
     bgColor: 'white',
   },
+  {
+    id: 'daily',
+    name: 'Daily Shield',
+    price: 12,
+    coverage: 900,
+    badge: 'MOST AFFORDABLE',
+    description: 'Flexible daily protection',
+    features: [
+      'Up to ₹900/day (Gold tier)',
+      'All 5 triggers included',
+      'UPI payout in 2 hours',
+      'Expires after 24 hours',
+      'Renew anytime',
+    ],
+    notIncluded: ['Weekly auto-renewal'],
+    borderColor: '#12B76A',
+    bgColor: '#F0FDF4',
+    daily: true,
+  },
 ]
+
+function getIncomeTier(dailyOrders) {
+  if (dailyOrders >= 15) return { tier: 'Gold', payout: 900 }
+  if (dailyOrders >= 8) return { tier: 'Silver', payout: 600 }
+  return { tier: 'Bronze', payout: 400 }
+}
 
 export default function Coverage() {
   const navigate = useNavigate()
@@ -73,12 +100,15 @@ export default function Coverage() {
   const [selectedPlan, setSelectedPlan] = useState('standard')
   const [loading, setLoading] = useState(false)
   const [mlPremium, setMlPremium] = useState(null)
+  const [showPayoutInfo, setShowPayoutInfo] = useState(false)
 
   const plan = PLANS.find((entry) => entry.id === selectedPlan)
   const avgIncome = Number(worker?.avg_daily_income || worker?.avgDailyIncome || 800)
   const triggerProbability = Number(mlPremium?.zone_risk_score || 0.42)
   const exposedDays = plan?.id === 'premium' ? 2 : 1
   const formulaPremium = Math.round(triggerProbability * avgIncome * exposedDays * 0.1)
+  const dailyOrders = Number(worker?.avg_daily_orders || worker?.avgDailyOrders || 8)
+  const incomeInfo = getIncomeTier(dailyOrders)
 
   useEffect(() => {
     const loadPremium = async () => {
@@ -218,12 +248,49 @@ export default function Coverage() {
           </p>
         </div>
 
+        {/* Income Tier Badge */}
+        <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '14px 16px', border: '1px solid var(--border-light)', marginBottom: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: 0 }}>
+              Your Income Tier
+            </p>
+            <button
+              onClick={() => setShowPayoutInfo(!showPayoutInfo)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+            >
+              <Info size={14} color="var(--text-tertiary)" />
+            </button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <IncomeTierBadge dailyOrders={dailyOrders} />
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontFamily: 'Inter', margin: 0 }}>
+              Your payout: <strong style={{ color: 'var(--text-primary)' }}>₹{incomeInfo.payout}</strong> per trigger event
+            </p>
+          </div>
+          {showPayoutInfo && (
+            <div style={{ marginTop: 12, background: 'var(--bg-secondary)', borderRadius: 10, padding: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-tertiary)', fontFamily: 'Inter', textTransform: 'uppercase', letterSpacing: '0.8px', margin: '0 0 8px' }}>
+                Payout Tiers — based on activity
+              </p>
+              {PAYOUT_TIERS.map(t => (
+                <div key={t.tier} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)' }}>
+                  <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text-secondary)' }}>{t.tier} · {t.orders}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-primary)' }}>₹{t.payout}</span>
+                </div>
+              ))}
+              <p style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: '8px 0 0' }}>
+                Workers with higher order volume receive higher payouts per trigger event.
+              </p>
+            </div>
+          )}
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
           {PLANS.map((entry) => {
             const isSelected = selectedPlan === entry.id
-            const adjustedPrice = getAdjustedPrice(entry.price)
+            const adjustedPrice = entry.daily ? entry.price : getAdjustedPrice(entry.price)
             return (
-              <motion.div key={entry.id} onClick={() => setSelectedPlan(entry.id)} whileTap={{ scale: 0.99 }} style={{ background: isSelected ? entry.bgColor : 'var(--bg-card)', border: isSelected ? `2px solid ${entry.borderColor}` : '2px solid var(--border)', borderRadius: 16, padding: 18, cursor: 'pointer', position: 'relative' }}>
+              <motion.div key={entry.id} onClick={() => setSelectedPlan(entry.id)} whileTap={{ scale: 0.99 }} style={{ background: isSelected ? entry.bgColor : 'var(--bg-card)', border: isSelected ? `2px solid ${entry.borderColor}` : entry.daily ? `2px dashed ${entry.borderColor}` : '2px solid var(--border)', borderRadius: 16, padding: 18, cursor: 'pointer', position: 'relative' }}>
                 {entry.badge && (
                   <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: entry.popular ? '#D97757' : '#0F0F0F', color: 'white', fontSize: 10, fontWeight: 700, fontFamily: 'Inter', padding: '3px 12px', borderRadius: 999, whiteSpace: 'nowrap' }}>
                     {entry.badge}
@@ -237,10 +304,10 @@ export default function Coverage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, justifyContent: 'flex-end' }}>
-                      <span style={{ fontFamily: 'Bricolage Grotesque', fontSize: 28, fontWeight: 800, color: isSelected ? '#D97757' : 'var(--text-primary)', letterSpacing: -1 }}>
-                        Rs{adjustedPrice}
+                      <span style={{ fontFamily: 'Bricolage Grotesque', fontSize: 28, fontWeight: 800, color: isSelected ? (entry.daily ? '#12B76A' : '#D97757') : 'var(--text-primary)', letterSpacing: -1 }}>
+                        ₹{adjustedPrice}
                       </span>
-                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter' }}>/wk</span>
+                      <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter' }}>{entry.daily ? '/day' : '/wk'}</span>
                     </div>
                     <div style={{ width: 22, height: 22, borderRadius: 999, background: isSelected ? '#D97757' : 'var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', marginTop: 4 }}>
                       {isSelected && <Check size={12} color="white" strokeWidth={3} />}
@@ -292,12 +359,37 @@ export default function Coverage() {
             </p>
           )}
         </div>
+
+        {/* IRDAI Trust Badges */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          {[
+            { icon: '🏛️', label: 'IRDAI Innovation Sandbox Compliant' },
+            { icon: '🔒', label: 'Data stored in India (Mumbai region)' },
+            { icon: '⚡', label: 'Payouts via RBI-regulated UPI' },
+          ].map((badge) => (
+            <div
+              key={badge.label}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-light)',
+                borderRadius: 999,
+                padding: '5px 10px',
+              }}
+            >
+              <span style={{ fontSize: 12 }}>{badge.icon}</span>
+              <span style={{ fontSize: 10, fontFamily: 'Inter', color: 'var(--text-tertiary)', fontWeight: 600 }}>
+                {badge.label}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="fixed left-0 right-0 lg:left-[240px]" style={{ bottom: 64, padding: '10px 16px', paddingBottom: 'calc(10px + env(safe-area-inset-bottom))', background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)', zIndex: 40 }}>
         <div style={{ maxWidth: 560, width: '100%', margin: '0 auto' }}>
           <motion.button onClick={handleBuy} disabled={loading} whileHover={!loading ? { scale: 1.01 } : {}} whileTap={!loading ? { scale: 0.97 } : {}} style={{ width: '100%', padding: '15px', borderRadius: 12, border: 'none', background: loading ? '#E4E4E7' : 'linear-gradient(135deg,#D97757,#B85C3A)', color: loading ? '#9B9B9B' : 'white', fontSize: 16, fontWeight: 700, fontFamily: 'Bricolage Grotesque, sans-serif', cursor: loading ? 'not-allowed' : 'pointer' }}>
-            {loading ? 'Opening payment...' : `Buy ${plan.name} - Rs${getAdjustedPrice(plan.price)}/week`}
+            {loading ? 'Opening payment...' : `Buy ${plan.name} - ₹${plan.daily ? plan.price : getAdjustedPrice(plan.price)}/${plan.daily ? 'day' : 'week'}`}
           </motion.button>
         </div>
       </div>

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, TrendingUp, Shield, DollarSign, BarChart3 } from 'lucide-react'
-import { getMyEarnings } from '../../services/api'
+import { getMyEarnings, getEarningsShieldSummary } from '../../services/api'
 import { formatINR } from '../../utils/formatters'
 import ChatWidget from '../../components/chat/ChatWidget'
 import BottomNav from '../../components/ui/BottomNav'
@@ -19,12 +19,17 @@ export default function EarningsShield() {
   const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [shieldSummary, setShieldSummary] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await getMyEarnings()
-        setData(res)
+        const [res, summaryRes] = await Promise.allSettled([
+          getMyEarnings(),
+          getEarningsShieldSummary(),
+        ])
+        if (res.status === 'fulfilled') setData(res.value)
+        if (summaryRes.status === 'fulfilled') setShieldSummary(summaryRes.value)
       } catch {
         setData(null)
       } finally {
@@ -84,6 +89,31 @@ export default function EarningsShield() {
       </div>
 
       <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Monthly Shield Summary Headline */}
+        {shieldSummary && (
+          <div style={{ background: 'linear-gradient(135deg, #12B76A, #0A9456)', borderRadius: 16, padding: '18px 20px' }}>
+            <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 6px' }}>
+              This Month
+            </p>
+            <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 20, fontWeight: 800, color: 'white', margin: '0 0 14px', lineHeight: 1.3 }}>
+              {shieldSummary.message}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              {[
+                { label: 'Triggers', value: shieldSummary.triggers_faced },
+                { label: 'Payouts', value: `₹${shieldSummary.actual_payouts || 0}` },
+                { label: 'Protection Ratio', value: `${shieldSummary.protection_ratio || 0}%` },
+              ].map((s) => (
+                <div key={s.label} style={{ background: 'rgba(255,255,255,0.15)', borderRadius: 10, padding: '10px 12px' }}>
+                  <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', fontFamily: 'Inter', margin: '0 0 4px', textTransform: 'uppercase' }}>{s.label}</p>
+                  <p style={{ fontSize: 18, fontWeight: 800, fontFamily: 'Bricolage Grotesque', color: 'white', margin: 0 }}>{s.value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           {[
             { icon: DollarSign, label: 'Total Payouts', value: formatINR(summary.total_payouts), color: '#12B76A', bg: '#ECFDF3' },

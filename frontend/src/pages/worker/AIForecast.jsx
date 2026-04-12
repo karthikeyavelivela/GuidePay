@@ -5,7 +5,7 @@ import { AlertTriangle, Clock, ShieldCheck } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import ChatWidget from '../../components/chat/ChatWidget'
 import IndiaCalendar from '../../components/forecast/IndiaCalendar'
-import { getMyZoneForecast, getTriggerTypes, getZoneForecast, USE_MOCK } from '../../services/api'
+import { getMyZoneForecast, getTriggerTypes, getZoneForecast, getFeatureImportance, USE_MOCK } from '../../services/api'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -21,16 +21,18 @@ export default function AIForecast() {
   const [myForecast, setMyForecast] = useState(null)
   const [triggerTypes, setTriggerTypes] = useState([])
   const [loading, setLoading] = useState(true)
+  const [featureImportance, setFeatureImportance] = useState(null)
 
   useEffect(() => {
     const loadForecastData = async () => {
       setLoading(true)
       try {
         if (!USE_MOCK) {
-          const [zonesRes, myRes, typesRes] = await Promise.allSettled([
+          const [zonesRes, myRes, typesRes, fiRes] = await Promise.allSettled([
             getZoneForecast(),
             getMyZoneForecast(),
             getTriggerTypes(),
+            getFeatureImportance(),
           ])
 
           if (zonesRes.status === 'fulfilled') {
@@ -41,6 +43,9 @@ export default function AIForecast() {
           }
           if (typesRes.status === 'fulfilled') {
             setTriggerTypes(typesRes.value.triggers || [])
+          }
+          if (fiRes.status === 'fulfilled') {
+            setFeatureImportance(fiRes.value)
           }
         }
       } catch (e) {
@@ -216,6 +221,43 @@ export default function AIForecast() {
           </p>
           <IndiaCalendar />
         </div>
+
+        {/* Feature Importance — Model Transparency */}
+        {featureImportance && (
+          <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 18, border: '1px solid var(--border-light)', marginBottom: 16 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 4px' }}>
+              Model Transparency
+            </p>
+            <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 17, fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 4px' }}>
+              How Your Premium Is Calculated
+            </p>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', fontFamily: 'Inter', margin: '0 0 14px' }}>
+              {featureImportance.model} · R² {featureImportance.model_r2} · {featureImportance.training_records?.toLocaleString()} training records
+            </p>
+            {featureImportance.features?.map((f) => (
+              <div key={f.name} style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 12, fontFamily: 'Inter', color: 'var(--text-secondary)' }}>
+                    #{f.rank} {f.name.replace(/_/g, ' ')}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-primary)' }}>
+                    {(f.importance * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div style={{ height: 6, background: 'var(--border-light)', borderRadius: 99, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${f.importance * 100}%`,
+                      background: f.rank === 1 ? '#D97757' : f.rank === 2 ? '#2E90FA' : f.rank <= 4 ? '#12B76A' : '#9CA3AF',
+                      borderRadius: 99,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="fixed bottom-16 left-0 right-0 lg:left-[240px] px-4 py-3 z-40" style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border-light)' }}>

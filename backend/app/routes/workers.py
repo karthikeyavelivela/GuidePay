@@ -8,6 +8,7 @@ from app.utils.formatters import serialize_doc
 from datetime import datetime, timedelta
 from bson import ObjectId
 import logging
+import math
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -249,6 +250,229 @@ async def get_premium_breakdown(
         )
 
     return breakdown
+
+
+@router.get("/wellness-score")
+async def get_wellness_score(
+    current_worker=Depends(get_current_worker),
+    db=Depends(get_db)
+):
+    """Calculate a wellness score 0-100 for the authenticated worker."""
+    worker_id = str(current_worker["_id"])
+    score = 0
+    breakdown = {}
+
+    # +30 for active policy
+    policy = await db.policies.find_one({"worker_id": worker_id, "status": "ACTIVE"})
+    if policy:
+        score += 30
+        breakdown["active_policy"] = {"points": 30, "label": "Active policy"}
+    else:
+        breakdown["active_policy"] = {"points": 0, "label": "No active policy"}
+
+    # Zone risk
+    zone = current_worker.get("zone", "")
+    from app.services.premium_service import calculate_ml_premium, ZONE_RISK
+    zone_risk_info = ZONE_RISK.get(zone, {})
+    zone_flood = zone_risk_info.get("flood", 0.5)
+    if zone_flood < 0.35:
+        score += 20
+        breakdown["zone_risk"] = {"points": 20, "label": "Low-risk zone"}
+    elif zone_flood < 0.65:
+        score += 10
+        breakdown["zone_risk"] = {"points": 10, "label": "Medium-risk zone"}
+    else:
+        breakdown["zone_risk"] = {"points": 0, "label": "High-risk zone"}
+
+    # +20 no claims in last 30 days
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    recent_claims = await db.claims.count_documents({
+        "worker_id": worker_id,
+        "created_at": {"$gte": thirty_days_ago}
+    })
+    if recent_claims == 0:
+        score += 20
+        breakdown["recent_claims"] = {"points": 20, "label": "No recent claims"}
+    else:
+        breakdown["recent_claims"] = {"points": 0, "label": f"{recent_claims} claim(s) in last 30 days"}
+
+    # +15 account age > 30 days
+    created_at = current_worker.get("created_at", datetime.utcnow())
+    account_age_days = (datetime.utcnow() - created_at).days
+    if account_age_days > 30:
+        score += 15
+        breakdown["account_age"] = {"points": 15, "label": f"Account {account_age_days} days old"}
+    else:
+        breakdown["account_age"] = {"points": 0, "label": "Account less than 30 days old"}
+
+    # +15 UPI verified
+    if current_worker.get("upi_id"):
+        score += 15
+        breakdown["upi_verified"] = {"points": 15, "label": "UPI ID verified"}
+    else:
+        breakdown["upi_verified"] = {"points": 0, "label": "No UPI ID linked"}
+
+    grade = "A" if score >= 80 else "B" if score >= 60 else "C" if score >= 40 else "D"
+
+    # Actionable tip
+    if not policy:
+        tip = "Buy a coverage plan to protect your income and boost your wellness score by 30 points."
+    elif not current_worker.get("upi_id"):
+        tip = "Link your UPI ID to enable instant payouts and earn 15 more wellness points."
+    elif recent_claims > 0:
+        tip = "Avoid unnecessary claims to maintain a clean record and keep your wellness score high."
+    elif zone_flood >= 0.65:
+        tip = "You're in a high-risk zone. Consider upgrading to a Premium plan for full flood coverage."
+    else:
+        tip = "Great job! Keep your policy active and stay protected during monsoon season."
+
+    return {
+        "score": score,
+        "grade": grade,
+        "breakdown": breakdown,
+        "tip": tip,
+    }
+
+
+@router.get("/earnings-shield-summary")
+async def get_earnings_shield_summary(
+    current_worker=Depends(get_current_worker),
+    db=Depends(get_db)
+):
+    """Monthly earnings shield summary for the authenticated worker."""
+    worker_id = str(current_worker["_id"])
+    now = datetime.utcnow()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # Premiums paid this month
+    premiums_result = await db.payments.aggregate([
+        {"$match": {"worker_id": worker_id, "created_at": {"$gte": month_start}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}, "count": {"$sum": 1}}}
+    ]).to_list(1)
+    premiums_paid = premiums_result[0]["total"] if premiums_result else 0
+
+    # Claims paid this month
+    claims_result = await db.claims.aggregate([
+        {"$match": {"worker_id": worker_id, "status": "PAID", "paid_at": {"$gte": month_start}}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}, "count": {"$sum": 1}}}
+    ]).to_list(1)
+    actual_payouts = claims_result[0]["total"] if claims_result else 0
+
+    # Trigger events in worker's zone this month
+    zone = current_worker.get("zone", "")
+    triggers_count = await db.trigger_events.count_documents({
+        "zone": zone,
+        "started_at": {"$gte": month_start}
+    })
+
+    # Total protected = coverage cap of active policy or avg payout tier
+    from app.services.premium_service import calculate_payout_amount
+    daily_orders = float(current_worker.get("avg_daily_orders", 8))
+    payout_info = calculate_payout_amount(daily_orders)
+    total_protected = payout_info["payout_amount"]
+
+    protection_ratio = round(
+        (actual_payouts / premiums_paid * 100) if premiums_paid > 0 else 0, 1
+    )
+
+    return {
+        "total_protected": total_protected,
+        "actual_payouts": actual_payouts,
+        "premiums_paid": premiums_paid,
+        "protection_ratio": protection_ratio,
+        "triggers_faced": triggers_count,
+        "payout_tier": payout_info["payout_tier"],
+        "message": f"GuidePay protected ₹{total_protected} of your potential income this month",
+    }
+
+
+@router.get("/me/notifications")
+async def get_smart_notifications(
+    current_worker=Depends(get_current_worker),
+    db=Depends(get_db)
+):
+    """Dynamic contextual notifications for the authenticated worker."""
+    worker_id = str(current_worker["_id"])
+    notifications = []
+    now = datetime.utcnow()
+
+    # 1. Active flood alert in zone
+    zone = current_worker.get("zone", "")
+    active_flood = await db.trigger_events.find_one({
+        "zone": zone, "status": "ACTIVE", "trigger_type": "FLOOD"
+    })
+    if active_flood:
+        notifications.append({
+            "id": "flood_alert",
+            "type": "flood",
+            "icon": "🌊",
+            "title": "Flood alert active in your zone",
+            "message": "Your coverage is protecting you right now.",
+            "urgency": "high",
+            "color": "#2E90FA",
+        })
+
+    # 2. Policy expiry warning
+    policy = await db.policies.find_one({"worker_id": worker_id, "status": "ACTIVE"})
+    if policy:
+        expires_at = policy.get("week_end") or policy.get("expires_at")
+        if expires_at:
+            hours_left = (expires_at - now).total_seconds() / 3600
+            if 0 < hours_left < 48:
+                notifications.append({
+                    "id": "policy_expiry",
+                    "type": "expiry",
+                    "icon": "⚠️",
+                    "title": "Coverage expiring soon",
+                    "message": f"Your coverage expires in {int(hours_left)} hours. Renew to stay protected.",
+                    "urgency": "high",
+                    "color": "#F04438",
+                })
+    else:
+        notifications.append({
+            "id": "no_policy",
+            "type": "unprotected",
+            "icon": "🛡️",
+            "title": "You are currently unprotected",
+            "message": "A ₹10/day plan is available. Get covered now.",
+            "urgency": "high",
+            "color": "#F04438",
+        })
+
+    # 3. Recent payout confirmation
+    seven_days_ago = now - timedelta(days=7)
+    recent_paid = await db.claims.find_one({
+        "worker_id": worker_id,
+        "status": "PAID",
+        "paid_at": {"$gte": seven_days_ago}
+    }, sort=[("paid_at", -1)])
+    if recent_paid:
+        paid_date = recent_paid.get("paid_at", now).strftime("%d %b")
+        notifications.append({
+            "id": f"paid_{recent_paid['_id']}",
+            "type": "paid",
+            "icon": "✅",
+            "title": "Payout received",
+            "message": f"GuidePay paid you ₹{recent_paid.get('amount', 600)} on {paid_date}. Your coverage worked.",
+            "urgency": "low",
+            "color": "#12B76A",
+        })
+
+    # 4. ML flood forecast for next week
+    from app.ml.ml_service import predict_flood_probability
+    forecast = predict_flood_probability(zone)
+    if forecast["probability"] > 0.60:
+        notifications.append({
+            "id": "ml_forecast",
+            "type": "forecast",
+            "icon": "📊",
+            "title": "High flood probability forecasted",
+            "message": f"ML forecast: {forecast['probability_percent']}% flood probability in your zone next week. Consider renewing now.",
+            "urgency": "medium",
+            "color": "#F79009",
+        })
+
+    return {"notifications": notifications, "count": len(notifications)}
 
 
 @router.get("/premium-compare")
