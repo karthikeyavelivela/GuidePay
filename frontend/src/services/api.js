@@ -95,19 +95,44 @@ export const getCommunityStats = () => adminApi.get('/admin/community-stats')
 export const updateLastOrder = () => workerApi.post('/workers/me/update-last-order')
 export const getWellnessScore = () => workerApi.get('/workers/wellness-score')
 export const getEarningsShieldSummary = () => workerApi.get('/workers/earnings-shield-summary')
+export const getEarningsIntelligence = () => workerApi.get('/workers/earnings-intelligence')
 export const getSmartNotifications = () => workerApi.get('/workers/me/notifications')
 export const getFeatureImportance = () => workerApi.get('/ml/feature-importance')
 export const getFraudFeatureImportance = () => workerApi.get('/ml/fraud-feature-importance')
 export const getActuarialMetrics = () => adminApi.get('/admin/actuarial-metrics')
 
 export const getActivePolicy = () => workerApi.get('/policies/my/active')
+export const getZoneHistory = () => workerApi.get('/workers/zone-history')
 export const getMyPolicies = () => workerApi.get('/policies/my')
+export const downloadProtectionCertificate = async (policyId) => {
+  try {
+    const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
+    const response = await axios.get(`${API_URL}/policies/${policyId}/certificate`, {
+      responseType: 'blob',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+
+    const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', `GuidePay_Protection_Certificate_${policyId}.pdf`)
+    document.body.appendChild(link)
+    link.click()
+    link.parentNode.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    return { success: true }
+  } catch (error) {
+    console.error('Certificate download failed:', error)
+    throw error
+  }
+}
 
 export const createPaymentOrder = (planId, amount = 0) => workerApi.post('/payments/create-order', { plan_id: planId, amount })
 export const verifyPayment = (data) => workerApi.post('/payments/verify', data)
 
 export const getMyClaims = (status, limit = 20, skip = 0) => workerApi.get('/claims/my', { params: { status, limit, skip } })
 export const getClaimDetail = (id) => workerApi.get(`/claims/${id}`)
+export const getClaimAuditTrail = (claimId) => workerApi.get(`/claims/${claimId}/audit-trail`)
 
 export const getActiveTriggers = () => workerApi.get('/triggers/active')
 export const getMyZoneTriggers = () => workerApi.get('/triggers/my-zone')
@@ -131,14 +156,14 @@ export const getActuarialSummary = () => adminApi.get('/actuarial/summary')
 export const getActuarialExposure = () => adminApi.get('/actuarial/exposure')
 export const getActuarialReserve = () => adminApi.get('/actuarial/reserve')
 export const simulateActuarialScenario = (payload) => adminApi.post('/actuarial/simulate', payload)
-export const getClaimsQueue = (status = "ALL") => adminApi.get('/admin/claims/queue', { params: { status } })
+export const getClaimsQueue = (status = 'ALL') => adminApi.get('/admin/claims/queue', { params: { status } })
 export const getAdminAnalytics = (days = 30) => adminApi.get('/admin/analytics', { params: { days } })
 export const getAnalytics = getAdminAnalytics
-export const getWorkers = (status = "ALL", search = "", limit = 50, skip = 0) => adminApi.get('/admin/workers', { params: { status, search, limit, skip } })
+export const getWorkers = (status = 'ALL', search = '', limit = 50, skip = 0) => adminApi.get('/admin/workers', { params: { status, search, limit, skip } })
 export const approveClaim = (id) => adminApi.patch(`/admin/claims/${id}/approve`)
 export const rejectClaim = (id, reason) => adminApi.patch(`/admin/claims/${id}/reject`, null, { params: { reason } })
 export const simulateTrigger = (city, type) => adminApi.post('/admin/simulate-trigger', { city, trigger_type: type })
-export const getAdminSupportTickets = (status = "all") => adminApi.get('/support/admin/tickets', { params: { status } })
+export const getAdminSupportTickets = (status = 'all') => adminApi.get('/support/admin/tickets', { params: { status } })
 export const sendAdminSupportMessage = (ticketId, text) => adminApi.post(`/support/admin/tickets/${ticketId}/messages`, { text })
 export const updateAdminSupportStatus = (ticketId, status) => adminApi.patch(`/support/admin/tickets/${ticketId}/status`, { status })
 

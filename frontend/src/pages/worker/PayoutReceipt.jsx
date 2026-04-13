@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useWorkerStore } from '../../store/workerStore'
 import { CheckCircle, Download, ArrowLeft } from 'lucide-react'
+import { shareOnWhatsApp } from '../../utils/whatsappShare'
 
 const PayoutReceipt = () => {
   const { claimId } = useParams()
@@ -10,6 +11,7 @@ const PayoutReceipt = () => {
   const worker = useWorkerStore(s => s.worker)
   const activePolicy = useWorkerStore(s => s.activePolicy)
   const claims = useWorkerStore(s => s.claims)
+  const language = useWorkerStore(s => s.language) || 'en'
   const [claim, setClaim] = useState(null)
   const [paying, setPaying] = useState(false)
   const [paid, setPaid] = useState(false)
@@ -258,6 +260,38 @@ const PayoutReceipt = () => {
             }}>
               ₹{claim.amount} sent to your UPI
             </p>
+          </div>
+
+          <div style={{
+            marginTop: '0px',
+            marginBottom: '24px',
+            padding: '16px',
+            background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+            borderRadius: '12px',
+            textAlign: 'center',
+            cursor: 'pointer',
+          }} onClick={() => shareOnWhatsApp({
+            workerName: worker?.name || 'I',
+            amount: claim.amount,
+            city: worker?.city || 'my city',
+            zone: worker?.zone || 'my zone',
+            language: language,
+          })}>
+            <div style={{ fontSize: '24px', marginBottom: '6px' }}>📲</div>
+            <div style={{ 
+              color: 'white', 
+              fontWeight: '700', 
+              fontSize: '15px',
+              marginBottom: '4px' 
+            }}>
+              Share on WhatsApp
+            </div>
+            <div style={{ 
+              color: 'rgba(255,255,255,0.85)', 
+              fontSize: '12px' 
+            }}>
+              Tell your delivery friends about GuidePay
+            </div>
           </div>
 
           <div style={{

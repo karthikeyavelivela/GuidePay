@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { Check, Info } from 'lucide-react'
+import { Check, Download, Info, LoaderCircle } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
-import { createPaymentOrder, getMyPremiumBreakdown, USE_MOCK, verifyPayment } from '../../services/api'
+import { createPaymentOrder, downloadProtectionCertificate, getMyPremiumBreakdown, USE_MOCK, verifyPayment, getZoneHistory } from '../../services/api'
 import IncomeTierBadge from '../../components/ui/IncomeTierBadge'
 import { PAYOUT_TIERS } from '../../data/plans'
 
@@ -96,13 +96,24 @@ function getIncomeTier(dailyOrders) {
 export default function Coverage() {
   const navigate = useNavigate()
   const worker = useWorkerStore((s) => s.worker)
+  const activePolicy = useWorkerStore((s) => s.activePolicy)
   const setActivePolicy = useWorkerStore((s) => s.setActivePolicy)
   const [selectedPlan, setSelectedPlan] = useState('standard')
   const [loading, setLoading] = useState(false)
   const [mlPremium, setMlPremium] = useState(null)
   const [showPayoutInfo, setShowPayoutInfo] = useState(false)
+  const [downloadLoading, setDownloadLoading] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [zoneHistory, setZoneHistory] = useState(null)
+
+  useEffect(() => {
+    getZoneHistory()
+      .then(res => setZoneHistory(res))
+      .catch(() => {}); // Fail silently
+  }, []);
 
   const plan = PLANS.find((entry) => entry.id === selectedPlan)
+  const activePolicyId = activePolicy?.policyId || useWorkerStore.getState().activePolicy?.policyId
   const avgIncome = Number(worker?.avg_daily_income || worker?.avgDailyIncome || 800)
   const triggerProbability = Number(mlPremium?.zone_risk_score || 0.42)
   const exposedDays = plan?.id === 'premium' ? 2 : 1
@@ -120,6 +131,12 @@ export default function Coverage() {
     }
     loadPremium()
   }, [worker?.zone])
+
+  useEffect(() => {
+    if (!toast) return undefined
+    const timer = setTimeout(() => setToast(null), 2600)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   const getAdjustedPrice = (basePlanPrice) => {
     if (!mlPremium?.final_premium) return basePlanPrice
@@ -146,6 +163,7 @@ export default function Coverage() {
 
       if (result?.policy) {
         setActivePolicy({
+          policyId: result.policy.id,
           planId: result.policy.plan_id || selected.id,
           planName: result.policy.plan_name || selected.name,
           price: result.policy.weekly_premium || order.amount || finalPrice,
@@ -164,8 +182,32 @@ export default function Coverage() {
     }
   }
 
+  const handleDownloadCertificate = async () => {
+    if (!activePolicyId) {
+      setToast({ type: 'error', message: 'Could not download certificate. Try again.' })
+      return
+    }
+
+    setDownloadLoading(true)
+    try {
+      await downloadProtectionCertificate(activePolicyId)
+      setToast({ type: 'success', message: 'Certificate downloaded!' })
+    } catch (error) {
+      console.error('[Coverage] certificate download failed', error)
+      setToast({ type: 'error', message: 'Could not download certificate. Try again.' })
+    } finally {
+      setDownloadLoading(false)
+    }
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-secondary)', paddingBottom: 140 }}>
+      {toast && (
+        <div style={{ position: 'fixed', top: 76, left: 16, right: 16, zIndex: 80, margin: '0 auto', maxWidth: 420, padding: '12px 14px', borderRadius: 14, color: 'white', background: toast.type === 'success' ? '#12B76A' : '#F04438', fontSize: 13, fontWeight: 700, fontFamily: 'Inter', boxShadow: '0 14px 30px rgba(15,23,42,0.16)' }}>
+          {toast.message}
+        </div>
+      )}
+
       <div style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border-light)', padding: '16px' }}>
         <h1 style={{ fontFamily: 'Bricolage Grotesque', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
           Choose your plan
@@ -176,6 +218,108 @@ export default function Coverage() {
       </div>
 
       <div style={{ padding: '16px' }}>
+        
+        {zoneHistory && (
+          <div style={{
+            background: 'linear-gradient(135deg, #1a0a0a 0%, #2d1515 100%)',
+            border: '1px solid rgba(248,113,113,0.3)',
+            borderRadius: '16px',
+            padding: '20px 24px',
+            marginBottom: '24px',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            {/* Top accent line */}
+            <div style={{
+              position: 'absolute', top: 0, left: '10%', right: '10%',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent, #F87171, transparent)'
+            }} />
+            
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '24px' }}>🌊</span>
+              <div>
+                <div style={{ fontWeight: '700', fontSize: '16px', color: '#F4F4F6' }}>
+                  Your Zone — {zoneHistory.city} Flood History
+                </div>
+                <div style={{ fontSize: '12px', color: '#8A8A8F', marginTop: '2px' }}>
+                  Based on NDMA records 2022–2024
+                </div>
+              </div>
+            </div>
+            
+            {/* Year stats */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              {[
+                { year: '2024', count: zoneHistory.flood_history.events_2024 },
+                { year: '2023', count: zoneHistory.flood_history.events_2023 },
+                { year: '2022', count: zoneHistory.flood_history.events_2022 },
+              ].map(({ year, count }) => (
+                <div key={year} style={{
+                  flex: 1, textAlign: 'center',
+                  background: 'rgba(248,113,113,0.1)',
+                  border: '1px solid rgba(248,113,113,0.2)',
+                  borderRadius: '10px', padding: '10px 8px',
+                }}>
+                  <div style={{
+                    fontSize: '22px', fontWeight: '800',
+                    color: count >= 5 ? '#F87171' : count >= 3 ? '#FCD34D' : '#4ADE80'
+                  }}>
+                    {count}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#8A8A8F', marginTop: '2px' }}>
+                    floods in {year}
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Worst event */}
+            <div style={{
+              background: 'rgba(248,113,113,0.08)',
+              borderRadius: '8px', padding: '10px 12px',
+              marginBottom: '14px',
+              borderLeft: '3px solid #F87171',
+            }}>
+              <div style={{ fontSize: '11px', color: '#F87171', fontWeight: '600', marginBottom: '2px' }}>
+                WORST EVENT
+              </div>
+              <div style={{ fontSize: '13px', color: '#F4F4F6' }}>
+                {zoneHistory.flood_history.worst_event_description}
+              </div>
+              <div style={{ fontSize: '12px', color: '#8A8A8F', marginTop: '2px' }}>
+                Average income lost: ₹{zoneHistory.flood_history.avg_income_lost_per_event.toLocaleString()} per event
+              </div>
+            </div>
+            
+            {/* GuidePay impact — THE CONVERSION LINE */}
+            <div style={{
+              background: 'rgba(74,222,128,0.1)',
+              border: '1px solid rgba(74,222,128,0.25)',
+              borderRadius: '10px', padding: '12px 14px',
+            }}>
+              <div style={{ fontSize: '11px', color: '#4ADE80', fontWeight: '700', marginBottom: '6px' }}>
+                💚 IF YOU HAD GUIDEPAY IN 2024
+              </div>
+              <div style={{ fontSize: '15px', fontWeight: '700', color: '#F4F4F6', marginBottom: '4px' }}>
+                You would have received ₹{zoneHistory.guidepay_impact.would_have_paid_2024.toLocaleString()} automatically
+              </div>
+              <div style={{ fontSize: '12px', color: '#8A8A8F' }}>
+                {zoneHistory.flood_history.events_2024} events × ₹{zoneHistory.payout_per_event} ({zoneHistory.income_tier} tier)
+                &nbsp;·&nbsp; Premium cost: ₹{zoneHistory.guidepay_impact.annual_premium_cost}
+              </div>
+              {zoneHistory.guidepay_impact.net_benefit_2024 > 0 && (
+                <div style={{ 
+                  fontSize: '13px', color: '#4ADE80', fontWeight: '600', marginTop: '6px' 
+                }}>
+                  Net benefit: +₹{zoneHistory.guidepay_impact.net_benefit_2024.toLocaleString()} in your pocket
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         <div style={{ background: 'var(--bg-card)', borderRadius: 16, padding: 18, border: '1px solid var(--border-light)', marginBottom: 18 }}>
           <p style={{ fontSize: 11, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 10px' }}>
             Current zone pricing
@@ -359,6 +503,39 @@ export default function Coverage() {
             </p>
           )}
         </div>
+
+        {activePolicyId && (
+          <div style={{ background: 'var(--bg-card)', borderRadius: 14, padding: '14px 16px', border: '1px solid var(--border-light)', marginBottom: 16 }}>
+            <p style={{ fontSize: 12, fontWeight: 700, fontFamily: 'Inter', color: 'var(--text-tertiary)', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 10px' }}>
+              Active policy
+            </p>
+            <button
+              type="button"
+              onClick={handleDownloadCertificate}
+              disabled={downloadLoading || !activePolicyId}
+              style={{
+                width: '100%',
+                border: 'none',
+                borderRadius: 12,
+                padding: '12px 14px',
+                background: 'linear-gradient(135deg, #111827, #374151)',
+                color: 'white',
+                fontSize: 14,
+                fontWeight: 700,
+                fontFamily: 'Inter',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                cursor: downloadLoading || !activePolicyId ? 'not-allowed' : 'pointer',
+                opacity: downloadLoading || !activePolicyId ? 0.7 : 1,
+              }}
+            >
+              {downloadLoading ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}
+              {downloadLoading ? 'Downloading...' : 'Download Certificate'}
+            </button>
+          </div>
+        )}
 
         {/* IRDAI Trust Badges */}
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
