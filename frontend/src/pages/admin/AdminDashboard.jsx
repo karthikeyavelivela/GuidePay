@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { BrainCircuit } from 'lucide-react'
 import Badge from '../../components/ui/Badge'
-import { getAdminStats, getZoneForecast, simulateTrigger } from '../../services/api'
+import { getAdminDashboardStats, getZoneRiskMonitor, simulateTrigger } from '../../services/api'
 import { formatINRShort } from '../../utils/formatters'
 
 const pageVariants = {
@@ -13,34 +12,29 @@ const pageVariants = {
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null)
+  const [zoneRisk, setZoneRisk] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [forecastRows, setForecastRows] = useState([])
+  
   const [simCity, setSimCity] = useState('Hyderabad')
   const [simType, setSimType] = useState('FLOOD')
   const [simulating, setSimulating] = useState(false)
   const [simResult, setSimResult] = useState(null)
 
   useEffect(() => {
-    const loadStats = async () => {
+    const loadDashboard = async () => {
       try {
-        const data = await getAdminStats()
-        setStats(data)
-      } catch {
-        setStats(null)
+        const statsData = await getAdminDashboardStats()
+        setStats(statsData)
+        
+        const zoneData = await getZoneRiskMonitor()
+        setZoneRisk(zoneData)
+      } catch (err) {
+        console.error("Error loading dashboard", err)
       } finally {
         setLoading(false)
       }
     }
-
-    const loadForecast = async () => {
-      try {
-        const data = await getZoneForecast()
-        setForecastRows(data?.forecasts || [])
-      } catch {}
-    }
-
-    loadStats()
-    loadForecast()
+    loadDashboard()
   }, [])
 
   const handleSimulate = async () => {
@@ -52,8 +46,10 @@ export default function AdminDashboard() {
         success: true,
         message: result?.message || `${simType} trigger fired in ${simCity}`,
       })
-      const refreshedStats = await getAdminStats().catch(() => null)
-      if (refreshedStats) setStats(refreshedStats)
+      const statsData = await getAdminDashboardStats().catch(() => null)
+      if (statsData) setStats(statsData)
+      const zoneData = await getZoneRiskMonitor().catch(() => null)
+      if (zoneData) setZoneRisk(zoneData)
     } catch (error) {
       setSimResult({
         success: false,
@@ -65,33 +61,77 @@ export default function AdminDashboard() {
     }
   }
 
-  const kpis = [
-    { label: 'Active Policies', value: (stats?.active_policies || 0).toLocaleString('en-IN'), sub: 'Total insured', color: '#12B76A' },
-    { label: 'Weekly Revenue', value: formatINRShort(stats?.weekly_revenue || 0), sub: `Rs${(stats?.weekly_revenue || 0).toLocaleString('en-IN')} collected`, color: '#D97757' },
-    { label: 'Payouts', value: formatINRShort(stats?.weekly_payouts || 0), sub: 'This week', color: '#F79009' },
-    { label: 'Loss Ratio', value: `${Math.round((stats?.loss_ratio || 0) * 100)}%`, sub: 'Target up to 65%', color: '#12B76A' },
-  ]
-
+  const { overview, financials, tier_breakdown, claims_by_trigger } = stats || {}
+  
   return (
     <motion.div className="min-h-screen bg-grey-50 pb-8" variants={pageVariants} initial="initial" animate="animate" exit="exit">
       <div className="mt-3 flex flex-col gap-3">
+      
+        {/* KPI Grid */}
         <div className="px-4">
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {kpis.map((kpi) => (
-              <div key={kpi.label} className="flex-shrink-0 bg-white rounded-card shadow-card p-3.5" style={{ minWidth: 140 }}>
-                <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">{kpi.label}</p>
-                <p className="font-display font-bold text-[26px] mt-1 leading-tight" style={{ color: kpi.color }}>{loading ? '...' : kpi.value}</p>
-                <p className="text-[12px] text-[#6B6B6B] font-body mt-0.5">{kpi.sub}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {/* Row 1 */}
+            <div className="bg-white rounded-card shadow-card p-3.5">
+              <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">Active Policies</p>
+              <p className="font-display font-bold text-[24px] mt-1 text-[#2E90FA] leading-tight">{loading ? '...' : overview?.active_policies}</p>
+            </div>
+            <div className="bg-white rounded-card shadow-card p-3.5">
+              <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">Claims Today</p>
+              <p className="font-display font-bold text-[24px] mt-1 text-[#F79009] leading-tight">{loading ? '...' : overview?.claims_today}</p>
+            </div>
+            <div className="bg-white rounded-card shadow-card p-3.5 md:col-span-1 col-span-2">
+              <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">Pending Review</p>
+              <p className={`font-display font-bold text-[24px] mt-1 leading-tight ${overview?.pending_manual_review > 0 ? 'text-[#F04438]' : 'text-[#12B76A]'}`}>
+                {loading ? '...' : overview?.pending_manual_review}
+              </p>
+            </div>
+            
+            {/* Row 2 */}
+            <div className="bg-white rounded-card shadow-card p-3.5">
+              <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">Monthly Premium</p>
+              <p className="font-display font-bold text-[24px] mt-1 text-[#12B76A] leading-tight">
+                {loading ? '...' : `₹${financials?.monthly_premium_collected?.toLocaleString('en-IN')}`}
+              </p>
+            </div>
+            <div className="bg-white rounded-card shadow-card p-3.5">
+              <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">Monthly Payouts</p>
+              <p className="font-display font-bold text-[24px] mt-1 text-[#F79009] leading-tight">
+                {loading ? '...' : `₹${financials?.monthly_payouts?.toLocaleString('en-IN')}`}
+              </p>
+            </div>
+            <div className="bg-white rounded-card shadow-card p-3.5 md:col-span-1 col-span-2">
+              <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">Loss Ratio</p>
+              <p className={`font-display font-bold text-[24px] mt-1 leading-tight ${financials?.loss_ratio > 65 ? 'text-[#F04438]' : 'text-[#12B76A]'}`}>
+                {loading ? '...' : `${financials?.loss_ratio}%`}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div style={{ margin: '0 16px', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 20 }}>
+        {/* Tier Breakdown */}
+        <div className="px-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 mt-1">
+            <div className="flex-shrink-0 bg-white rounded-card shadow-card px-4 py-3 min-w-[130px]">
+              <p className="text-[13px] font-medium font-body text-[#0F0F0F] flex items-center gap-1.5">🥇 Gold Workers</p>
+              <p className="font-display font-bold text-[20px] mt-1 text-[#0F0F0F]">{loading ? '...' : tier_breakdown?.gold}</p>
+            </div>
+            <div className="flex-shrink-0 bg-white rounded-card shadow-card px-4 py-3 min-w-[130px]">
+              <p className="text-[13px] font-medium font-body text-[#0F0F0F] flex items-center gap-1.5">🥈 Silver Workers</p>
+              <p className="font-display font-bold text-[20px] mt-1 text-[#0F0F0F]">{loading ? '...' : tier_breakdown?.silver}</p>
+            </div>
+            <div className="flex-shrink-0 bg-white rounded-card shadow-card px-4 py-3 min-w-[130px]">
+              <p className="text-[13px] font-medium font-body text-[#0F0F0F] flex items-center gap-1.5">🥉 Bronze Workers</p>
+              <p className="font-display font-bold text-[20px] mt-1 text-[#0F0F0F]">{loading ? '...' : tier_breakdown?.bronze}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Simulator */}
+        <div style={{ margin: '8px 16px', background: '#1A1A1A', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: 20 }}>
           <div style={{ marginBottom: 12 }}>
-            <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 15, fontWeight: 700, color: 'white', margin: '0 0 3px' }}>Fire trigger</p>
+            <p style={{ fontFamily: 'Bricolage Grotesque', fontSize: 15, fontWeight: 700, color: 'white', margin: '0 0 3px' }}>Simulation Tools</p>
             <p style={{ fontSize: 12, fontFamily: 'Inter', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-              Creates a trigger event and processes real backend claims for active policies.
+              Trigger an anomalous event manually to test ML fraud hooks and the claims queue auto-fill logic.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -114,66 +154,91 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="mx-4 bg-white rounded-card shadow-card p-4">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Loss ratio</span>
-            <span className="text-[12px] text-[#9B9B9B] font-body">Target up to 65%</span>
-          </div>
-          <div className="flex items-center justify-between mb-3">
-            <span className="font-display font-extrabold text-[40px] text-success leading-none">{loading ? '...' : `${Math.round((stats?.loss_ratio || 0) * 100)}%`}</span>
-            <Badge variant={(stats?.loss_ratio || 0) <= 0.65 ? 'success' : 'danger'}>
-              {(stats?.loss_ratio || 0) <= 0.65 ? 'Healthy' : 'Over target'}
-            </Badge>
-          </div>
-          <div className="h-1.5 bg-grey-100 rounded-full overflow-hidden">
-            <motion.div className="h-full bg-success rounded-full" initial={{ width: 0 }} animate={{ width: `${Math.min(Math.round((stats?.loss_ratio || 0) * 100), 100)}%` }} transition={{ type: 'spring', stiffness: 60, damping: 15, delay: 0.3 }} />
-          </div>
-        </div>
-
+        {/* Zone Risk Monitor */}
         <div className="mx-4 bg-white rounded-card shadow-card overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3.5 border-b border-grey-100">
-            <BrainCircuit size={16} className="text-brand" />
-            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">7-Day AI Forecast</span>
+          <div className="px-4 py-3.5 border-b border-grey-100 flex flex-col sm:flex-row sm:justify-between sm:items-center">
+            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Zone Risk Monitor</span>
+            {zoneRisk?.summary?.critical_zones > 0 && (
+              <span className="text-[12px] font-semibold text-[#F04438] bg-danger-light px-2 py-1 rounded-md mt-2 sm:mt-0">
+                ⚠️ {zoneRisk.summary.critical_zones} zones at critical risk · Total exposure: ₹{zoneRisk.summary.total_potential_exposure?.toLocaleString('en-IN')}
+              </span>
+            )}
           </div>
-          {forecastRows.map((row) => {
-            const risk = row.flood_probability_percent || 0
-            const exposure = ((row.workers_in_zone || 0) * 600 * ((row.flood_probability_24h || 0))).toLocaleString('en-IN', { maximumFractionDigits: 0 })
-            return (
-              <div key={row.zone} className="px-4 py-3 border-b border-grey-50">
-                <div className="flex items-center justify-between">
-                  <p className="text-[15px] font-semibold font-body text-[#0F0F0F]">{row.city}</p>
-                  <p className="text-[13px] font-body text-[#6B6B6B]">{row.workers_in_zone || 0} workers</p>
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="flex-1 h-1 bg-grey-100 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${risk}%`, backgroundColor: risk > 60 ? '#F04438' : risk > 30 ? '#F79009' : '#12B76A' }} />
-                  </div>
-                  <span className="text-[12px] font-body text-[#6B6B6B]">{risk}% risk · Rs{exposure} exposure</span>
-                </div>
-              </div>
-            )
-          })}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left" style={{ minWidth: 500 }}>
+              <thead>
+                <tr className="bg-grey-50 text-[11px] font-semibold text-[#6B6B6B] uppercase tracking-wide">
+                  <th className="px-4 py-3 font-body">City</th>
+                  <th className="px-4 py-3 font-body">Risk</th>
+                  <th className="px-4 py-3 font-body">Active Policies</th>
+                  <th className="px-4 py-3 font-body">Claims/Month</th>
+                  <th className="px-4 py-3 font-body">Exposure</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-grey-50 text-[13px] font-body text-[#0F0F0F]">
+                {(zoneRisk?.zones || []).map((zone) => (
+                  <tr key={zone.city}>
+                    <td className="px-4 py-3 font-semibold">{zone.city}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 text-[11px] font-bold rounded-md uppercase ${
+                        zone.risk_color === 'red' ? 'bg-[#F04438] text-white' :
+                        zone.risk_color === 'orange' ? 'bg-[#F79009] text-white' :
+                        zone.risk_color === 'yellow' ? 'bg-[#FDB022] text-[#0F0F0F]' :
+                        'bg-[#12B76A] text-white'
+                      }`}>
+                        {zone.risk_color === 'red' && '🔴'}
+                        {zone.risk_color === 'orange' && '🟠'}
+                        {zone.risk_color === 'yellow' && '🟡'}
+                        {zone.risk_color === 'green' && '🟢'}
+                        {' '}
+                        {zone.risk_level}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{zone.active_policies}</td>
+                    <td className="px-4 py-3">{zone.claims_this_month}</td>
+                    <td className="px-4 py-3 font-semibold">₹{zone.potential_exposure_inr?.toLocaleString('en-IN')}</td>
+                  </tr>
+                ))}
+                {!zoneRisk?.zones?.length && !loading && (
+                  <tr>
+                    <td colSpan="5" className="px-4 py-6 text-center text-[13px] text-[#9B9B9B]">No zones actively monitored.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        {/* Claims by Trigger */}
         <div className="mx-4 bg-white rounded-card shadow-card overflow-hidden">
           <div className="px-4 py-3.5 border-b border-grey-100">
-            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Active triggers</span>
+            <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Claims by Trigger</span>
           </div>
-          {stats?.active_triggers?.length ? stats.active_triggers.map((event) => (
-            <div key={event._id} className="px-4 py-3 border-b border-grey-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[14px] font-semibold font-body text-[#0F0F0F]">{event.city} - {event.trigger_type}</p>
-                  <p className="text-[12px] text-[#6B6B6B] font-body mt-0.5">{event.claims_count || 0}/{event.affected_workers || 0} workers · {event.severity}</p>
-                </div>
-                <Badge variant="info">{event.confirmation_status || 'ACTIVE'}</Badge>
-              </div>
-            </div>
-          )) : (
-            <div className="px-4 py-6 text-center">
-              <p className="text-[13px] text-[#9B9B9B] font-body">No active triggers</p>
-            </div>
-          )}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left" style={{ minWidth: 400 }}>
+              <thead>
+                <tr className="bg-grey-50 text-[11px] font-semibold text-[#6B6B6B] uppercase tracking-wide">
+                  <th className="px-4 py-3 font-body">Trigger Type</th>
+                  <th className="px-4 py-3 font-body">Count</th>
+                  <th className="px-4 py-3 font-body text-right">Total Payout</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-grey-50 text-[13px] font-body text-[#0F0F0F]">
+                {(claims_by_trigger || []).map((trigger) => (
+                  <tr key={trigger._id}>
+                    <td className="px-4 py-3 font-semibold">{trigger._id}</td>
+                    <td className="px-4 py-3">{trigger.count}</td>
+                    <td className="px-4 py-3 text-right font-semibold">₹{trigger.total_payout?.toLocaleString('en-IN')}</td>
+                  </tr>
+                ))}
+                {!claims_by_trigger?.length && !loading && (
+                  <tr>
+                    <td colSpan="3" className="px-4 py-6 text-center text-[13px] text-[#9B9B9B]">No claims found this month.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </motion.div>

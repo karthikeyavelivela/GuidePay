@@ -157,11 +157,15 @@ export const getActuarialExposure = () => adminApi.get('/actuarial/exposure')
 export const getActuarialReserve = () => adminApi.get('/actuarial/reserve')
 export const simulateActuarialScenario = (payload) => adminApi.post('/actuarial/simulate', payload)
 export const getClaimsQueue = (status = 'ALL') => adminApi.get('/admin/claims/queue', { params: { status } })
+export const getAdminClaims = (params) => adminApi.get('/admin/claims/queue', { params });
 export const getAdminAnalytics = (days = 30) => adminApi.get('/admin/analytics', { params: { days } })
 export const getAnalytics = getAdminAnalytics
 export const getWorkers = (status = 'ALL', search = '', limit = 50, skip = 0) => adminApi.get('/admin/workers', { params: { status, search, limit, skip } })
-export const approveClaim = (id) => adminApi.patch(`/admin/claims/${id}/approve`)
-export const rejectClaim = (id, reason) => adminApi.patch(`/admin/claims/${id}/reject`, null, { params: { reason } })
+export const approveClaim = (id) => adminApi.post(`/admin/claims/${id}/approve`)
+export const rejectClaim = (id, reason) => adminApi.post(`/admin/claims/${id}/reject`, null, { params: { reason } })
+export const getAdminDashboardStats = () => adminApi.get('/admin/dashboard-stats');
+export const getZoneRiskMonitor = () => adminApi.get('/admin/zone-risk-monitor');
+export const getFraudAnalytics = () => adminApi.get('/admin/fraud-analytics');
 export const simulateTrigger = (city, type) => adminApi.post('/admin/simulate-trigger', { city, trigger_type: type })
 export const getAdminSupportTickets = (status = 'all') => adminApi.get('/support/admin/tickets', { params: { status } })
 export const sendAdminSupportMessage = (ticketId, text) => adminApi.post(`/support/admin/tickets/${ticketId}/messages`, { text })

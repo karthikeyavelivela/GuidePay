@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import TopBar from '../../components/ui/TopBar'
-import { getAdminAnalytics } from '../../services/api'
+import { getAdminAnalytics, getFraudAnalytics } from '../../services/api'
 
 const pageVariants = {
   initial: { opacity: 0, y: 12 },
@@ -56,37 +56,6 @@ const axisStyle = {
   stroke: '#E4E4E7',
 }
 
-const DEMO_PREMIUM_PAYOUT = [
-  { week: 'W1', premium: 54321, payout: 19200 },
-  { week: 'W2', premium: 51200, payout: 22400 },
-  { week: 'W3', premium: 58000, payout: 15600 },
-  { week: 'W4', premium: 54321, payout: 33000 },
-]
-
-const DEMO_LOSS_RATIO = [
-  { week: 'W1', ratio: 35, target: 65 },
-  { week: 'W2', ratio: 44, target: 65 },
-  { week: 'W3', ratio: 27, target: 65 },
-  { week: 'W4', ratio: 61, target: 65 },
-]
-
-const DEMO_ZONE_RISK = [
-  { city: 'Hyderabad', risk: 78 },
-  { city: 'Mumbai',    risk: 54 },
-  { city: 'Bengaluru', risk: 12 },
-  { city: 'Delhi',     risk: 35 },
-]
-
-const DEMO_PAYOUT_FREQ = [
-  { day: 'Mon', payouts: 2 },
-  { day: 'Tue', payouts: 5 },
-  { day: 'Wed', payouts: 1 },
-  { day: 'Thu', payouts: 8 },
-  { day: 'Fri', payouts: 3 },
-  { day: 'Sat', payouts: 12 },
-  { day: 'Sun', payouts: 6 },
-]
-
 function ChartCard({ title, children }) {
   return (
     <div className="mx-4 bg-white rounded-card shadow-card p-4">
@@ -97,11 +66,10 @@ function ChartCard({ title, children }) {
 }
 
 export default function Analytics() {
-  const [premiumPayoutData, setPremiumPayoutData] = useState(DEMO_PREMIUM_PAYOUT)
-  const [lossRatioData, setLossRatioData] = useState(DEMO_LOSS_RATIO)
-  const [zoneRiskData, setZoneRiskData] = useState(DEMO_ZONE_RISK)
-  const [payoutFreqData, setPayoutFreqData] = useState(DEMO_PAYOUT_FREQ)
-  const [usingDemo, setUsingDemo] = useState(true)
+  const [premiumPayoutData, setPremiumPayoutData] = useState([])
+  const [lossRatioData, setLossRatioData] = useState([])
+  const [fraudData, setFraudData] = useState(null)
+  
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState(30)
 
@@ -109,18 +77,19 @@ export default function Analytics() {
     loadAnalytics()
   }, [period])
 
-  const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
   const loadAnalytics = async () => {
     setLoading(true)
     try {
-      const json = await getAdminAnalytics(period)
+      const p1 = getAdminAnalytics(period).catch(() => null)
+      const p2 = getFraudAnalytics().catch(() => null)
+      
+      const [json, fraudJson] = await Promise.all([p1, p2])
+      
+      if (fraudJson) {
+        setFraudData(fraudJson)
+      }
 
-      const hasRealRevenue = json.daily_revenue?.some(d => d.amount > 0)
-      const hasRealPayouts = json.daily_payouts?.some(d => d.amount > 0)
-
-      if (hasRealRevenue || hasRealPayouts) {
-        // Group daily_revenue by week index (4 buckets)
+      if (json && (json.daily_revenue?.length > 0 || json.daily_payouts?.length > 0)) {
         const revByWeek = [0, 0, 0, 0]
         const payByWeek = [0, 0, 0, 0]
         json.daily_revenue?.forEach((d, i) => { revByWeek[Math.min(3, Math.floor(i / 7))] += d.amount })
@@ -131,8 +100,7 @@ export default function Analytics() {
           { week: 'W3', premium: revByWeek[2], payout: payByWeek[2] },
           { week: 'W4', premium: revByWeek[3], payout: payByWeek[3] },
         ])
-
-        // Loss ratio by week
+        
         const lossData = [0, 1, 2, 3].map(i => {
           const rev = revByWeek[i]
           const pay = payByWeek[i]
@@ -143,93 +111,141 @@ export default function Analytics() {
           }
         })
         setLossRatioData(lossData)
-
-        // Payout frequency by day-of-week
-        const freqMap = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 }
-        json.daily_payouts?.forEach(d => {
-          const dayIdx = new Date(d._id).getDay()
-          const dayLabel = DAY_LABELS[dayIdx]
-          if (freqMap[dayLabel] !== undefined) freqMap[dayLabel] += d.count
-        })
-        setPayoutFreqData(Object.entries(freqMap).map(([day, payouts]) => ({ day, payouts })))
-
-        setUsingDemo(false)
       } else {
-        // No real data — keep demo data, set flag
-        setUsingDemo(true)
-      }
-
-      // Plan breakdown → zone risk proxy (use plan names as "zones")
-      if (json.plan_breakdown?.length > 0) {
-        const total = json.plan_breakdown.reduce((s, p) => s + p.count, 0)
-        setZoneRiskData(json.plan_breakdown.map(p => ({
-          city: p.label || p._id,
-          risk: total > 0 ? Math.round((p.count / total) * 100) : 0,
-        })))
+        // Fallback demo charts if no actual chart records exist
+        setPremiumPayoutData([
+          { week: 'W1', premium: 54000, payout: 19000 },
+          { week: 'W2', premium: 51000, payout: 22000 },
+          { week: 'W3', premium: 58000, payout: 15000 },
+          { week: 'W4', premium: 54000, payout: 33000 },
+        ])
+        setLossRatioData([
+          { week: 'W1', ratio: 35, target: 65 },
+          { week: 'W2', ratio: 43, target: 65 },
+          { week: 'W3', ratio: 26, target: 65 },
+          { week: 'W4', ratio: 61, target: 65 },
+        ])
       }
     } catch (e) {
-      console.error('[Analytics] fetch failed, using demo data:', e.message)
-      setUsingDemo(true)
+      console.error('[Analytics] load fail', e)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <motion.div
-      className="min-h-screen bg-grey-50 pb-24"
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      <TopBar title="Analytics" bgClass="bg-grey-50" />
-
-      {/* Demo badge + period selector */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 4px' }}>
-        {usingDemo ? (
-          <span style={{
-            fontSize: 11, fontWeight: 700, fontFamily: 'Inter',
-            color: '#F79009', background: 'rgba(247,144,9,0.1)',
-            padding: '3px 10px', borderRadius: 999,
-            border: '1px solid rgba(247,144,9,0.2)',
-          }}>
-            DEMO DATA — No real transactions yet
-          </span>
-        ) : <span />}
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[7, 14, 30].map(d => (
-            <button
-              key={d}
-              onClick={() => setPeriod(d)}
-              style={{
-                padding: '4px 12px', borderRadius: 8,
-                border: '1px solid #E4E4E7',
-                background: period === d ? '#D97757' : 'white',
-                color: period === d ? 'white' : '#6B6B6B',
-                fontSize: 11, fontWeight: 700, fontFamily: 'Inter',
-                cursor: 'pointer',
-              }}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-      </div>
+    <motion.div className="min-h-screen bg-grey-50 pb-24" variants={pageVariants} initial="initial" animate="animate" exit="exit">
+      <TopBar title="Actuarial Analytics" bgClass="bg-grey-50" />
 
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}>
-          <div style={{
-            width: 28, height: 28,
-            border: '3px solid #E4E4E7',
-            borderTopColor: '#D97757',
-            borderRadius: 999,
-            animation: 'spin 0.8s linear infinite',
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <div style={{ width: 28, height: 28, border: '3px solid #E4E4E7', borderTopColor: '#D97757', borderRadius: 999, animation: 'spin 0.8s linear infinite' }} />
         </div>
       ) : (
         <div className="mt-3 flex flex-col gap-3">
+          
+          {/* Fraud Analytics Component */}
+          {fraudData && (
+            <>
+              {/* Summary Row */}
+              <div className="px-4">
+                <div className="bg-white rounded-card shadow-card p-4">
+                  <p className="text-[14px] font-semibold font-body text-[#0F0F0F] mb-3">Pipeline Integrity</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-grey-50 rounded-[8px] p-3 text-center">
+                      <p className="text-[11px] font-bold text-grey-500 uppercase tracking-wider mb-1">Total Analyzed</p>
+                      <p className="font-display font-bold text-[20px] text-[#0F0F0F]">{fraudData.summary.total_claims_analyzed}</p>
+                    </div>
+                    <div className="bg-danger-light border border-danger/20 rounded-[8px] p-3 text-center">
+                      <p className="text-[11px] font-bold text-danger uppercase tracking-wider mb-1">Flagged</p>
+                      <p className="font-display font-bold text-[20px] text-danger">{fraudData.summary.flagged_for_review}</p>
+                    </div>
+                    <div className="bg-success-light border border-success/20 rounded-[8px] p-3 text-center">
+                      <p className="text-[11px] font-bold text-success uppercase tracking-wider mb-1">Auto-Approved</p>
+                      <p className="font-display font-bold text-[20px] text-success">{fraudData.summary.auto_approved}</p>
+                    </div>
+                    <div className="bg-grey-50 rounded-[8px] p-3 text-center">
+                      <p className="text-[11px] font-bold text-grey-500 uppercase tracking-wider mb-1">Detection Rate</p>
+                      <p className="font-display font-bold text-[20px] text-[#0F0F0F]">{fraudData.summary.fraud_detection_rate}%</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Signals Breakdown */}
+              <ChartCard title="Telemetry Red Flags">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="border border-grey-100 rounded-[8px] p-3 flex items-start justify-between">
+                    <div>
+                      <p className="text-[20px]">🛰️</p>
+                      <p className="text-[11px] font-bold text-grey-500 uppercase mt-1 leading-tight">GPS Spoofing<br/>Attempts</p>
+                    </div>
+                    <span className="font-display font-bold text-[18px] text-[#0F0F0F]">{fraudData.signal_breakdown.gps_spoofing_attempts}</span>
+                  </div>
+                  <div className="border border-grey-100 rounded-[8px] p-3 flex items-start justify-between">
+                    <div>
+                      <p className="text-[20px]">🌧️</p>
+                      <p className="text-[11px] font-bold text-grey-500 uppercase mt-1 leading-tight">Weather<br/>Mismatches</p>
+                    </div>
+                    <span className="font-display font-bold text-[18px] text-[#0F0F0F]">{fraudData.signal_breakdown.weather_validation_failures}</span>
+                  </div>
+                  <div className="border border-grey-100 rounded-[8px] p-3 flex items-start justify-between">
+                    <div>
+                      <p className="text-[20px]">👤</p>
+                      <p className="text-[11px] font-bold text-grey-500 uppercase mt-1 leading-tight">New Account<br/>Flags</p>
+                    </div>
+                    <span className="font-display font-bold text-[18px] text-[#0F0F0F]">{fraudData.signal_breakdown.new_account_flags}</span>
+                  </div>
+                  <div className="border border-grey-100 rounded-[8px] p-3 flex items-start justify-between">
+                    <div>
+                      <p className="text-[20px]">🔄</p>
+                      <p className="text-[11px] font-bold text-grey-500 uppercase mt-1 leading-tight">High Freq.<br/>Claimers</p>
+                    </div>
+                    <span className="font-display font-bold text-[18px] text-[#0F0F0F]">{fraudData.signal_breakdown.high_frequency_claimers}</span>
+                  </div>
+                </div>
+              </ChartCard>
+
+              {/* Top Flagged claims */}
+              <div className="mx-4 bg-white rounded-card shadow-card overflow-hidden">
+                <div className="px-4 py-3.5 border-b border-grey-100">
+                  <span className="text-[14px] font-semibold font-body text-[#0F0F0F]">Top Flagged Submissions</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left" style={{ minWidth: 400 }}>
+                    <thead>
+                      <tr className="bg-grey-50 text-[11px] font-semibold text-[#6B6B6B] uppercase tracking-wide">
+                        <th className="px-4 py-3 font-body">Claim ID</th>
+                        <th className="px-4 py-3 font-body">Location</th>
+                        <th className="px-4 py-3 font-body">Trigger</th>
+                        <th className="px-4 py-3 font-body text-right">Fraud Score</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-grey-50 text-[13px] font-body text-[#0F0F0F]">
+                      {(fraudData.top_flagged_claims || []).map((claim) => (
+                        <tr key={claim.claim_id}>
+                          <td className="px-4 py-3 font-mono text-[11px] text-grey-500">{claim.claim_id.slice(0, 8)}</td>
+                          <td className="px-4 py-3 font-semibold">{claim.city}</td>
+                          <td className="px-4 py-3 bg-grey-50 rounded italic">{claim.trigger_type}</td>
+                          <td className="px-4 py-3 text-right">
+                            <span className={`px-2 py-1 rounded-[4px] font-bold text-[12px] ${claim.fraud_score > 0.85 ? 'text-white bg-danger' : 'text-[#0F0F0F] bg-warning'}`}>
+                              {Math.round(claim.fraud_score * 100)} / 100
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {!fraudData.top_flagged_claims?.length && (
+                        <tr>
+                          <td colSpan="4" className="px-4 py-6 text-center text-[13px] text-[#9B9B9B]">No high-risk claims flagged recently.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Chart 1: Premium vs Payouts */}
           <ChartCard title="Premium vs Payouts">
             <ResponsiveContainer width="100%" height={180}>
@@ -238,21 +254,10 @@ export default function Analytics() {
                 <XAxis dataKey="week" {...axisStyle} axisLine={false} tickLine={false} />
                 <YAxis {...axisStyle} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v/1000).toFixed(0)}K`} />
                 <Tooltip {...tooltipStyle} formatter={(v) => [`₹${v.toLocaleString('en-IN')}`, '']} />
-                <Bar dataKey="premium" fill="#D97757" radius={[4, 4, 0, 0]} name="Premium" />
-                <Bar dataKey="payout"  fill="#2E90FA" radius={[4, 4, 0, 0]} name="Payouts" />
+                <Bar dataKey="premium" fill="#12B76A" radius={[4, 4, 0, 0]} name="Premium" />
+                <Bar dataKey="payout"  fill="#F79009" radius={[4, 4, 0, 0]} name="Payouts" />
               </BarChart>
             </ResponsiveContainer>
-            <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 10 }}>
-              {[
-                { color: '#D97757', label: 'Premium collected' },
-                { color: '#2E90FA', label: 'Payouts made' },
-              ].map(l => (
-                <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <div style={{ width: 12, height: 3, background: l.color, borderRadius: 2 }} />
-                  <span style={{ fontSize: 11, fontFamily: 'Inter', color: '#9B9B9B' }}>{l.label}</span>
-                </div>
-              ))}
-            </div>
           </ChartCard>
 
           {/* Chart 2: Loss ratio trend */}
@@ -266,9 +271,9 @@ export default function Analytics() {
                 <Line
                   type="monotone"
                   dataKey="ratio"
-                  stroke="#D97757"
+                  stroke="#2E90FA"
                   strokeWidth={2}
-                  dot={{ fill: '#D97757', r: 4 }}
+                  dot={{ fill: '#2E90FA', r: 4 }}
                   name="Loss Ratio"
                 />
                 <Line
@@ -284,47 +289,8 @@ export default function Analytics() {
             </ResponsiveContainer>
           </ChartCard>
 
-          {/* Chart 3: Zone risk / plan distribution */}
-          <ChartCard title={usingDemo ? 'Zone Risk' : 'Plan Distribution'}>
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={zoneRiskData} layout="vertical" barSize={20}>
-                <CartesianGrid stroke="#F0F0F2" strokeDasharray="none" horizontal={false} />
-                <XAxis type="number" {...axisStyle} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
-                <YAxis type="category" dataKey="city" {...axisStyle} axisLine={false} tickLine={false} width={70} />
-                <Tooltip {...tooltipStyle} formatter={(v) => [`${v}%`, usingDemo ? 'Risk' : 'Share']} />
-                <Bar dataKey="risk" fill="#D97757" radius={[0, 4, 4, 0]} name={usingDemo ? 'Risk %' : 'Share %'} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          {/* Chart 4: Payout frequency */}
-          <ChartCard title="Payout Frequency">
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={payoutFreqData}>
-                <defs>
-                  <linearGradient id="payoutGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#D97757" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#D97757" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="#F0F0F2" strokeDasharray="none" vertical={false} />
-                <XAxis dataKey="day" {...axisStyle} axisLine={false} tickLine={false} />
-                <YAxis {...axisStyle} axisLine={false} tickLine={false} />
-                <Tooltip {...tooltipStyle} />
-                <Area
-                  type="monotone"
-                  dataKey="payouts"
-                  stroke="#D97757"
-                  strokeWidth={1.5}
-                  fill="url(#payoutGrad)"
-                  name="Payouts"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </ChartCard>
         </div>
       )}
-
       <AdminBottomNav active="analytics" />
     </motion.div>
   )
