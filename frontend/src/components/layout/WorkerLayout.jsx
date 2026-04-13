@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Home, Shield, FileCheck, TrendingUp, User,
-  DollarSign, MapPin, Bot, Headphones, X, Menu, Zap,
+  DollarSign, MapPin, Bot, Headphones, X, Menu, Zap, Sparkles,
 } from 'lucide-react'
 import BottomNav from '../ui/BottomNav'
 import { NotificationBell } from '../ui/NotificationBell'
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { id: 'claims',    label: 'Claims',     icon: FileCheck,        path: '/claims' },
   { id: 'forecast',  label: 'Forecast',   icon: TrendingUp,       path: '/forecast' },
   { id: 'earnings',  label: 'Earnings',   icon: DollarSign,       path: '/earnings' },
+  { id: 'earnings-intelligence', label: 'Earnings Intelligence', icon: Sparkles, path: '/earnings-intelligence' },
   { id: 'zone-intel',label: 'Zone Intel', icon: MapPin,           path: '/zone-intel' },
   { id: 'assistant', label: 'Assistant',  icon: Bot,          path: '/assistant' },
   { id: 'support',   label: 'Support',    icon: Headphones,   path: '/support' },
@@ -34,6 +35,7 @@ const PAGE_TITLES = {
   '/risk-score': 'Risk Score',
   '/premium': 'Your Premium',
   '/earnings': 'Earnings Shield',
+  '/earnings-intelligence': 'Earnings Intelligence',
   '/zone-intel': 'Zone Intel',
   '/assistant': 'AI Assistant',
   '/support': 'Support',

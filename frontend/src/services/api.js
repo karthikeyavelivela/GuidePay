@@ -166,7 +166,7 @@ export const rejectClaim = (id, reason) => adminApi.post(`/admin/claims/${id}/re
 export const getAdminDashboardStats = () => adminApi.get('/admin/dashboard-stats');
 export const getZoneRiskMonitor = () => adminApi.get('/admin/zone-risk-monitor');
 export const getFraudAnalytics = () => adminApi.get('/admin/fraud-analytics');
-export const simulateTrigger = (city, type) => adminApi.post('/admin/simulate-trigger', { city, trigger_type: type })
+export const simulateTrigger = (city, type) => adminApi.post('/admin/simulate-trigger', { city, trigger_type: type }, { timeout: 60000 })
 export const getAdminSupportTickets = (status = 'all') => adminApi.get('/support/admin/tickets', { params: { status } })
 export const sendAdminSupportMessage = (ticketId, text) => adminApi.post(`/support/admin/tickets/${ticketId}/messages`, { text })
 export const updateAdminSupportStatus = (ticketId, status) => adminApi.patch(`/support/admin/tickets/${ticketId}/status`, { status })

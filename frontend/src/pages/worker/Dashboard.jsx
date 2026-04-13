@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Zap, ShieldCheck, MapPin, Bot, TrendingUp } from 'lucide-react'
+import { Download, LoaderCircle, X, Zap, ShieldCheck, MapPin, Bot, TrendingUp } from 'lucide-react'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import LiveDot from '../../components/ui/LiveDot'
@@ -10,7 +10,7 @@ import { ZoneMonitor } from '../../components/dashboard/ZoneMonitor'
 import IncomeTierBadge from '../../components/ui/IncomeTierBadge'
 import { useWorkerStore } from '../../store/workerStore'
 import { formatINR } from '../../utils/formatters'
-import { getMyClaims, getMyProfile, getMyZoneForecast, getWellnessScore } from '../../services/api'
+import { downloadProtectionCertificate, getMyClaims, getMyProfile, getMyZoneForecast, getWellnessScore } from '../../services/api'
 import { useTranslation } from '../../i18n/useTranslation'
 
 const pageVariants = {
@@ -38,6 +38,7 @@ export default function Dashboard() {
   const setActivePolicy = useWorkerStore((s) => s.setActivePolicy)
   const { t } = useTranslation()
   const now = new Date()
+  const activePolicyId = activePolicy?.policyId || useWorkerStore.getState().activePolicy?.policyId
   const weekStartDate = new Date(now)
   weekStartDate.setDate(now.getDate() - now.getDay() + 1)
   const weekEndDate = new Date(weekStartDate)
@@ -47,6 +48,8 @@ export default function Dashboard() {
   const [profileData, setProfileData] = useState(null)
   const [zoneAlert, setZoneAlert] = useState(null)
   const [wellnessData, setWellnessData] = useState(null)
+  const [downloadLoading, setDownloadLoading] = useState(false)
+  const [toast, setToast] = useState(null)
 
   // Fetch real data on mount
   useEffect(() => {
@@ -79,6 +82,7 @@ export default function Dashboard() {
           })
           if (profile.active_policy) {
             setActivePolicy({
+              policyId: profile.active_policy._id || profile.active_policy.id,
               planId: profile.active_policy.plan_id,
               planName: profile.active_policy.plan_name,
               price: profile.active_policy.weekly_premium,
@@ -137,6 +141,12 @@ export default function Dashboard() {
     }
     fetchWellness()
   }, [])
+
+  useEffect(() => {
+    if (!toast) return undefined
+    const timer = setTimeout(() => setToast(null), 2600)
+    return () => clearTimeout(timer)
+  }, [toast])
 
   const w = {
     name: worker?.name || profileData?.name || 'Delivery Partner',
@@ -245,6 +255,24 @@ export default function Dashboard() {
     },
   ]
 
+  const handleDownloadCertificate = async () => {
+    if (!activePolicyId) {
+      setToast({ type: 'error', message: 'Could not download certificate. Try again.' })
+      return
+    }
+
+    setDownloadLoading(true)
+    try {
+      await downloadProtectionCertificate(activePolicyId)
+      setToast({ type: 'success', message: 'Certificate downloaded!' })
+    } catch (error) {
+      console.error('[Dashboard] certificate download failed', error)
+      setToast({ type: 'error', message: 'Could not download certificate. Try again.' })
+    } finally {
+      setDownloadLoading(false)
+    }
+  }
+
   return (
     <motion.div
       className="min-h-screen pb-24"
@@ -254,6 +282,35 @@ export default function Dashboard() {
       animate="animate"
       exit="exit"
     >
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            style={{
+              position: 'fixed',
+              top: 74,
+              left: 16,
+              right: 16,
+              zIndex: 80,
+              margin: '0 auto',
+              maxWidth: 420,
+              padding: '12px 14px',
+              borderRadius: 14,
+              color: 'white',
+              background: toast.type === 'success' ? '#12B76A' : '#F04438',
+              fontSize: 13,
+              fontWeight: 700,
+              fontFamily: 'Inter',
+              boxShadow: '0 14px 30px rgba(15,23,42,0.16)',
+            }}
+          >
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="px-4 pt-12 pb-0" style={{ background: 'var(--bg-primary)' }}>
         <div className="flex items-center justify-between">
@@ -383,6 +440,33 @@ export default function Dashboard() {
                   </span>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={handleDownloadCertificate}
+                disabled={downloadLoading || !activePolicyId}
+                style={{
+                  width: '100%',
+                  marginTop: 14,
+                  border: '1px solid rgba(255,255,255,0.14)',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  background: 'rgba(255,255,255,0.08)',
+                  color: 'white',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  fontFamily: 'Inter',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  cursor: downloadLoading || !activePolicyId ? 'not-allowed' : 'pointer',
+                  opacity: downloadLoading || !activePolicyId ? 0.7 : 1,
+                }}
+              >
+                {downloadLoading ? <LoaderCircle size={16} className="animate-spin" /> : <Download size={16} />}
+                {downloadLoading ? 'Downloading...' : 'Download Certificate'}
+              </button>
             </div>
           </motion.div>
         )}

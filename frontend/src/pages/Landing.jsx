@@ -79,17 +79,23 @@ const NewsRow = ({ items, direction = -1 }) => (
 // ── Pricing plans ──────────────────────────────────────────────────────
 const PLANS = [
   {
-    name: 'Basic', price: 49, zone: 'Low risk zone', popular: false,
+    name: 'Daily Shield', price: 12, period: 'day', badge: 'MOST AFFORDABLE', badgeColor: 'green',
+    zone: 'Perfect for workers who want flexible daily protection',
+    features: ['24-hour protection window', 'Income-based payout (₹400–₹900)', 'All 5 trigger types covered', 'Instant UPI payout'],
+    cta: 'Get Daily →',
+  },
+  {
+    name: 'Basic', price: 49, period: 'week', zone: 'Low risk zone', popular: false,
     features: ['Up to ₹600/week coverage', 'IMD flood trigger', 'Platform outage trigger', 'Govt curfew trigger', 'UPI instant payout', 'AI 24h flood forecast', 'Basic risk score'],
     cta: 'Get Basic',
   },
   {
-    name: 'Standard', price: 62, zone: 'Medium risk zone', popular: true,
+    name: 'Standard', price: 62, period: 'week', badge: 'MOST POPULAR', badgeColor: 'orange', zone: 'Medium risk zone', popular: true,
     features: ['Up to ₹600/week coverage', 'All 3 triggers included', 'UPI instant payout < 2hrs', 'AI 24h flood forecast', 'Worker risk score tracking', 'Activity verification', 'Priority claim review', 'Flood alert notifications'],
     cta: 'Get Standard →',
   },
   {
-    name: 'Premium', price: 89, zone: 'High risk zone', popular: false,
+    name: 'Premium', price: 89, period: 'week', zone: 'High risk zone', popular: false,
     features: ['Up to ₹600/week coverage', 'All 3 triggers included', 'UPI instant payout < 1hr', 'AI 7-day forecast', 'Auto coverage extension', 'Priority fraud protection', 'Dedicated claim tracking', 'WhatsApp alerts', '24/7 support priority'],
     cta: 'Get Premium',
   },
@@ -510,22 +516,22 @@ const Landing = () => {
                 whileHover={{ y: -4 }}
                 style={{
                   background: 'white', borderRadius: 20, padding: 28,
-                  border: plan.popular ? '2px solid #D97757' : '1px solid #F4F4F5',
-                  boxShadow: plan.popular ? '0 8px 40px rgba(217,119,87,0.15)' : '0 2px 16px rgba(0,0,0,0.06)',
+                  border: plan.badgeColor === 'green' ? '2px solid #12B76A' : plan.popular ? '2px solid #D97757' : '1px solid #F4F4F5',
+                  boxShadow: plan.badgeColor === 'green' ? '0 8px 40px rgba(18,183,106,0.15)' : plan.popular ? '0 8px 40px rgba(217,119,87,0.15)' : '0 2px 16px rgba(0,0,0,0.06)',
                   position: 'relative', display: 'flex', flexDirection: 'column',
                 }}
               >
-                {plan.popular && (
-                  <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#D97757,#B85C3A)', color: 'white', fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', padding: '4px 14px', borderRadius: 999, whiteSpace: 'nowrap' }}>
-                    Most popular
+                {plan.badge && (
+                  <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: plan.badgeColor === 'green' ? 'linear-gradient(135deg,#12B76A,#027A48)' : 'linear-gradient(135deg,#D97757,#B85C3A)', color: 'white', fontSize: 11, fontWeight: 700, fontFamily: 'Inter, sans-serif', padding: '4px 14px', borderRadius: 999, whiteSpace: 'nowrap' }}>
+                    {plan.badge}
                   </div>
                 )}
                 <p style={{ fontSize: 13, fontWeight: 600, fontFamily: 'Inter, sans-serif', color: '#9B9B9B', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>{plan.name}</p>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
                   <span style={{ fontFamily: 'Bricolage Grotesque, sans-serif', fontSize: 48, fontWeight: 800, color: '#0F0F0F', letterSpacing: -2 }}>₹{plan.price}</span>
-                  <span style={{ fontSize: 14, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>/week</span>
+                  <span style={{ fontSize: 14, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>/{plan.period || 'week'}</span>
                 </div>
-                <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: '0 0 20px' }}>{plan.zone} · ₹600/week cap</p>
+                <p style={{ fontSize: 12, color: '#9B9B9B', fontFamily: 'Inter, sans-serif', margin: '0 0 20px', lineHeight: 1.4 }}>{plan.zone}</p>
                 <div style={{ height: 1, background: '#F4F4F5', margin: '0 0 20px' }} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                   {plan.features.map(f => (

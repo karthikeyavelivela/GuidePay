@@ -9,7 +9,7 @@
 Guidewire DEVTrails 2026 · Phase 3 · Team SentinelX · KL University
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-guidepayklu.vercel.app-D97757?style=for-the-badge&logo=vercel&logoColor=white)](https://guidepayklu.vercel.app)
-[![API Docs](https://img.shields.io/badge/API_Docs-Render-430098?style=for-the-badge&logo=render&logoColor=white)](https://guidepay-backend.onrender.com/docs)
+[![API Docs](https://img.shields.io/badge/API_Docs-Render-430098?style=for-the-badge&logo=render&logoColor=white)](https://guidepay.onrender.com/docs)
 [![GitHub](https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/karthikeyavelivela/GuidePay)
 [![Phase 2](https://img.shields.io/badge/Phase_2-4_Stars_+42,000_DC-FFD700?style=for-the-badge)](https://guidepayklu.vercel.app)
 
@@ -506,7 +506,7 @@ ELEVENLABS_API_KEY=...
 FRONTEND_URL=https://guidepayklu.vercel.app
 
 # Frontend (.env)
-VITE_API_URL=https://guidepay-backend.onrender.com
+VITE_API_URL=https://guidepay.onrender.com
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=guide-pay.firebaseapp.com
 VITE_FIREBASE_APP_ID=...
@@ -521,7 +521,7 @@ VITE_RAZORPAY_KEY_ID=rzp_test_...
 |---|---|
 | Worker Portal | https://guidepayklu.vercel.app |
 | Admin Panel | https://guidepayklu.vercel.app/admin/login |
-| API Documentation | https://guidepay-backend.onrender.com/docs |
+| API Documentation | https://guidepay.onrender.com/docs |
 | Source Code | https://github.com/karthikeyavelivela/GuidePay |
 | Phase 2 Blog | https://medium.com/@velivelakarthikeya/from-idea-to-execution-how-were-building-real-time-income-protection-for-india-s-gig-workers-f1f69c7c82cf |
 

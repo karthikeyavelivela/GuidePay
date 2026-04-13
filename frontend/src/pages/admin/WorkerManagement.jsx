@@ -159,6 +159,7 @@ export default function WorkerManagement() {
               <tr>
                 <th style={{ padding: '16px 24px', fontSize: 12, color: '#9B9B9B', textTransform: 'uppercase', letterSpacing: 1 }}>Worker Info</th>
                 <th style={{ padding: '16px 24px', fontSize: 12, color: '#9B9B9B', textTransform: 'uppercase', letterSpacing: 1 }}>City & Zone</th>
+                <th style={{ padding: '16px 24px', fontSize: 12, color: '#9B9B9B', textTransform: 'uppercase', letterSpacing: 1 }}>Income Tier</th>
                 <th style={{ padding: '16px 24px', fontSize: 12, color: '#9B9B9B', textTransform: 'uppercase', letterSpacing: 1 }}>Risk Score</th>
                 <th style={{ padding: '16px 24px', fontSize: 12, color: '#9B9B9B', textTransform: 'uppercase', letterSpacing: 1 }}>Status</th>
                 <th style={{ padding: '16px 24px', fontSize: 12, color: '#9B9B9B', textTransform: 'uppercase', letterSpacing: 1 }}>Action</th>
@@ -174,6 +175,15 @@ export default function WorkerManagement() {
                   <td style={{ padding: '16px 24px', color: '#E4E4E7' }}>
                     <div style={{ fontWeight: 500, marginBottom: 4 }}>{worker.city || 'Unknown'}</div>
                     <div style={{ fontSize: 12, color: '#6B6B6B' }}>{worker.zone || 'No zone set'}</div>
+                  </td>
+                  <td style={{ padding: '16px 24px' }}>
+                    <div style={{
+                      display: 'inline-flex', padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700,
+                      background: (worker.income_tier || 'Bronze') === 'Gold' ? 'rgba(255, 215, 0, 0.15)' : (worker.income_tier || 'Bronze') === 'Silver' ? 'rgba(168, 169, 173, 0.15)' : 'rgba(205, 127, 50, 0.15)',
+                      color: (worker.income_tier || 'Bronze') === 'Gold' ? '#FFD700' : (worker.income_tier || 'Bronze') === 'Silver' ? '#A8A9AD' : '#CD7F32'
+                    }}>
+                      {worker.income_tier || 'Bronze'}
+                    </div>
                   </td>
                   <td style={{ padding: '16px 24px' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: `${riskColor(worker.risk_score)}15`, color: riskColor(worker.risk_score), padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700 }}>

@@ -128,14 +128,9 @@ app.include_router(ml_routes.router, prefix="/api/v1/ml", tags=["ml"])
 
 @app.get("/")
 async def root():
-    return {
-        "service": "Guide-Pay API",
-        "version": "2.0.0",
-        "status": "operational",
-        "phase": "Phase 3 — Competition Ready"
-    }
+    return {"service": "GuidePay API", "version": "3.0.0", "docs": "/docs"}
 
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "version": "3.0.0", "service": "GuidePay API"}

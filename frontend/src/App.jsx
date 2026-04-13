@@ -30,6 +30,7 @@ const Profile = lazy(() => import('./pages/worker/Profile'))
 const ClaimsList = lazy(() => import('./pages/worker/ClaimsList'))
 const NotificationsPage = lazy(() => import('./pages/worker/NotificationsPage'))
 const EarningsShield = lazy(() => import('./pages/worker/EarningsShield'))
+const EarningsIntelligence = lazy(() => import('./pages/worker/EarningsIntelligence'))
 const ZoneIntel = lazy(() => import('./pages/worker/ZoneIntel'))
 const CommunityStats = lazy(() => import('./pages/worker/CommunityStats'))
 const CoverageAssistant = lazy(() => import('./pages/worker/CoverageAssistant'))
@@ -141,6 +142,7 @@ function AppRoutes() {
           <Route path="/claims"         element={<ClaimsList />} />
           <Route path="/notifications"  element={<NotificationsPage />} />
           <Route path="/earnings"       element={<EarningsShield />} />
+          <Route path="/earnings-intelligence" element={<EarningsIntelligence />} />
           <Route path="/zone-intel"     element={<ZoneIntel />} />
           <Route path="/community"      element={<CommunityStats />} />
           <Route path="/assistant"      element={<CoverageAssistant />} />

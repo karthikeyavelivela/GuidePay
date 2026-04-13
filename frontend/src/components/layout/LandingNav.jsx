@@ -10,6 +10,17 @@ const NAV_LINKS = [
   { label: 'For workers', href: '#workers' },
 ]
 
+const navStyles = `
+  @media (max-width: 768px) {
+    .nav-links-desktop { display: none !important; }
+    .nav-cta-desktop { display: none !important; }
+    .nav-hamburger { display: flex !important; }
+  }
+  @media (min-width: 769px) {
+    .nav-hamburger { display: none !important; }
+  }
+`
+
 export const LandingNav = () => {
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
@@ -23,6 +34,7 @@ export const LandingNav = () => {
 
   return (
     <>
+      <style>{navStyles}</style>
       {/* NAVBAR WRAPPER — full width fixed */}
       <div style={{
         position: 'fixed',
@@ -83,7 +95,7 @@ export const LandingNav = () => {
 
           {/* CENTER: Nav links — desktop */}
           <div
-            className="hidden md:flex"
+            className="nav-links-desktop"
             style={{
               alignItems: 'center',
               gap: 0,
@@ -124,7 +136,7 @@ export const LandingNav = () => {
           }}>
             <motion.button
               onClick={() => navigate('/login')}
-              className="hidden md:block"
+              className="nav-cta-desktop"
               whileTap={{ scale: 0.96 }}
               style={{
                 padding: '7px 14px',
@@ -177,7 +189,7 @@ export const LandingNav = () => {
 
             {/* Mobile hamburger */}
             <motion.button
-              className="md:hidden"
+              className="nav-hamburger"
               onClick={() => setMobileOpen(true)}
               whileTap={{ scale: 0.9 }}
               style={{

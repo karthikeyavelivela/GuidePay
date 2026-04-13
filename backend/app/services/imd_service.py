@@ -341,7 +341,12 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
         return
 
     # --- Income-based dynamic payout ---
-    daily_orders = float(worker.get("avg_daily_orders", worker.get("daily_orders", 8)))
+    daily_orders = float(
+        worker.get(
+            "avg_orders_per_day",
+            worker.get("avg_daily_orders", worker.get("daily_orders", 8)),
+        )
+    )
     payout_info = calculate_payout_amount(daily_orders)
     income_payout = payout_info["payout_amount"]
     payout_tier = payout_info["payout_tier"]

@@ -3,10 +3,11 @@ import { TRANSLATIONS } from './index'
 
 export const useTranslation = () => {
   const language = useWorkerStore(s => s.language) || 'en'
+  const englishDict = TRANSLATIONS.en || {}
   
   const t = (key) => {
-    const langDict = TRANSLATIONS[language] || TRANSLATIONS['en']
-    return langDict[key] || TRANSLATIONS['en'][key] || key
+    const langDict = TRANSLATIONS[language] || englishDict
+    return langDict?.[key] ?? englishDict?.[key] ?? key
   }
   
   return { t, language }

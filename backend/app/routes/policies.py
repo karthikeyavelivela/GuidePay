@@ -1,10 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends
+import io
+import logging
+from datetime import datetime, timedelta
+
+from bson import ObjectId
+from bson.errors import InvalidId
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from fpdf import FPDF
+
+from app.core.constants import PAYOUT_TIERS, PLANS
 from app.database import get_db
 from app.routes.auth import get_current_worker
 from app.utils.formatters import serialize_doc
-from datetime import datetime, timedelta
-import logging
-from app.core.constants import PLANS
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -19,6 +26,16 @@ DAILY_PLAN = {
     "badge": PLANS["daily"]["badge"],
 }
 
+
+def _id_candidates(raw_id: str) -> list:
+    candidates = [raw_id]
+    try:
+        candidates.append(ObjectId(raw_id))
+    except (InvalidId, TypeError):
+        pass
+    return candidates
+
+
 def check_daily_policy_expiry(policy: dict) -> bool:
     """Returns True if a daily policy is still valid."""
     if policy.get("plan_type") != "daily":
@@ -28,6 +45,7 @@ def check_daily_policy_expiry(policy: dict) -> bool:
         return False
     return datetime.utcnow() < expires_at
 
+
 @router.get("/my/active")
 async def get_active_policy(
     current_worker=Depends(get_current_worker),
@@ -35,20 +53,16 @@ async def get_active_policy(
 ):
     """Get current worker's active policy."""
     worker_id = str(current_worker["_id"])
-
-    policy = await db.policies.find_one({
-        "worker_id": worker_id,
-        "status": "ACTIVE"
-    })
+    policy = await db.policies.find_one({"worker_id": worker_id, "status": "ACTIVE"})
 
     if not policy:
         return {"policy": None, "message": "No active policy"}
 
     if policy.get("plan_type") == "daily" and not check_daily_policy_expiry(policy):
-        # Allow the background APScheduler job to expire it, but don't return it as active to the user.
         return {"policy": None, "message": "Daily policy expired"}
 
     return serialize_doc(policy)
+
 
 @router.get("/my")
 async def get_my_policies(
@@ -57,15 +71,9 @@ async def get_my_policies(
 ):
     """Get all policies for current worker"""
     worker_id = str(current_worker["_id"])
+    policies = await db.policies.find({"worker_id": worker_id}).sort("created_at", -1).to_list(50)
+    return {"policies": [serialize_doc(p) for p in policies], "total": len(policies)}
 
-    policies = await db.policies.find(
-        {"worker_id": worker_id}
-    ).sort("created_at", -1).to_list(50)
-
-    return {
-        "policies": [serialize_doc(p) for p in policies],
-        "total": len(policies)
-    }
 
 @router.get("/{policy_id}")
 async def get_policy(
@@ -75,103 +83,105 @@ async def get_policy(
 ):
     """Get a specific policy"""
     worker_id = str(current_worker["_id"])
-
-    policy = await db.policies.find_one({"_id": policy_id})
+    policy = await db.policies.find_one({"_id": {"$in": _id_candidates(policy_id)}})
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
 
-    if policy["worker_id"] != worker_id:
+    if str(policy["worker_id"]) != worker_id:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     return serialize_doc(policy)
 
+
 @router.get("/{policy_id}/certificate")
-async def generate_policy_certificate(
+async def download_certificate(
     policy_id: str,
     current_worker=Depends(get_current_worker),
     db=Depends(get_db)
 ):
-    """Generate PDF protection certificate for policy"""
-    from fastapi.responses import Response
-    from fpdf import FPDF
-    import io
-    
+    """Generate a downloadable PDF protection certificate for policy."""
     worker_id = str(current_worker["_id"])
-    
-    policy = await db.policies.find_one({"_id": policy_id})
+    policy = await db.policies.find_one({"_id": {"$in": _id_candidates(policy_id)}})
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
-        
-    if policy["worker_id"] != worker_id and current_worker.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
-        
-    class PDF(FPDF):
-        def header(self):
-            # Watermark
-            self.set_font('Helvetica', 'B', 50)
-            self.set_text_color(240, 240, 240)
-            self.cell(0, 100, 'GUIDEPAY PROTECTED', 0, 0, 'C')
-            self.set_y(20)
-            self.set_font('Helvetica', 'B', 20)
-            self.set_text_color(0, 0, 0)
-            self.cell(0, 10, 'Income Protection Certificate', 0, 1, 'C')
-            self.ln(10)
-            
-    pdf = PDF()
-    pdf.add_page()
-    
-    pdf.set_font("Helvetica", 'B', 12)
-    pdf.cell(50, 10, "Policy Holder:", 0, 0)
-    pdf.set_font("Helvetica", '', 12)
-    pdf.cell(0, 10, str(current_worker.get('name', 'N/A')), 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 12)
-    pdf.cell(50, 10, "Policy ID:", 0, 0)
-    pdf.set_font("Helvetica", '', 12)
-    pdf.cell(0, 10, str(policy.get('_id')), 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 12)
-    pdf.cell(50, 10, "Worker ID:", 0, 0)
-    pdf.set_font("Helvetica", '', 12)
-    pdf.cell(0, 10, worker_id, 0, 1)
-    
-    pdf.ln(5)
-    
-    pdf.set_font("Helvetica", 'B', 12)
-    pdf.cell(50, 10, "Zone Protected:", 0, 0)
-    pdf.set_font("Helvetica", '', 12)
-    pdf.cell(0, 10, str(current_worker.get('zone', 'N/A')), 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 12)
-    pdf.cell(50, 10, "Plan Type:", 0, 0)
-    pdf.set_font("Helvetica", '', 12)
-    pdf.cell(0, 10, str(policy.get('plan_type', 'N/A')).capitalize(), 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 12)
-    pdf.cell(50, 10, "Coverage Cap:", 0, 0)
-    pdf.set_font("Helvetica", '', 12)
-    pdf.cell(0, 10, f"Rs {policy.get('coverage_cap', 'N/A')}", 0, 1)
-    
-    pdf.set_font("Helvetica", 'B', 12)
-    pdf.cell(50, 10, "Status:", 0, 0)
-    pdf.set_font("Helvetica", '', 12)
-    pdf.cell(0, 10, str(policy.get('status', 'ACTIVE')), 0, 1)
-    
-    expires_at = policy.get('week_end') or policy.get('expires_at')
-    if expires_at:
-        pdf.set_font("Helvetica", 'B', 12)
-        pdf.cell(50, 10, "Valid Until:", 0, 0)
-        pdf.set_font("Helvetica", '', 12)
-        pdf.cell(0, 10, expires_at.strftime('%Y-%m-%d %H:%M UTC'), 0, 1)
-        
-    pdf.ln(20)
-    pdf.set_font("Helvetica", 'I', 10)
-    pdf.cell(0, 10, "This is an automatically generated parametric insurance certificate.", 0, 1, 'C')
-    pdf.cell(0, 10, "Coverage is subject to GuidePay terms and automated verification.", 0, 1, 'C')
-    
-    # Render PDF completely to memory
-    pdf_bytes = pdf.output()
-    return Response(content=pdf_bytes, media_type="application/pdf", headers={
-        "Content-Disposition": f"attachment; filename=GuidePay_Certificate_{policy_id}.pdf"
-    })
 
+    if str(policy["worker_id"]) != worker_id and current_worker.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    worker = await db.workers.find_one({"_id": {"$in": _id_candidates(str(policy["worker_id"]))}})
+    if not worker:
+        worker = current_worker
+
+    payout_tier = str(policy.get("payout_tier", "")).lower()
+    if payout_tier not in PAYOUT_TIERS:
+        avg_orders = float(worker.get("avg_orders_per_day", worker.get("avg_daily_orders", 10)))
+        payout_tier = "gold" if avg_orders >= 15 else "silver" if avg_orders >= 8 else "bronze"
+    payout_amount = PAYOUT_TIERS[payout_tier]["payout_inr"]
+
+    created_at = policy.get("created_at") or policy.get("week_start") or datetime.utcnow()
+    expires_at = policy.get("expires_at") or policy.get("week_end") or (created_at + timedelta(days=7))
+    plan_type = policy.get("plan_type") or policy.get("plan_id", "standard")
+    if plan_type not in PLANS:
+        plan_type = "standard"
+
+    triggers = [
+        "Flood / Heavy Rain (IMD SACHET)",
+        "Platform Outage (30+ minutes)",
+        "Government Curfew / Section 144",
+        "Air Quality Hazardous (AQI 301+)",
+        "Festival Disruption (70%+ order drop)",
+    ]
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 24)
+    pdf.set_text_color(217, 119, 87)
+    pdf.cell(0, 15, "GuidePay", new_x="LMARGIN", new_y="NEXT", align="C")
+
+    pdf.set_font("Arial", "B", 14)
+    pdf.set_text_color(0, 0, 0)
+    pdf.cell(0, 10, "Income Protection Certificate", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.cell(0, 8, "IRDAI Innovation Sandbox Compliant", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(10)
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "POLICYHOLDER DETAILS", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 7, f"Name: {worker.get('name', 'Worker')}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"City: {worker.get('city', 'India')}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Policy ID: {policy.get('_id', policy_id)}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"UPI ID: {worker.get('upi_id', '****')}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "COVERAGE DETAILS", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Arial", "", 11)
+    pdf.cell(0, 7, f"Plan: {PLANS[plan_type]['name']}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Payout Tier: {PAYOUT_TIERS[payout_tier]['label']}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Payout Amount: Rs {payout_amount} per trigger", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Coverage From: {created_at}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"Coverage Until: {expires_at}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, "COVERED EVENTS", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Arial", "", 11)
+    for trigger in triggers:
+        pdf.cell(0, 7, f"- {trigger}", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(5)
+
+    pdf.set_font("Arial", "I", 9)
+    pdf.multi_cell(
+        0,
+        5,
+        "This certificate confirms active parametric income insurance coverage under GuidePay, "
+        "operating under the IRDAI Innovation Sandbox framework. Payouts are triggered automatically "
+        "by verified external data sources. No claim filing is required by the policyholder.",
+    )
+
+    pdf_bytes = bytes(pdf.output(dest="S"))
+    return StreamingResponse(
+        io.BytesIO(pdf_bytes),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="GuidePay_Certificate_{policy_id}.pdf"'},
+    )

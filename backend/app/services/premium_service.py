@@ -1,5 +1,7 @@
 import math
 from datetime import datetime
+
+from app.core.constants import PAYOUT_TIERS
 from app.ml.ml_service import predict_premium
 
 ZONE_FEATURES = {
@@ -137,7 +139,7 @@ def get_worker_multiplier(risk_score: float) -> float:
     return 1.10
 
 
-def calculate_premium(zone: str, risk_score: float = 0.75) -> float:
+def calculate_premium(zone: str, risk_score: float = 0.75, **_: dict) -> float:
     return float(calculate_ml_premium(zone, risk_score)["final_premium"])
 
 
@@ -145,31 +147,22 @@ def get_premium_breakdown(zone: str, risk_score: float = 0.75) -> dict:
     return calculate_ml_premium(zone, risk_score)
 
 
-# ---------------------------------------------------------------------------
-# Income-based payout tiers
-# ---------------------------------------------------------------------------
-
 def calculate_payout_amount(worker_daily_orders: float, base_payout: int = 600) -> dict:
     """Return payout amount and tier based on worker's average daily orders."""
     if worker_daily_orders >= 15:
         return {"payout_amount": 900, "payout_tier": "Gold", "daily_orders": worker_daily_orders}
-    elif worker_daily_orders >= 8:
+    if worker_daily_orders >= 8:
         return {"payout_amount": 600, "payout_tier": "Silver", "daily_orders": worker_daily_orders}
-    else:
-        return {"payout_amount": 400, "payout_tier": "Bronze", "daily_orders": worker_daily_orders}
+    return {"payout_amount": 400, "payout_tier": "Bronze", "daily_orders": worker_daily_orders}
 
 
 def get_income_tier(daily_orders: float) -> str:
     if daily_orders >= 15:
         return "Gold"
-    elif daily_orders >= 8:
+    if daily_orders >= 8:
         return "Silver"
     return "Bronze"
 
-
-# ---------------------------------------------------------------------------
-# Actuarial premium with volatility adjustment
-# ---------------------------------------------------------------------------
 
 def actuarial_premium_calculation(
     base_premium: float,
@@ -177,18 +170,6 @@ def actuarial_premium_calculation(
     zone_claim_severity: float,
     seasonal_index: float = 1.0,
 ) -> float:
-    """
-    Pure actuarial premium calculation with volatility loading.
-
-    Args:
-        base_premium: ML-derived base premium (ignored in final blend but kept for signature consistency)
-        zone_claim_frequency: Expected number of claims per policy period (e.g. 0.30)
-        zone_claim_severity: Average claim severity in rupees (e.g. 600)
-        seasonal_index: Multiplier for monsoon seasons (Jun-Sep = 1.4, else 1.0)
-
-    Returns:
-        Final actuarial premium clamped between 35 and 150 rupees per week.
-    """
     expected_loss = zone_claim_frequency * zone_claim_severity
     volatility_loading = 0.25 * math.sqrt(zone_claim_frequency) * zone_claim_severity
     risk_premium = expected_loss + volatility_loading
@@ -204,34 +185,60 @@ def get_seasonal_index(month: int = None) -> float:
     return 1.4 if month in (6, 7, 8, 9) else 1.0
 
 
-def calculate_hybrid_premium(zone: str, worker_risk_score: float = 0.75) -> dict:
+def get_payout_for_orders(avg_orders: float) -> int:
+    if avg_orders >= 15:
+        return PAYOUT_TIERS["gold"]["payout_inr"]
+    if avg_orders >= 8:
+        return PAYOUT_TIERS["silver"]["payout_inr"]
+    return PAYOUT_TIERS["bronze"]["payout_inr"]
+
+
+def calculate_hybrid_premium(
+    city: str,
+    worker_risk_score: float,
+    account_age_days: int,
+    avg_orders_per_day: float,
+    month: int = None,
+    plan_type: str = "standard",
+) -> dict:
     """
     Blend ML premium (60%) with actuarial premium (40%).
     This is the primary premium model used by GuidePay.
     """
-    ml_result = calculate_ml_premium(zone, worker_risk_score)
+    ml_result = calculate_ml_premium(city, worker_risk_score)
     ml_premium = ml_result["final_premium"]
 
-    # Derive zone actuarial inputs from zone features
-    zone_meta = ZONE_ML_DATA.get(zone, ZONE_ML_DATA["kondapur-hyderabad"])
+    zone_meta = ZONE_ML_DATA.get(city, ZONE_ML_DATA["kondapur-hyderabad"])
     flood_events = zone_meta.get("flood_events_5yr", 5)
-    zone_claim_frequency = min(flood_events / 20.0, 0.80)  # normalise to probability
-    zone_claim_severity = 600.0  # base severity
-    seasonal_index = get_seasonal_index()
+    zone_claim_frequency = min(flood_events / 20.0, 0.80)
+    seasonal_index = get_seasonal_index(month)
+    worker_payout_amount = get_payout_for_orders(avg_orders_per_day)
+    payout_tier = "gold" if avg_orders_per_day >= 15 else "silver" if avg_orders_per_day >= 8 else "bronze"
 
-    actuarial = actuarial_premium_calculation(
-        ml_premium, zone_claim_frequency, zone_claim_severity, seasonal_index
+    actuarial_premium = actuarial_premium_calculation(
+        ml_premium,
+        zone_claim_frequency=zone_claim_frequency,
+        zone_claim_severity=worker_payout_amount,
+        seasonal_index=seasonal_index,
     )
-    final_hybrid = round(0.6 * ml_premium + 0.4 * actuarial, 2)
-    final_hybrid = max(35.0, min(150.0, final_hybrid))
+    final_premium = round(0.6 * ml_premium + 0.4 * actuarial_premium, 2)
+    final_premium = max(35.0, min(150.0, final_premium))
 
     return {
-        **ml_result,
+        "weekly_premium": final_premium,
+        "final_premium": final_premium,
         "ml_premium": ml_premium,
-        "actuarial_premium": actuarial,
-        "final_premium": final_hybrid,
+        "actuarial_premium": actuarial_premium,
+        "payout_tier": payout_tier,
+        "payout_amount": worker_payout_amount,
+        "zone": city,
+        "blend": "60% ML + 40% Actuarial",
         "premium_blend": "60% ML + 40% Actuarial",
+        "volatility_loading_applied": True,
         "zone_claim_frequency": round(zone_claim_frequency, 3),
-        "zone_claim_severity": zone_claim_severity,
+        "zone_claim_severity": worker_payout_amount,
         "seasonal_index": seasonal_index,
+        "account_age_days": account_age_days,
+        "plan_type": plan_type,
+        **ml_result,
     }

@@ -102,7 +102,14 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-card shadow-card p-3.5 md:col-span-1 col-span-2">
               <p className="text-[11px] font-medium font-body text-[#9B9B9B] uppercase tracking-[1px]">Loss Ratio</p>
               <p className={`font-display font-bold text-[24px] mt-1 leading-tight ${financials?.loss_ratio > 65 ? 'text-[#F04438]' : 'text-[#12B76A]'}`}>
-                {loading ? '...' : `${financials?.loss_ratio}%`}
+                {loading ? '...' : (
+                  <>
+                    {financials?.loss_ratio}%
+                    {stats?.data_mode === 'demo' && (
+                      <span className="ml-2 text-[10px] bg-[#F2F4F7] text-[#344054] px-1.5 py-0.5 rounded-sm border border-[#D0D5DD] tracking-wide relative -top-1">DEMO DATA</span>
+                    )}
+                  </>
+                )}
               </p>
             </div>
           </div>

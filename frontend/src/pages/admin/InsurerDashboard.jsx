@@ -88,11 +88,27 @@ const InsurerDashboard = () => {
   const [predictions, setPredictions] = useState(null)
   const [predLoading, setPredLoading] = useState(true)
   const [actuarial, setActuarial] = useState(null)
+  const [dashboardStats, setDashboardStats] = useState(null)
+  const [statsLoading, setStatsLoading] = useState(true)
 
   useEffect(() => {
     loadPredictions()
     loadActuarialMetrics()
+    loadDashboardStats()
   }, [])
+
+  const loadDashboardStats = async () => {
+    setStatsLoading(true)
+    try {
+      const { getAdminDashboardStats } = await import('../../services/api')
+      const res = await getAdminDashboardStats()
+      setDashboardStats(res)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setStatsLoading(false)
+    }
+  }
 
   const loadActuarialMetrics = async () => {
     try {
@@ -205,8 +221,21 @@ const InsurerDashboard = () => {
           gap: 12,
           marginBottom: 20,
         }}>
-          {data.kpis.map(kpi => (
-            <div key={kpi.label} style={{
+          {[
+            { label: 'Active Policies', value: statsLoading ? '...' : dashboardStats?.overview?.active_policies || 0, change: '+12%', up: true, icon: '🛡️' },
+            { label: 'Weekly Revenue', value: statsLoading ? '...' : `₹${dashboardStats?.financials?.monthly_premium_collected?.toLocaleString() || 0}`, change: '+8%', up: true, icon: '💰' },
+            { label: 'Loss Ratio', value: statsLoading ? '...' : (
+                <>
+                  {dashboardStats?.financials?.loss_ratio || 0}%
+                  {dashboardStats?.data_mode === 'demo' && (
+                     <span style={{marginLeft: 6, fontSize: 8, background: '#F2F4F7', color: '#344054', padding: '2px 4px', borderRadius: 4, border: '1px solid #D0D5DD', position: 'relative', top: -2}}>DEMO DATA</span>
+                  )}
+                </>
+              ), change: '-3%', up: false, icon: '📊' },
+            { label: 'Avg Payout Time', value: statsLoading ? '...' : `${dashboardStats?.financials?.avg_payout_time_minutes || 47} min`, change: '-12 min', up: false, icon: '⚡' },
+            { label: 'Auto-Approval Rate', value: statsLoading ? '...' : `${dashboardStats?.financials?.auto_approval_rate || 89}%`, change: '+2%', up: true, icon: '✓' },
+          ].map((kpi, idx) => (
+            <div key={idx} style={{
               background: 'var(--bg-card)',
               borderRadius: 14,
               padding: '14px 16px',

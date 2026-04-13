@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from app.database import get_db
 from app.utils.formatters import serialize_doc
@@ -153,7 +153,9 @@ async def get_dashboard_stats(
     
     # Loss ratio
     loss_ratio = round(
-        (monthly_payouts / monthly_premium * 100) if monthly_premium > 0 else 24.5, 1
+        (monthly_payouts / monthly_premium * 100) if monthly_premium > 500 
+        else 24.5,  # Use target loss ratio when insufficient real data
+        1
     )
     
     # Tier breakdown
@@ -198,6 +200,7 @@ async def get_dashboard_stats(
     
     return {
         "timestamp": now.isoformat(),
+        "data_mode": "live" if monthly_premium > 500 else "demo",
         "overview": {
             "active_policies": active_policies,
             "total_workers": total_workers,
@@ -426,19 +429,9 @@ SIMULATE_ZONE_MAP = {
 }
 
 
-@router.post("/simulate-trigger")
-async def simulate_trigger(
-    request: SimulateTriggerRequest,
-    db=Depends(get_admin_db),
-):
-    """
-    Simulate a trigger event for demo/testing purposes.
-    Finds active policy holders in the zone, runs fraud detection, processes payouts.
-    """
+async def process_trigger_simulation(request, db):
     from app.services.imd_service import process_trigger_events
-
     zone_info = SIMULATE_ZONE_MAP.get(request.city, SIMULATE_ZONE_MAP["Hyderabad"])
-
     mock_alert = {
         "city": request.city,
         "zone": zone_info["zone"],
@@ -451,7 +444,6 @@ async def simulate_trigger(
         "description": "Demo simulation for judges. Not a real event.",
         "published": datetime.utcnow().isoformat(),
     }
-
     events = await process_trigger_events([mock_alert], db)
     total_claims = sum(event.get("claims_count", 0) for event in events)
     total_payouts = await db.claims.count_documents({
@@ -463,13 +455,24 @@ async def simulate_trigger(
         f"{len(events)} events, {total_claims} claims, {total_payouts} payouts"
     )
 
+@router.post("/simulate-trigger")
+async def simulate_trigger(
+    request: SimulateTriggerRequest,
+    background_tasks: BackgroundTasks,
+    db=Depends(get_admin_db),
+):
+    """
+    Simulate a trigger event for demo/testing purposes.
+    Finds active policy holders in the zone, runs fraud detection, processes payouts.
+    """
+    background_tasks.add_task(process_trigger_simulation, request, db)
+    
     return {
         "success": True,
-        "message": f"Simulated {request.trigger_type} in {request.city}",
-        "events_created": len(events),
-        "claims_created": total_claims,
-        "payouts_credited": total_payouts,
-        "events": [serialize_doc(e) for e in events],
+        "status": "processing",
+        "message": f"✅ {request.trigger_type} trigger fired for {request.city}. Check Claims Queue in 15 seconds.",
+        "city": request.city,
+        "trigger_type": request.trigger_type
     }
 
 
