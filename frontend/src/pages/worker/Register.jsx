@@ -5,11 +5,13 @@ import { ShieldCheck } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 import { createUserProfile, loginWithFirebase } from '../../services/api'
 import { signInWithEmail, signUpWithEmail } from '../../services/firebase'
+import ConsentScreen from '../../components/ui/ConsentScreen'
 
 const STEPS = [
   { id: 1, label: 'Account' },
   { id: 2, label: 'Coverage' },
-  { id: 3, label: 'Payment' },
+  { id: 3, label: 'Consent' },
+  { id: 4, label: 'Payment' },
 ]
 
 const labelStyle = {
@@ -32,6 +34,7 @@ export default function Register() {
     name: '', password: '', email: '', dob: '',
     platforms: [], zone: '', city: '',
     experience: '', avgDailyIncome: '', upiId: '',
+    consents: { gps: false, upi: false, activity: false }
   })
 
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
@@ -69,12 +72,13 @@ export default function Register() {
   const canProceed = () => {
     if (step === 1) return form.name.trim().length >= 2 && form.email.length > 5 && form.password.length >= 6
     if (step === 2) return form.platforms.length > 0 && form.city
-    if (step === 3) return form.upiId.trim().length > 3
+    if (step === 3) return form.consents.gps && form.consents.upi && form.consents.activity
+    if (step === 4) return form.upiId.trim().length > 3
     return true
   }
 
   const handleNext = async () => {
-    if (step < 3) {
+    if (step < 4) {
       setStep(step + 1)
     } else {
       const doLogin = async () => {
@@ -101,11 +105,34 @@ export default function Register() {
               zone_lng: 0,
             })
 
+            try {
+              await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/workers/consent`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${data.access_token}`
+                },
+                body: JSON.stringify(form.consents)
+              })
+            } catch (ignored) {}
+
             completeWorkerLogin(data)
             return
           } catch (profileError) {
             if (isUserAlreadyCreated(profileError)) {
               const data = await loginWithFirebase(user.idToken, form.name, '')
+              
+              try {
+                await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/workers/consent`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${data.access_token}`
+                  },
+                  body: JSON.stringify(form.consents)
+                })
+              } catch (ignored) {}
+
               completeWorkerLogin(data)
               return
             }
@@ -176,19 +203,22 @@ export default function Register() {
           ))}
         </div>
 
-        {/* Heading */}
+
+
         <h1 style={{
           fontFamily: 'Bricolage Grotesque, sans-serif',
           fontSize: 26, fontWeight: 800, color: '#0F0F0F', marginBottom: 4,
         }}>
           {step === 1 && 'Create your account'}
           {step === 2 && 'Set up your coverage'}
-          {step === 3 && 'Complete payment'}
+          {step === 3 && 'Data Consent'}
+          {step === 4 && 'Complete payment'}
         </h1>
         <p style={{ fontSize: 14, color: '#6B6B6B', fontFamily: 'Inter, sans-serif', marginBottom: 24 }}>
           {step === 1 && 'Basic details to get you protected'}
           {step === 2 && 'Tell us about your delivery work'}
-          {step === 3 && 'Start your first week of protection'}
+          {step === 3 && 'Review DPDP privacy terms'}
+          {step === 4 && 'Start your first week of protection'}
         </p>
 
         {/* Step content */}
@@ -325,6 +355,18 @@ export default function Register() {
             )}
 
             {step === 3 && (
+              <ConsentScreen 
+                  onConsent={(checked) => {
+                      update('consents', checked);
+                      // Move to next step since this acts as the "Continue"
+                      if (checked.gps && checked.upi && checked.activity) {
+                          setStep(4);
+                      }
+                  }} 
+              />
+            )}
+
+            {step === 4 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div style={{
                   background: '#FDF1ED', borderRadius: 14, padding: 16,
@@ -405,7 +447,7 @@ export default function Register() {
               ← Back
             </motion.button>
           )}
-          <motion.button
+          {step !== 3 && <motion.button
             onClick={handleNext}
             disabled={!canProceed()}
             whileTap={canProceed() ? { scale: 0.97 } : {}}
@@ -419,8 +461,8 @@ export default function Register() {
               transition: 'all 0.2s',
             }}
           >
-            {step < 3 ? 'Continue →' : 'Pay & Get Protected →'}
-          </motion.button>
+            {step < 4 ? 'Continue →' : 'Pay & Get Protected →'}
+          </motion.button>}
         </div>
 
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>

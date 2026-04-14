@@ -90,6 +90,7 @@ export function getPayoutForOrders(dailyOrders) {
 export const getPlanById = (id) => PLANS.find(p => p.id === id) || PLANS[2];
 
 export const getAdjustedPrice = (basePrice, mlPremium, standardBase = 62) => {
+  if (basePrice === 12) return 12;
   if (!mlPremium) return basePrice;
   const ratio = mlPremium / standardBase;
   return Math.max(35, Math.round(basePrice * ratio));

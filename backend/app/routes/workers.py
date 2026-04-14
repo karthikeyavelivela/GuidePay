@@ -7,9 +7,24 @@ from app.services.ml_service import calculate_risk_score
 from app.models.worker import WorkerCreate, WorkerUpdate
 from app.utils.formatters import serialize_doc
 from datetime import datetime, timedelta
+from pydantic import BaseModel
 from bson import ObjectId
+from bson.errors import InvalidId
 import logging
 import math
+
+class ConsentRequest(BaseModel):
+    gps: bool
+    upi: bool
+    activity: bool
+
+def _id_candidates(raw_id: str) -> list:
+    candidates = [raw_id]
+    try:
+        candidates.append(ObjectId(raw_id))
+    except (InvalidId, TypeError):
+        pass
+    return candidates
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -713,3 +728,26 @@ async def get_zone_history(
             "roi_message": f"Your {city} zone had {history['events_2024']} flood events in 2024. As a {tier} tier worker, you would have received ₹{guidepay_would_have_paid_2024} automatically.",
         }
     }
+@router.post("/consent")
+async def save_consent(
+    consent_data: ConsentRequest,
+    current_worker=Depends(get_current_worker),
+    db=Depends(get_db)
+):
+    """Save worker DPDP consent preferences."""
+    worker_id = str(current_worker["_id"])
+    
+    await db.workers.update_one(
+        {"_id": {"$in": _id_candidates(worker_id)}},
+        {"$set": {
+            "consent": {
+                "gps": consent_data.gps,
+                "upi": consent_data.upi,
+                "activity": consent_data.activity,
+                "timestamp": datetime.utcnow()
+            },
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    return {"success": True, "message": "Consent preferences saved"}

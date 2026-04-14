@@ -139,6 +139,7 @@ export default function Coverage() {
   }, [toast])
 
   const getAdjustedPrice = (basePlanPrice) => {
+    if (basePlanPrice === 12) return 12;
     if (!mlPremium?.final_premium) return basePlanPrice
     const ratio = mlPremium.final_premium / 62
     return Math.max(35, Math.round(basePlanPrice * ratio))
@@ -177,6 +178,12 @@ export default function Coverage() {
       }
     } catch (e) {
       console.error('[Coverage] Payment flow failed:', e)
+      if (e?.response?.status === 403 || e?.status === 403) {
+          const detail = e.response?.data?.detail || e.detail;
+          setToast({ type: 'error', message: `🔒 Coverage locked — ${detail?.reason}\nUnlocks: ${new Date(detail?.lockout_until).toLocaleString()}` })
+      } else {
+          setToast({ type: 'error', message: 'Payment flow failed' })
+      }
     } finally {
       setLoading(false)
     }

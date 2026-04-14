@@ -67,24 +67,26 @@ export default function WorkerManagement() {
   const handleSuspend = async (workerId, suspend) => {
     try {
       const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
-      await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/admin/workers/${workerId}/suspend`,
+      const endpoint = suspend ? 'suspend' : 'unsuspend'
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/admin/workers/${workerId}/${endpoint}`,
         {
-          method: 'PATCH',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ suspended: suspend }),
         }
       )
-      setWorkers(prev => prev.map(w =>
-        (w.id === workerId || w._id === workerId)
-          ? { ...w, is_active: !suspend, suspended: suspend }
-          : w
-      ))
+      if (res.ok) {
+          fetchWorkers()
+          alert(`Worker ${suspend ? 'suspended' : 'unsuspended'} successfully`)
+      } else {
+          alert('API failed to update worker status')
+      }
     } catch (e) {
       console.error('Suspend error:', e)
+      alert('API failed: ' + e.message)
     }
   }
 
@@ -167,7 +169,7 @@ export default function WorkerManagement() {
             </thead>
             <tbody>
               {workers.map((worker, i) => (
-                <tr key={worker.id || i} style={{ borderBottom: i < workers.length - 1 ? '1px solid #222' : 'none' }}>
+                <tr key={worker.id || i} style={{ borderBottom: i < workers.length - 1 ? '1px solid #222' : 'none', background: worker.status === 'suspended' || worker.suspended ? 'rgba(240,68,56,0.1)' : 'transparent' }}>
                   <td style={{ padding: '16px 24px' }}>
                     <div style={{ fontWeight: 600, color: 'white', marginBottom: 4 }}>{worker.name || 'Anonymous'}</div>
                     <div style={{ fontSize: 12, color: '#6B6B6B' }}>{worker.phone || 'No phone'}</div>
@@ -191,29 +193,29 @@ export default function WorkerManagement() {
                     </div>
                   </td>
                   <td style={{ padding: '16px 24px' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: worker.suspended ? '#F04438' : worker.is_active ? '#12B76A' : '#9B9B9B', fontSize: 12, fontWeight: 600 }}>
-                      <BadgeCheck size={14} /> {worker.suspended ? 'Suspended' : worker.is_active ? 'Active' : 'Inactive'}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: (worker.status === 'suspended' || worker.suspended) ? '#F04438' : worker.is_active ? '#12B76A' : '#9B9B9B', fontSize: 12, fontWeight: 600 }}>
+                      <BadgeCheck size={14} /> {(worker.status === 'suspended' || worker.suspended) ? 'SUSPENDED' : worker.is_active ? 'Active' : 'Inactive'}
                     </div>
                   </td>
                   <td style={{ padding: '16px 24px' }}>
                     <motion.button
-                      onClick={() => handleSuspend(worker.id || worker._id, !worker.suspended)}
+                      onClick={() => handleSuspend(worker._id?.toString() || worker.id, !(worker.status === 'suspended' || worker.suspended))}
                       whileTap={{ scale: 0.95 }}
                       style={{
                         padding: '4px 10px',
                         borderRadius: 6,
-                        border: worker.suspended
+                        border: (worker.status === 'suspended' || worker.suspended)
                           ? '1px solid rgba(18,183,106,0.3)'
                           : '1px solid rgba(240,68,56,0.3)',
-                        background: worker.suspended
+                        background: (worker.status === 'suspended' || worker.suspended)
                           ? 'rgba(18,183,106,0.1)'
                           : 'rgba(240,68,56,0.1)',
-                        color: worker.suspended ? '#12B76A' : '#F04438',
+                        color: (worker.status === 'suspended' || worker.suspended) ? '#12B76A' : '#F04438',
                         fontSize: 11, fontWeight: 700,
                         fontFamily: 'Inter', cursor: 'pointer',
                       }}
                     >
-                      {worker.suspended ? 'Unsuspend' : 'Suspend'}
+                      {(worker.status === 'suspended' || worker.suspended) ? 'Unsuspend' : 'Suspend'}
                     </motion.button>
                   </td>
                 </tr>

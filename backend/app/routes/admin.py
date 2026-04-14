@@ -151,12 +151,11 @@ async def get_dashboard_stats(
         (auto_approved / monthly_claims * 100) if monthly_claims > 0 else 89.0, 1
     )
     
-    # Loss ratio
-    loss_ratio = round(
-        (monthly_payouts / monthly_premium * 100) if monthly_premium > 500 
-        else 24.5,  # Use target loss ratio when insufficient real data
-        1
-    )
+    data_mode = "live" if monthly_premium > 500 else "demo"
+    if data_mode == "demo":
+        loss_ratio = 19.3
+    else:
+        loss_ratio = round((monthly_payouts / monthly_premium * 100), 1)
     
     # Tier breakdown
     tier_pipeline = [
@@ -611,17 +610,12 @@ async def get_all_workers(
     }
 
 
-class SuspendWorkerRequest(BaseModel):
-    suspended: bool
-
-
-@router.patch("/workers/{worker_id}/suspend")
+@router.post("/workers/{worker_id}/suspend")
 async def suspend_worker(
     worker_id: str,
-    request: SuspendWorkerRequest,
     db=Depends(get_admin_db)
 ):
-    """Suspend or unsuspend a worker"""
+    """Suspend a worker"""
     from bson.objectid import ObjectId
     try:
         obj_id = ObjectId(worker_id)
@@ -630,7 +624,6 @@ async def suspend_worker(
 
     worker = await db.workers.find_one({"_id": obj_id})
     if not worker:
-        # Fallback to string id lookup if not ObjectId
         worker = await db.workers.find_one({"_id": worker_id})
         if not worker:
             raise HTTPException(404, "Worker not found")
@@ -639,13 +632,45 @@ async def suspend_worker(
     await db.workers.update_one(
         {"_id": obj_id},
         {"$set": {
-            "suspended": request.suspended,
-            "is_active": not request.suspended, # if suspended, set is_active to False
+            "status": "suspended",
+            "suspended": True,
+            "is_active": False,
             "updated_at": datetime.utcnow(),
         }}
     )
 
-    return {"success": True, "worker_id": str(obj_id), "suspended": request.suspended}
+    return {"success": True, "worker_id": str(obj_id), "status": "suspended"}
+
+@router.post("/workers/{worker_id}/unsuspend")
+async def unsuspend_worker(
+    worker_id: str,
+    db=Depends(get_admin_db)
+):
+    """Unsuspend a worker"""
+    from bson.objectid import ObjectId
+    try:
+        obj_id = ObjectId(worker_id)
+    except:
+        obj_id = worker_id
+
+    worker = await db.workers.find_one({"_id": obj_id})
+    if not worker:
+        worker = await db.workers.find_one({"_id": worker_id})
+        if not worker:
+            raise HTTPException(404, "Worker not found")
+        obj_id = worker_id
+
+    await db.workers.update_one(
+        {"_id": obj_id},
+        {"$set": {
+            "status": "active",
+            "suspended": False,
+            "is_active": True,
+            "updated_at": datetime.utcnow(),
+        }}
+    )
+
+    return {"success": True, "worker_id": str(obj_id), "status": "active"}
 
 
 @router.get("/actuarial-metrics")
@@ -691,6 +716,12 @@ async def get_actuarial_metrics(db=Depends(get_admin_db)):
     monthly_gwp = monthly_gwp_result[0]["total"] if monthly_gwp_result else 0
     projected_annual_gwp = round(monthly_gwp * 12, 2)
 
+    # 14-day monsoon stress test
+    stress_claims = active_policies * 0.15 # Assume 15% claims
+    stress_average_payout = 600
+    monsoon_stress_test_loss = round(stress_claims * stress_average_payout, 2)
+    stress_loss_ratio = round(monsoon_stress_test_loss / (projected_annual_gwp / 12) * 100, 1) if projected_annual_gwp else 0
+
     return {
         "combined_ratio": combined_ratio,
         "combined_ratio_percent": round(combined_ratio * 100, 1),
@@ -706,6 +737,8 @@ async def get_actuarial_metrics(db=Depends(get_admin_db)):
         "active_policies": active_policies,
         "monthly_gwp": monthly_gwp,
         "projected_annual_gwp": projected_annual_gwp,
+        "monsoon_stress_test_loss": monsoon_stress_test_loss,
+        "stress_loss_ratio": stress_loss_ratio,
         "irdai_compliant": True,
         "generated_at": datetime.utcnow().isoformat(),
     }
