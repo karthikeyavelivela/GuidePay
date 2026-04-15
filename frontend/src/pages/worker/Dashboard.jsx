@@ -730,19 +730,19 @@ export default function Dashboard() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-[16px]">
-                        {payout.type === 'FLOOD' ? '🌊' : '📱'}
+                        {payout.trigger_type === 'FLOOD' || payout.trigger_type?.includes('FLOOD') ? '🌊' : '📱'}
                       </span>
                       <p className="text-[14px] font-medium font-body" style={{ color: 'var(--text-primary)' }}>
-                        {payout.event}
+                        {payout.trigger_event?.title || payout.trigger_event?.event_name || payout.trigger_type || 'Coverage Payout'}
                       </p>
                     </div>
                     <p className="text-[12px] font-body mt-0.5 pl-7" style={{ color: 'var(--text-secondary)' }}>
-                      {new Date(payout.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      {new Date(payout.created_at || new Date()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="font-display font-bold text-[16px] text-success">
-                      +{formatINR(payout.amount)}
+                      +{formatINR(payout.amount || payout.payout_amount || 0)}
                     </p>
                     <Badge variant="success">Paid</Badge>
                   </div>
