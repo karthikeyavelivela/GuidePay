@@ -168,9 +168,10 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
     if existing:
         raise HTTPException(status_code=409, detail="User already exists")
         
-    existing_phone = await db.workers.find_one({"phone": request.phone})
-    if existing_phone:
-        raise HTTPException(status_code=409, detail="Phone number already registered")
+    if request.phone:
+        existing_phone = await db.workers.find_one({"phone": request.phone})
+        if existing_phone:
+            raise HTTPException(status_code=409, detail="Phone number already registered")
 
     from bson import ObjectId
     worker_id = str(ObjectId())
