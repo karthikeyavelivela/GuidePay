@@ -64,7 +64,9 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
+      // Step 1: Sign in with Firebase to get an ID token
       const user = await signInWithEmail(email, password)
+      // Step 2: Exchange Firebase ID token for a GuidePay JWT
       const data = await loginWithFirebase(user.idToken, user.name || '', user.phone || '')
 
       localStorage.setItem('gp-access-token', data.access_token)
@@ -73,7 +75,14 @@ export default function Login() {
       login(data.worker)
       navigate(data.requires_profile ? '/complete-profile' : '/dashboard')
     } catch (e) {
-      setError(e?.message || 'Invalid email or password. Please try again.')
+      const code = e?.code
+      if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+        setError('Incorrect email or password. Please try again.')
+      } else if (code === 'auth/too-many-requests') {
+        setError('Too many failed attempts. Please wait a few minutes and try again.')
+      } else {
+        setError(e?.detail || e?.message || 'Login failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

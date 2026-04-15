@@ -17,6 +17,17 @@ export const adminApi = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Auth-specific instance with a longer timeout to handle Render cold-start delays
+export const authApi = axios.create({
+  baseURL: API_URL,
+  timeout: 45000,
+  headers: { 'Content-Type': 'application/json' },
+})
+authApi.interceptors.response.use((r) => r.data, (error) => {
+  console.error('[API ERROR]', error?.response?.status, error?.message)
+  return Promise.reject(error.response?.data || error)
+})
+
 const isTimeoutError = (error) =>
   error?.code === 'ECONNABORTED' || error?.name === 'AbortError' || /timeout/i.test(error?.message || '')
 
@@ -70,10 +81,14 @@ const errorHandler = (isAdmin) => (error) => {
 workerApi.interceptors.response.use((r) => r.data, errorHandler(false))
 adminApi.interceptors.response.use((r) => r.data, errorHandler(true))
 
-export const loginWithFirebase = (token, name, phone) => workerApi.post('/auth/login', { firebase_token: token, name, phone })
+export const loginWithFirebase = (token, name, phone) => authApi.post('/auth/login', { firebase_token: token, name, phone })
 export const getUserByUid = (uid) => workerApi.get(`/auth/user/${uid}`)
-export const createUserProfile = (data) => workerApi.post('/auth/create-user', data)
+export const createUserProfile = (data) => authApi.post('/auth/create-user', data)
 export const adminLogin = (username, password) => adminApi.post('/auth/admin/login', { username, password })
+
+// Direct auth — bypasses Firebase; used as fallback when Firebase Email/Password is disabled
+export const directSignup = (data) => authApi.post('/auth/direct-signup', data)
+export const directLogin = (data) => authApi.post('/auth/direct-login', data)
 
 export const api = {
   async getWorker(id) { return workerApi.get(`/workers/${id}`) },

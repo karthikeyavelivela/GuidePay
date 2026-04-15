@@ -2,6 +2,7 @@ import firebase_admin
 from firebase_admin import credentials, auth
 from app.config import settings
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -23,16 +24,25 @@ def init_firebase():
 
 
 async def verify_firebase_token(id_token: str) -> dict:
-    try:
-        init_firebase()
-        decoded_token = auth.verify_id_token(id_token)
-        return {
-            "uid": decoded_token["uid"],
-            "phone": decoded_token.get("phone_number"),
-            "email": decoded_token.get("email"),
-            "name": decoded_token.get("name"),
-            "photo_url": decoded_token.get("picture"),
-        }
-    except Exception as e:
-        logger.error(f"Firebase token verification failed: {e}")
-        raise ValueError(f"Invalid token: {e}")
+    """Verify a Firebase ID token and return the decoded payload.
+    Retries once on transient network errors (common on Render cold-start).
+    """
+    init_firebase()
+    last_error = None
+    for attempt in range(2):
+        try:
+            decoded_token = auth.verify_id_token(id_token)
+            return {
+                "uid": decoded_token["uid"],
+                "phone": decoded_token.get("phone_number"),
+                "email": decoded_token.get("email"),
+                "name": decoded_token.get("name"),
+                "photo_url": decoded_token.get("picture"),
+            }
+        except Exception as e:
+            last_error = e
+            logger.warning(f"Firebase token verification attempt {attempt + 1} failed: {e}")
+            if attempt == 0:
+                time.sleep(1)  # brief pause before retry
+    logger.error(f"Firebase token verification failed after retries: {last_error}")
+    raise ValueError(f"Invalid token: {last_error}")

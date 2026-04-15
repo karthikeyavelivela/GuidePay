@@ -23,7 +23,7 @@ class FirebaseAuthRequest(BaseModel):
 class CreateUserRequest(BaseModel):
     firebase_token: str
     name: str
-    phone: str
+    phone: Optional[str] = ""
     city: str
     zone: str
     upi_id: Optional[str] = None
@@ -85,28 +85,48 @@ async def get_current_admin(
 async def login(request: FirebaseAuthRequest, db=Depends(get_db)):
     """
     Verify Firebase token and return JWT + worker data.
-    If the profile does not exist yet, frontend must complete profile first.
+    If worker doesn't exist yet, auto-create a minimal profile and redirect to complete-profile.
     """
     try:
         firebase_user = await verify_firebase_token(request.firebase_token)
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
-    worker = await db.workers.find_one({
-        "firebase_uid": firebase_user["uid"]
-    })
+    worker = await db.workers.find_one({"firebase_uid": firebase_user["uid"]})
 
-    is_new_user = worker is None
+    if worker is None:
+        # Auto-create a minimal worker profile so the frontend gets a valid token
+        from bson import ObjectId
+        worker_id = str(ObjectId())
+        stored_phone = request.phone.strip() if request.phone and request.phone.strip() else f"temp_{worker_id[:12]}"
 
-    if is_new_user:
-        return {
-            "access_token": None,
-            "token_type": "bearer",
-            "is_new_user": True,
-            "requires_profile": True,
-            "uid": firebase_user["uid"],
-            "worker": None,
+        worker = {
+            "_id": worker_id,
+            "firebase_uid": firebase_user["uid"],
+            "name": request.name or firebase_user.get("name") or "Worker",
+            "phone": stored_phone,
+            "email": firebase_user.get("email"),
+            "photo_url": firebase_user.get("photo_url"),
+            "city": None,
+            "zone": None,
+            "upi_id": None,
+            "platforms": [],
+            "risk_score": 0.75,
+            "risk_tier": "MEDIUM",
+            "premium_amount": 58.0,
+            "is_active": True,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+            "total_claims": 0,
+            "total_payouts": 0.0,
         }
+        try:
+            await db.workers.insert_one(worker)
+        except Exception:
+            # In case of race condition (duplicate insert), fetch the existing one
+            worker = await db.workers.find_one({"firebase_uid": firebase_user["uid"]})
+            if not worker:
+                raise HTTPException(status_code=500, detail="Failed to create worker profile")
 
     access_token = create_access_token(
         subject=str(worker["_id"]),
@@ -114,11 +134,13 @@ async def login(request: FirebaseAuthRequest, db=Depends(get_db)):
         role="worker",
     )
 
+    requires_profile = not worker.get("city") or not worker.get("zone")
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "is_new_user": is_new_user,
-        "requires_profile": not worker.get("city") or not worker.get("zone"),
+        "is_new_user": not worker.get("city"),
+        "requires_profile": requires_profile,
         "worker": {
             "id": str(worker["_id"]),
             "firebase_uid": worker.get("firebase_uid"),
@@ -164,29 +186,58 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
+    # If user already exists in backend, return their data instead of 409
     existing = await db.workers.find_one({"firebase_uid": firebase_user["uid"]})
     if existing:
-        raise HTTPException(status_code=409, detail="User already exists")
-        
-    if request.phone:
-        existing_phone = await db.workers.find_one({"phone": request.phone})
+        access_token = create_access_token(
+            subject=str(existing["_id"]),
+            uid=firebase_user["uid"],
+            role="worker",
+        )
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "is_new_user": False,
+            "requires_profile": not existing.get("city") or not existing.get("zone"),
+            "worker": {
+                "id": str(existing["_id"]),
+                "firebase_uid": existing.get("firebase_uid"),
+                "name": existing.get("name"),
+                "phone": existing.get("phone"),
+                "email": existing.get("email"),
+                "city": existing.get("city"),
+                "zone": existing.get("zone"),
+                "upi_id": existing.get("upi_id"),
+                "platforms": existing.get("platforms", []),
+                "risk_score": existing.get("risk_score", 0.75),
+                "premium_amount": existing.get("premium_amount", 58.0),
+                "photo_url": existing.get("photo_url"),
+            }
+        }
+
+    # Only check phone uniqueness if a real phone number was provided
+    phone_value = request.phone.strip() if request.phone else ""
+    if phone_value and not phone_value.startswith("temp_"):
+        existing_phone = await db.workers.find_one({"phone": phone_value})
         if existing_phone:
             raise HTTPException(status_code=409, detail="Phone number already registered")
 
     from bson import ObjectId
     worker_id = str(ObjectId())
-    
+
     import h3
     h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
 
-    # Google signup missing email fallback? We just use firebase_user.get
     worker_email = firebase_user.get("email")
+
+    # Store a unique placeholder if no real phone provided
+    stored_phone = phone_value if phone_value else f"temp_{worker_id[:12]}"
 
     worker_doc = {
         "_id": worker_id,
         "firebase_uid": firebase_user["uid"],
         "name": request.name,
-        "phone": request.phone if request.phone else f"temp_{worker_id[:8]}",
+        "phone": stored_phone,
         "email": worker_email,
         "photo_url": firebase_user.get("photo_url"),
         "city": request.city,

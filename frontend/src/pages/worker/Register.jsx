@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useWorkerStore } from '../../store/workerStore'
 import { createUserProfile, loginWithFirebase } from '../../services/api'
-import { signInWithEmail, signUpWithEmail } from '../../services/firebase'
+import { signUpWithEmail, signInWithEmail } from '../../services/firebase'
 import ConsentScreen from '../../components/ui/ConsentScreen'
 
 const STEPS = [
@@ -37,6 +37,9 @@ export default function Register() {
     consents: { gps: false, upi: false, activity: false }
   })
 
+  const [loading, setLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState('')
+
   const update = (key, val) => setForm(prev => ({ ...prev, [key]: val }))
 
   const completeWorkerLogin = (data) => {
@@ -57,18 +60,6 @@ export default function Register() {
     navigate(data.requires_profile ? '/complete-profile' : '/dashboard')
   }
 
-  const isFirebaseEmailAlreadyUsed = (error) =>
-    error?.code === 'auth/email-already-in-use'
-
-  const isUserAlreadyCreated = (error) =>
-    error?.status === 409
-    || error?.response?.status === 409
-    || error?.detail === 'User already exists'
-
-  const isBackendNetworkError = (error) =>
-    error?.code === 'ERR_NETWORK'
-    || /network error/i.test(error?.message || '')
-
   const canProceed = () => {
     if (step === 1) return form.name.trim().length >= 2 && form.email.length > 5 && form.password.length >= 6
     if (step === 2) return form.platforms.length > 0 && form.city
@@ -81,21 +72,28 @@ export default function Register() {
     if (step < 4) {
       setStep(step + 1)
     } else {
-      const doLogin = async () => {
+      const doSignup = async () => {
+        setLoading(true)
+        setErrorMsg('')
         try {
-          let user
+          // Step 1: Firebase creates / signs in the user
+          let firebaseUser
           try {
-            user = await signUpWithEmail(form.email, form.password, form.name)
-          } catch (signupError) {
-            if (!isFirebaseEmailAlreadyUsed(signupError)) {
-              throw signupError
+            firebaseUser = await signUpWithEmail(form.email, form.password, form.name)
+          } catch (firebaseErr) {
+            if (firebaseErr?.code === 'auth/email-already-in-use') {
+              // User already exists in Firebase — sign them in instead
+              firebaseUser = await signInWithEmail(form.email, form.password)
+            } else {
+              throw firebaseErr
             }
-            user = await signInWithEmail(form.email, form.password)
           }
 
+          // Step 2: Register / fetch the worker profile on the backend using the Firebase ID token
+          let data
           try {
-            const data = await createUserProfile({
-              firebase_token: user.idToken,
+            data = await createUserProfile({
+              firebase_token: firebaseUser.idToken,
               name: form.name,
               phone: '',
               city: form.city,
@@ -104,44 +102,34 @@ export default function Register() {
               zone_lat: 0,
               zone_lng: 0,
             })
-
-            try {
-              await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/workers/consent`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${data.access_token}`
-                },
-                body: JSON.stringify(form.consents)
-              })
-            } catch (ignored) {}
-
-            completeWorkerLogin(data)
-            return
-          } catch (profileError) {
-            if (isUserAlreadyCreated(profileError)) {
-              const data = await loginWithFirebase(user.idToken, form.name, '')
-              
-              try {
-                await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/workers/consent`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${data.access_token}`
-                  },
-                  body: JSON.stringify(form.consents)
-                })
-              } catch (ignored) {}
-
-              completeWorkerLogin(data)
-              return
+          } catch (profileErr) {
+            // 409 = worker already registered on backend — just log them in
+            if (profileErr?.status === 409 || profileErr?.detail === 'User already exists') {
+              data = await loginWithFirebase(firebaseUser.idToken, form.name, '')
+            } else {
+              throw profileErr
             }
-            throw profileError
           }
+
+          // Step 3: Save consent flags (non-critical, ignore failures)
+          try {
+            await fetch(`${import.meta.env.VITE_API_URL || 'https://guidepay.onrender.com'}/api/v1/workers/consent`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${data.access_token}`,
+              },
+              body: JSON.stringify(form.consents),
+            })
+          } catch { /* non-critical */ }
+
+          completeWorkerLogin(data)
         } catch (error) {
-          console.error("Signup failed", error)
-          const message = error?.response?.data?.detail || error?.message || 'Network Error or Backend is Down'
-          alert(`Signup failed: ${message}\nEndpoint: ${import.meta.env.VITE_API_URL}`)
+          console.error('Signup failed', error)
+          const msg = error?.detail || error?.message || 'Could not connect to the server. Please try again.'
+          setErrorMsg(msg)
+        } finally {
+          setLoading(false)
         }
       }
 
@@ -152,13 +140,13 @@ export default function Register() {
           currency: 'INR',
           name: 'GuidePay',
           description: 'First Week Income Protection',
-          handler: doLogin,
+          handler: doSignup,
           prefill: { name: form.name, email: form.email },
           theme: { color: '#D97757' },
         })
         rzp.open()
       } else {
-        doLogin()
+        doSignup()
       }
     }
   }
@@ -430,37 +418,62 @@ export default function Register() {
         </AnimatePresence>
 
         {/* Navigation */}
-        <div style={{ display: 'flex', gap: 10, marginTop: 28 }}>
-          {step > 1 && (
-            <motion.button
-              onClick={() => setStep(step - 1)}
-              whileTap={{ scale: 0.97 }}
+        <div style={{ display: 'flex', gap: 10, marginTop: 28, flexDirection: 'column' }}>
+          {errorMsg && (
+            <div style={{
+              padding: '12px 16px', borderRadius: 10,
+              background: '#FEF2F2', border: '1px solid #FCA5A5',
+              fontSize: 13, color: '#B91C1C', fontFamily: 'Inter, sans-serif',
+            }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            {step > 1 && (
+              <motion.button
+                onClick={() => setStep(step - 1)}
+                disabled={loading}
+                whileTap={{ scale: 0.97 }}
+                style={{
+                  padding: '13px 20px', borderRadius: 10,
+                  border: '1.5px solid #E4E4E7', background: 'white',
+                  fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif',
+                  color: '#0F0F0F', cursor: loading ? 'not-allowed' : 'pointer',
+                  opacity: loading ? 0.5 : 1,
+                }}
+              >
+                ← Back
+              </motion.button>
+            )}
+            {step !== 3 && <motion.button
+              onClick={handleNext}
+              disabled={!canProceed() || loading}
+              whileTap={canProceed() && !loading ? { scale: 0.97 } : {}}
               style={{
-                padding: '13px 20px', borderRadius: 10,
-                border: '1.5px solid #E4E4E7', background: 'white',
-                fontSize: 14, fontWeight: 600, fontFamily: 'Inter, sans-serif',
-                color: '#0F0F0F', cursor: 'pointer',
+                flex: 1, padding: '13px', borderRadius: 10, border: 'none',
+                background: canProceed() && !loading ? 'linear-gradient(135deg, #D97757, #B85C3A)' : '#E4E4E7',
+                color: canProceed() && !loading ? 'white' : '#9B9B9B',
+                fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif',
+                cursor: canProceed() && !loading ? 'pointer' : 'not-allowed',
+                boxShadow: canProceed() && !loading ? '0 4px 16px rgba(217,119,87,0.35)' : 'none',
+                transition: 'all 0.2s',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               }}
             >
-              ← Back
-            </motion.button>
-          )}
-          {step !== 3 && <motion.button
-            onClick={handleNext}
-            disabled={!canProceed()}
-            whileTap={canProceed() ? { scale: 0.97 } : {}}
-            style={{
-              flex: 1, padding: '13px', borderRadius: 10, border: 'none',
-              background: canProceed() ? 'linear-gradient(135deg, #D97757, #B85C3A)' : '#E4E4E7',
-              color: canProceed() ? 'white' : '#9B9B9B',
-              fontSize: 15, fontWeight: 700, fontFamily: 'Inter, sans-serif',
-              cursor: canProceed() ? 'pointer' : 'not-allowed',
-              boxShadow: canProceed() ? '0 4px 16px rgba(217,119,87,0.35)' : 'none',
-              transition: 'all 0.2s',
-            }}
-          >
-            {step < 4 ? 'Continue →' : 'Pay & Get Protected →'}
-          </motion.button>}
+              {loading && step === 4 ? (
+                <>
+                  <span style={{
+                    width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)',
+                    borderTop: '2px solid white', borderRadius: '50%',
+                    display: 'inline-block', animation: 'spin 0.8s linear infinite',
+                  }} />
+                  Creating account...
+                </>
+              ) : (
+                step < 4 ? 'Continue →' : 'Pay & Get Protected →'
+              )}
+            </motion.button>}
+          </div>
         </div>
 
         <p style={{ textAlign: 'center', marginTop: 20, fontSize: 13, color: '#9B9B9B', fontFamily: 'Inter, sans-serif' }}>

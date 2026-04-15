@@ -42,8 +42,8 @@ async def disconnect_db():
 async def create_indexes():
     db = db_instance.db
 
-    # Workers
-    await db.workers.create_index("phone", unique=True)
+    # Workers — phone uses sparse so only real phone numbers are unique-enforced
+    await db.workers.create_index("phone", unique=True, sparse=True)
     await db.workers.create_index("firebase_uid", unique=True)
     await db.workers.create_index([("zone", 1), ("city", 1)])
 
