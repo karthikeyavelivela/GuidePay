@@ -1,13 +1,7 @@
 import axios from 'axios'
 
 const rawApiUrl = import.meta.env.VITE_API_URL
-const isPlaceholderUrl =
-  !rawApiUrl ||
-  rawApiUrl.includes('your-railway-app') ||
-  rawApiUrl.includes('your-app.onrender.com') ||
-  rawApiUrl.includes('your-render-url.onrender.com')
-
-const BASE_URL = isPlaceholderUrl ? 'http://127.0.0.1:8000' : rawApiUrl.replace(/\/$/, '')
+const BASE_URL = rawApiUrl && rawApiUrl.includes('http') ? rawApiUrl.replace(/\/$/, '') : 'https://guidepay.onrender.com'
 export const API_URL = `${BASE_URL}/api/v1`
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 

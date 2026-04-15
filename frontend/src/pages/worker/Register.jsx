@@ -140,10 +140,8 @@ export default function Register() {
           }
         } catch (error) {
           console.error("Signup failed", error)
-          const message = isBackendNetworkError(error)
-            ? 'Signup failed: backend is not reachable at http://127.0.0.1:8000. Start the API server and try again.'
-            : `Signup failed: ${error?.detail || error?.message || 'Unknown error'}`
-          alert(message)
+          const message = error?.response?.data?.detail || error?.message || 'Network Error or Backend is Down'
+          alert(`Signup failed: ${message}\nEndpoint: ${import.meta.env.VITE_API_URL}`)
         }
       }
 
@@ -239,7 +237,7 @@ export default function Register() {
                 </div>
                 <div>
                   <label style={labelStyle}>Email address</label>
-                  <input style={inputStyle} placeholder="ravi@example.com" type="email"
+                  <input style={inputStyle} placeholder="guidewire@example.com" type="email"
                     value={form.email} onChange={e => update('email', e.target.value)} />
                 </div>
                 <div>
