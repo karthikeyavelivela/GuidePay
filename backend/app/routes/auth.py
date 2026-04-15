@@ -167,6 +167,10 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
     existing = await db.workers.find_one({"firebase_uid": firebase_user["uid"]})
     if existing:
         raise HTTPException(status_code=409, detail="User already exists")
+        
+    existing_phone = await db.workers.find_one({"phone": request.phone})
+    if existing_phone:
+        raise HTTPException(status_code=409, detail="Phone number already registered")
 
     from bson import ObjectId
     worker_id = str(ObjectId())
@@ -174,12 +178,15 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
     import h3
     h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
 
+    # Google signup missing email fallback? We just use firebase_user.get
+    worker_email = firebase_user.get("email")
+
     worker_doc = {
         "_id": worker_id,
         "firebase_uid": firebase_user["uid"],
         "name": request.name,
         "phone": request.phone if request.phone else f"temp_{worker_id[:8]}",
-        "email": firebase_user.get("email"),
+        "email": worker_email,
         "photo_url": firebase_user.get("photo_url"),
         "city": request.city,
         "zone": request.zone,
@@ -238,6 +245,11 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
     existing = await db.workers.find_one({"email": request.email})
     if existing:
         raise HTTPException(status_code=409, detail="Email already registered")
+        
+    if request.phone:
+        existing_phone = await db.workers.find_one({"phone": request.phone})
+        if existing_phone:
+            raise HTTPException(status_code=409, detail="Phone number already registered")
 
     from bson import ObjectId
     worker_id = str(ObjectId())
@@ -267,6 +279,8 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
         "updated_at": datetime.utcnow(),
         "total_claims": 0,
         "total_payouts": 0.0,
+        "firebase_uid": None, # Match schema with Google signup
+        "photo_url": None, # Match schema with Google signup
     }
     await db.workers.insert_one(worker_doc)
 
@@ -282,16 +296,18 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
         "is_new_user": True,
         "requires_profile": False,
         "worker": {
-            "id": worker_id,
-            "name": request.name,
-            "email": request.email,
-            "phone": request.phone,
-            "city": request.city,
-            "zone": request.zone,
-            "upi_id": request.upi_id,
-            "platforms": [],
-            "risk_score": 0.75,
-            "premium_amount": 58.0,
+            "id": str(worker_doc["_id"]),
+            "firebase_uid": worker_doc.get("firebase_uid"),
+            "name": worker_doc.get("name"),
+            "phone": worker_doc.get("phone"),
+            "email": worker_doc.get("email"),
+            "city": worker_doc.get("city"),
+            "zone": worker_doc.get("zone"),
+            "upi_id": worker_doc.get("upi_id"),
+            "platforms": worker_doc.get("platforms", []),
+            "risk_score": worker_doc.get("risk_score", 0.75),
+            "premium_amount": worker_doc.get("premium_amount", 58.0),
+            "photo_url": worker_doc.get("photo_url"),
         }
     }
 
