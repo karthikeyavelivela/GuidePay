@@ -279,7 +279,7 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
         "updated_at": datetime.utcnow(),
         "total_claims": 0,
         "total_payouts": 0.0,
-        "firebase_uid": None, # Match schema with Google signup
+        "firebase_uid": f"temp_uid_{worker_id}", # Prevent DuplicateKeyError for missing Firebase UIDs
         "photo_url": None, # Match schema with Google signup
     }
     await db.workers.insert_one(worker_doc)
