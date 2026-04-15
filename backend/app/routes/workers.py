@@ -81,7 +81,7 @@ async def update_my_profile(
     update_data["updated_at"] = datetime.utcnow()
 
     if "zone" in update_data or "city" in update_data or "zone_lat" in update_data:
-        zone = update_data.get("zone", current_worker["zone"])
+        zone = update_data.get("zone", current_worker.get("zone", ""))
         risk_score = current_worker.get("risk_score", 0.75)
         
         if "zone_lat" in update_data and "zone_lng" in update_data:
