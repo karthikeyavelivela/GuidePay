@@ -42,7 +42,12 @@ async def disconnect_db():
 async def create_indexes():
     db = db_instance.db
 
-    # Workers — phone uses sparse so only real phone numbers are unique-enforced
+    # Workers — phone is sparse so users without a phone don't conflict on uniqueness.
+    # We drop first in case the old non-sparse index still exists from a previous deploy.
+    try:
+        await db.workers.drop_index("phone_1")
+    except Exception:
+        pass  # Index didn't exist yet — that's fine
     await db.workers.create_index("phone", unique=True, sparse=True)
     await db.workers.create_index("firebase_uid", unique=True)
     await db.workers.create_index([("zone", 1), ("city", 1)])

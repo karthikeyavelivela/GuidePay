@@ -1,4 +1,5 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -55,6 +56,37 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# ──────────────────────────────────────────────────────────────────────────────
+# CORS — must be registered FIRST so it wraps everything (outermost middleware).
+# allow_origins=["*"] with allow_credentials=False covers all browsers.
+# ──────────────────────────────────────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Global exception handler — ensures CORS headers appear even on unhandled 500s.
+# Without this, FastAPI's default error handler bypasses CORSMiddleware.
+# ──────────────────────────────────────────────────────────────────────────────
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception(f"Unhandled exception on {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc) or "Internal server error"},
+        headers={
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "*",
+            "Access-Control-Allow-Headers": "*",
+        },
+    )
+
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -81,7 +113,6 @@ app.add_middleware(RequestLoggingMiddleware)
 
 class AdminVerificationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        from fastapi.responses import JSONResponse
         protected_prefixes = ("/api/v1/admin", "/api/v1/actuarial", "/api/v1/support/admin")
         excluded_paths = {"/api/v1/auth/admin/login"}
 
@@ -100,15 +131,6 @@ class AdminVerificationMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(AdminVerificationMiddleware)
-
-# CORS — allow all origins for competition demo
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Include all routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])

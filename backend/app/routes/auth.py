@@ -98,7 +98,7 @@ async def login(request: FirebaseAuthRequest, db=Depends(get_db)):
         # Auto-create a minimal worker profile so the frontend gets a valid token
         from bson import ObjectId
         worker_id = str(ObjectId())
-        stored_phone = request.phone.strip() if request.phone and request.phone.strip() else f"temp_{worker_id[:12]}"
+        stored_phone = request.phone.strip() if request.phone and request.phone.strip() else None
 
         worker = {
             "_id": worker_id,
@@ -216,8 +216,8 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
         }
 
     # Only check phone uniqueness if a real phone number was provided
-    phone_value = request.phone.strip() if request.phone else ""
-    if phone_value and not phone_value.startswith("temp_"):
+    phone_value = request.phone.strip() if request.phone else None
+    if phone_value:
         existing_phone = await db.workers.find_one({"phone": phone_value})
         if existing_phone:
             raise HTTPException(status_code=409, detail="Phone number already registered")
@@ -230,8 +230,8 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
 
     worker_email = firebase_user.get("email")
 
-    # Store a unique placeholder if no real phone provided
-    stored_phone = phone_value if phone_value else f"temp_{worker_id[:12]}"
+    # Store None if no real phone — sparse index skips None values, no uniqueness conflict
+    stored_phone = phone_value
 
     worker_doc = {
         "_id": worker_id,
