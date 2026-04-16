@@ -147,16 +147,21 @@ async def download_certificate(
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "POLICYHOLDER DETAILS", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Arial", "", 11)
-    pdf.cell(0, 7, f"Name: {worker.get('name', 'Worker')}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"City: {worker.get('city', 'India')}", new_x="LMARGIN", new_y="NEXT")
+    # ASCII-encode to avoid latin-1 encoding errors from Hindi/Telugu names
+    safe_name = (worker.get('name', '') or '').encode('ascii', 'ignore').decode('ascii').strip() or 'Worker'
+    safe_city = (worker.get('city', '') or '').encode('ascii', 'ignore').decode('ascii').strip() or 'India'
+    pdf.cell(0, 7, f"Name: {safe_name}", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(0, 7, f"City: {safe_city}", new_x="LMARGIN", new_y="NEXT")
     pdf.cell(0, 7, f"Policy ID: {policy.get('_id', policy_id)}", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 7, f"UPI ID: {worker.get('upi_id', '****')}", new_x="LMARGIN", new_y="NEXT")
+    safe_upi = (worker.get('upi_id', '') or '****').encode('ascii', 'ignore').decode('ascii').strip() or '****'
+    pdf.cell(0, 7, f"UPI ID: {safe_upi}", new_x="LMARGIN", new_y="NEXT")
     pdf.ln(5)
 
     pdf.set_font("Arial", "B", 12)
     pdf.cell(0, 8, "COVERAGE DETAILS", new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Arial", "", 11)
-    pdf.cell(0, 7, f"Plan: {PLANS[plan_type]['name']}", new_x="LMARGIN", new_y="NEXT")
+    plan_name = PLANS.get(plan_type, {}).get("name", f"{plan_type.title()} Shield")
+    pdf.cell(0, 7, f"Plan: {plan_name}", new_x="LMARGIN", new_y="NEXT")
     pdf.cell(0, 7, f"Payout Tier: {PAYOUT_TIERS[payout_tier]['label']}", new_x="LMARGIN", new_y="NEXT")
     pdf.cell(0, 7, f"Payout Amount: Rs {payout_amount} per trigger", new_x="LMARGIN", new_y="NEXT")
     pdf.cell(0, 7, f"Coverage From: {created_at}", new_x="LMARGIN", new_y="NEXT")

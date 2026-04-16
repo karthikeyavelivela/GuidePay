@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from app.config import settings
 from app.database import get_db
+from app.routes.auth import get_current_worker
 from datetime import datetime, timedelta
 from bson import ObjectId
 import logging
@@ -13,19 +14,24 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 PLAN_CONFIG = {
+    "daily": {
+        "name": "Daily Shield",
+        "price": 12.0,
+        "coverage": 600,
+    },
     "basic": {
-        "name": "Basic",
+        "name": "Basic Shield",
         "price": 49.0,
         "coverage": 600,
     },
     "standard": {
-        "name": "Standard",
-        "price": 58.0,
+        "name": "Standard Shield",
+        "price": 62.0,
         "coverage": 600,
     },
     "premium": {
-        "name": "Premium",
-        "price": 69.0,
+        "name": "Premium Shield",
+        "price": 89.0,
         "coverage": 600,
     },
 }
@@ -46,6 +52,7 @@ class VerifyPaymentRequest(BaseModel):
     razorpay_payment_id: str
     razorpay_signature: str
     plan_id: str
+    amount: float = 0  # optional, sent by frontend
 
 class PayoutRequest(BaseModel):
     claim_id: str
@@ -103,6 +110,7 @@ async def create_payment_order(
 @router.post("/verify")
 async def verify_payment(
     request: VerifyPaymentRequest,
+    current_worker=Depends(get_current_worker),
     db=Depends(get_db)
 ):
     """Verify payment and activate policy"""
@@ -141,21 +149,49 @@ async def verify_payment(
     if not plan:
         raise HTTPException(400, "Invalid plan")
 
+    # Compute payout tier from worker's activity level
+    worker_id = str(current_worker["_id"])
+    daily_orders = float(
+        current_worker.get("avg_orders_per_day") or
+        current_worker.get("avg_daily_orders") or 8
+    )
+    if daily_orders >= 15:
+        payout_tier = "gold"
+        payout_amount = 900
+    elif daily_orders >= 8:
+        payout_tier = "silver"
+        payout_amount = 600
+    else:
+        payout_tier = "bronze"
+        payout_amount = 400
+
     now = datetime.utcnow()
     policy_id = str(ObjectId())
 
+    # Daily plan expires in 24h
+    is_daily = request.plan_id == "daily"
+    expires_delta = timedelta(hours=24) if is_daily else timedelta(days=7)
+
     policy_doc = {
         "_id": policy_id,
+        "worker_id": worker_id,
         "plan_id": request.plan_id,
         "plan_name": plan["name"],
+        "plan_type": request.plan_id,
         "weekly_premium": plan["price"],
-        "coverage_cap": float(plan["coverage"]),
+        "premium_paid": plan["price"],
+        "coverage_cap": float(payout_amount),  # tier-based, not flat 600
+        "payout_tier": payout_tier,
+        "payout_amount": payout_amount,
+        "income_tier": payout_tier,
         "status": "ACTIVE",
         "payment_id": request.razorpay_payment_id,
         "order_id": request.razorpay_order_id,
         "week_start": now,
-        "week_end": now + timedelta(days=7),
-        "auto_renew": True,
+        "week_end": now + expires_delta,
+        "expires_at": now + expires_delta,
+        "auto_renew": not is_daily,
+        "auto_payout": True,
         "created_at": now,
     }
 
@@ -164,6 +200,7 @@ async def verify_payment(
     payment_doc = {
         "_id": str(ObjectId()),
         "policy_id": policy_id,
+        "worker_id": worker_id,
         "razorpay_payment_id": request.razorpay_payment_id,
         "razorpay_order_id": request.razorpay_order_id,
         "amount": plan["price"],
@@ -179,12 +216,16 @@ async def verify_payment(
             "id": policy_id,
             "plan_id": request.plan_id,
             "plan_name": plan["name"],
+            "plan_type": request.plan_id,
             "weekly_premium": plan["price"],
-            "coverage_cap": plan["coverage"],
+            "coverage_cap": payout_amount,
+            "payout_tier": payout_tier,
+            "payout_amount": payout_amount,
+            "income_tier": payout_tier,
             "status": "ACTIVE",
             "payment_id": request.razorpay_payment_id,
             "week_start": now.isoformat(),
-            "week_end": (now + timedelta(days=7)).isoformat(),
+            "week_end": (now + expires_delta).isoformat(),
         },
         "payment_id": request.razorpay_payment_id,
         "receipt": {

@@ -80,8 +80,8 @@ const PaymentSuccess = () => {
           <span class="value">${policy.planName || policy.plan_name || 'Standard'} Plan</span>
         </div>
         <div class="row">
-          <span class="label">Coverage</span>
-          <span class="value">₹600/week</span>
+          <span class="label">Your Payout Tier</span>
+          <span class="value">${policy.payoutTier || 'Silver'} — up to ₹${policy.payoutAmount || policy.coverage || 600} per event</span>
         </div>
         <div class="row">
           <span class="label">Valid From</span>
@@ -212,7 +212,7 @@ const PaymentSuccess = () => {
               {
                 icon: Shield,
                 label: 'Plan',
-                value: `${policy.planName || policy.plan_name || 'Standard'} — ₹600/week coverage`,
+                value: `${policy.planName || policy.plan_name || 'Standard'} — up to ₹${policy.payoutAmount || policy.coverage || 600} payout`,
               },
               {
                 icon: Calendar,

@@ -447,6 +447,27 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
         )
         return
 
+    # Notify the worker
+    try:
+        notif_type = "CLAIM_PAID" if status in ("AUTO_APPROVED", "PAID") else "CLAIM_REVIEW"
+        notif_title = "Payout initiated" if notif_type == "CLAIM_PAID" else "Claim under review"
+        notif_msg = (
+            f"Rs {payout_amount} is being sent to your UPI automatically."
+            if notif_type == "CLAIM_PAID"
+            else "Your claim is under manual review. We'll update you shortly."
+        )
+        await db.notifications.insert_one({
+            "_id": str(ObjectId()),
+            "worker_id": worker_id,
+            "type": notif_type,
+            "title": f"GuidePay: {notif_title}",
+            "message": notif_msg,
+            "read": False,
+            "created_at": datetime.utcnow(),
+        })
+    except Exception as e:
+        logger.warning(f"Failed to create notification for worker {worker_id}: {e}")
+
     await append_payout_audit(
         db=db,
         claim_id=claim_doc["_id"],

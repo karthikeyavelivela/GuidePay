@@ -31,12 +31,11 @@ export default function ClaimsQueue() {
   const fetchClaims = async () => {
     setLoading(true)
     try {
-      const res = await getAdminClaims({
-        status: statusFilter,
-        trigger_type: triggerFilter,
-        tier: tierFilter,
-        limit: 100
-      })
+      const params = { limit: 100 }
+      if (statusFilter && statusFilter !== 'ALL') params.status = statusFilter
+      if (triggerFilter && triggerFilter !== 'ALL') params.trigger_type = triggerFilter
+      if (tierFilter && tierFilter !== 'ALL') params.tier = tierFilter
+      const res = await getAdminClaims(params)
       setClaims(res?.claims || [])
     } catch {
       setClaims([])
