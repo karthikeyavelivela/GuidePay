@@ -26,9 +26,9 @@ The worker never opens the app. The worker never files a claim. Everything is au
 
 ## Pitch Deck
 
-[![Pitch Deck](https://img.shields.io/badge/Pitch_Deck-View_PDF-FF6900?style=for-the-badge&logo=googledrive&logoColor=white)](YOUR_PITCH_DECK_LINK_HERE)
+[![Pitch Deck](https://img.shields.io/badge/Pitch_Deck-View_PDF-FF6900?style=for-the-badge&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1qTPfL6nEnW_R5tEsK4xyANe6yNZC7UHY/view?usp=sharing)
 
-> **Judges:** Replace `YOUR_PITCH_DECK_LINK_HERE` above with the public Google Drive or hosted PDF link.
+> **Judges:** Kindly refer to the pitch deck for more information.
 
 ---
 
@@ -322,7 +322,7 @@ VITE_RAZORPAY_KEY_ID=rzp_test_...
 | Admin Panel | https://guidepayklu.vercel.app/admin/login |
 | API Documentation | https://guidepay.onrender.com/docs |
 | Source Code | https://github.com/karthikeyavelivela/GuidePay |
-| Pitch Deck | YOUR_PITCH_DECK_LINK_HERE |
+| Pitch Deck | https://drive.google.com/file/d/1qTPfL6nEnW_R5tEsK4xyANe6yNZC7UHY/view?usp=sharing |
 | Demo Video | YOUR_DEMO_VIDEO_LINK_HERE |
 
 ---
