@@ -47,7 +47,9 @@
       "Bash(curl -s -X POST \"http://127.0.0.1:8000/api/v1/auth/admin/login\" -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"admin\"}')",
       "Bash(curl -s 'http://127.0.0.1:8000/api/v1/admin/workers?limit=5' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInVpZCI6bnVsbCwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzc1NzkxODA0fQ.696qSEpNIwvNMDFwMm41RXFku9m7GSt6UMlaL30iBUk')",
       "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'total={d[\\\\\"total\\\\\"]} names={[w[\\\\\"name\\\\\"] for w in d[\\\\\"workers\\\\\"][:5]]}'\\)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)"
     ]
   }
 }

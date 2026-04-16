@@ -11,7 +11,6 @@ Guidewire DEVTrails 2026 · Phase 3 · Team SentinelX · KL University
 [![Live Demo](https://img.shields.io/badge/Live_Demo-guidepayklu.vercel.app-FF6900?style=for-the-badge&logo=vercel&logoColor=white)](https://guidepayklu.vercel.app)
 [![API](https://img.shields.io/badge/API_Docs-guidepay.onrender.com-430098?style=for-the-badge&logo=render&logoColor=white)](https://guidepay.onrender.com/docs)
 [![GitHub](https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/karthikeyavelivela/GuidePay)
-[![Phase 2](https://img.shields.io/badge/Phase_2-4_Stars_+42,000_DC-FFD700?style=for-the-badge)](https://guidepayklu.vercel.app)
 
 ---
 
@@ -39,8 +38,6 @@ He sees the SMS. He keeps riding next week. His family is okay.
 
 **That is what insurance is actually for.**
 
-He is one of 12 million gig delivery workers in India. Zero insurance products existed for him. GuidePay fixes that.
-
 ---
 
 ## What Is GuidePay
@@ -58,26 +55,72 @@ AUDIT TRAIL         instant    Every ML decision hash-chained for IRDAI
 
 ---
 
-## What Changed in Phase 3
+## What We Automated
 
-Phase 2 judges awarded 4 stars with specific feedback. We addressed every point:
+**This is the core of GuidePay — end-to-end automation with zero human intervention:**
 
-| Phase 2 Feedback | Phase 3 Solution |
-|---|---|
-| Flat ₹600 payout regardless of income | Income-tiered payouts — Bronze ₹400 / Silver ₹600 / Gold ₹900 |
-| No actuarial domain depth | Hybrid actuarial-ML pricing with volatility loading |
-| Affordability concern | Daily Shield plan at ₹12/day |
-| 5 hardcoded cities | 30 Indian cities with H3 hex zone pricing |
-| Flat ML training data | 10,000 statistically grounded training records |
-| No feature transparency | Feature importance API with ranked weights |
-| No insurer metrics | Full actuarial dashboard — combined ratio, loss ratio, stress test |
-| Models lost on restart | MongoDB GridFS persistence — survives Render restarts |
+### 1. Trigger Detection — Automated Every 15 Minutes
+APScheduler runs a background job every 15 minutes polling:
+- **IMD SACHET RSS** — official government flood alerts
+- **CPCB AQI API** — India's official air quality data
+- **OpenWeatherMap** — rainfall intensity and duration
+- **Downdetector** — platform availability monitoring
+- **Calendar Engine** — festival disruption detection
+
+No human monitors these. The system fires automatically when any threshold is crossed.
+
+### 2. Worker Eligibility — Automated
+When a trigger fires, the system automatically:
+- Finds all workers in the affected zone with active policies
+- Verifies each worker's last delivery was within 6 hours
+- Checks policy expiry and adverse selection lock
+- Runs in parallel for all affected workers simultaneously
+
+### 3. Fraud Detection — Automated ML Pipeline
+Every claim runs through 9 signals in under 50ms:
+- GPS location verification
+- Activity recency check
+- Claim frequency analysis
+- Zone correlation scoring
+- GPS spoofing detection (4 sub-signals)
+- Historical weather cross-validation
+- Worker risk profile scoring
+- New account gate
+- Duplicate detection
+
+No human reviews claims with fraud score < 0.70 — they are auto-approved instantly.
+
+### 4. Payout — Automated via Razorpay UPI
+Auto-approved claims trigger an immediate Razorpay UPI payout:
+- Worker receives money directly to their registered UPI ID
+- No bank transfer delays — instant UPI settlement
+- Payout amount varies by income tier (Bronze ₹400 / Silver ₹600 / Gold ₹900)
+- Receipt generated automatically
+
+### 5. Audit Trail — Automated Hash Chain
+Every decision in the pipeline is recorded in a tamper-evident hash chain:
+- Each event hashes the previous event
+- SHA256 chain proves no decision was altered after the fact
+- IRDAI regulators can verify the complete chain
+
+### 6. Notifications — Automated Contextual Alerts
+Workers receive automated notifications based on real state:
+- Flood alert active in zone
+- Policy expiring in 48 hours
+- Claim processed and paid
+- High flood risk forecast next week
+
+### 7. ML Model Training — Automated on Startup
+All 4 ML models retrain automatically:
+- Checks MongoDB GridFS for existing models
+- Only retrains if models are older than 7 days or missing
+- No manual intervention needed for model updates
+
+**Result: A worker can buy a policy on Monday, have a flood hit on Wednesday, and receive ₹600 on Wednesday — without ever knowing GuidePay ran.**
 
 ---
 
 ## 5 Automated Triggers
-
-Every trigger connects to a live public API. APScheduler polls every 15 minutes, 24/7.
 
 | Trigger | Data Source | Threshold | Payout |
 |---|---|---|---|
@@ -97,16 +140,18 @@ Every trigger connects to a live public API. APScheduler polls every 15 minutes,
 | 🥈 Silver | 8–14 orders/day | ₹600 | Full-time standard workers |
 | 🥇 Gold | 15+ orders/day | ₹900 | High-volume professional riders |
 
+Tier calculated automatically from verified delivery activity.
+
 ---
 
 ## 4 Coverage Plans
 
-| Plan | Price | Best For |
-|---|---|---|
-| 🛡️ Daily Shield | ₹12/day | Flexible workers, first-timers |
-| Basic Shield | ₹49/week | Budget-conscious workers |
-| Standard Shield | ₹62/week | Most workers — best value |
-| Premium Shield | ₹89/week | High earners, full coverage |
+| Plan | Price | Payout Range | Best For |
+|---|---|---|---|
+| 🛡️ Daily Shield | ₹12/day | ₹400–₹900 | Flexible workers |
+| Basic Shield | ₹49/week | ₹400–₹900 | Budget-conscious |
+| Standard Shield | ₹62/week | ₹400–₹900 | Most workers |
+| Premium Shield | ₹89/week | ₹400–₹900 | High earners |
 
 ---
 
@@ -118,46 +163,38 @@ $$P_{final} = 0.60 \cdot P_{ML} + 0.40 \cdot P_{actuarial}$$
 
 $$P_{actuarial} = \left(\lambda S + 0.25\sqrt{\lambda} \cdot S\right) \times 1.30 \times M_{seasonal}$$
 
-Where **S** = worker's actual payout tier (400/600/900) — not flat 600.
-
-### Premium Model Stats
+Where **S** = worker's actual payout tier (400/600/900).
 
 ```
 Model:     RandomForestRegressor
 R²:        ≈ 0.89
 Records:   10,000 training records
 Inference: < 50ms
-Features:  Zone flood risk (28%), Historical claim rate (22%),
-           City rainfall (18%), Worker risk score (14%),
-           Account age (8%), Avg daily orders (6%), Seasonal (4%)
 ```
+
+| Feature | Weight |
+|---|---|
+| Zone flood risk score | 28% |
+| Historical claim rate | 22% |
+| City rainfall intensity | 18% |
+| Worker risk score | 14% |
+| Account age | 8% |
+| Avg daily orders | 6% |
+| Seasonal multiplier | 4% |
 
 ---
 
 ## 9-Signal Fraud Detection
 
-$$S_{fraud} = \sum_{i=1}^{9} w_i \cdot f_i$$
+$$S_{fraud} = \sum_{i=1}^{9} w_i \cdot f_i \qquad \text{Auto-approve if } S < 0.70$$
 
-$$\text{Decision} = \begin{cases} \text{AUTO APPROVE} & S < 0.70 \\ \text{MANUAL REVIEW} & S \geq 0.70 \end{cases}$$
+**Standard (1–5):** Duplicate detection · Zone eligibility · Activity recency · Claim frequency · Zone correlation
 
-**Standard Signals (1–5):** Duplicate detection · Zone eligibility · Activity recency · Claim frequency · Zone correlation
+**Advanced (6–9):** GPS spoofing (impossible speed · static ping · cluster spoof · boundary abuse) · Weather validation · Risk profile · New account gate
 
-**Advanced Signals (6–9):** GPS spoofing (4 sub-signals: impossible speed, static ping, cluster spoof, boundary abuse) · Historical weather validation · Worker risk profile · New account gate
+**Model:** GradientBoostingClassifier · **Accuracy:** ~91% · **Speed:** <50ms
 
-**Model:** GradientBoostingClassifier · **Accuracy:** ~91% · **Inference:** <50ms
-
-> Zone Correlation Innovation: When 80%+ of workers in a flood zone claim simultaneously, we actively **lower** fraud scores — the crowd validates the event is real.
-
----
-
-## Guidewire Platform Integration
-
-**Phase 4 Roadmap:**
-- **PolicyCenter API** — GuidePay parametric policies as a product type within PolicyCenter
-- **ClaimCenter Integration** — Auto-approved claims as completed transactions; manual review routes to adjuster queue  
-- **Guidewire Cloud** — Trigger engine deployable as a Guidewire Cloud microservice
-
-GuidePay extends Guidewire's platform into India's 12 million gig worker segment.
+> **Zone Correlation:** When 80%+ of workers in a zone claim simultaneously, fraud scores are actively **lowered** — the crowd validates the event is real.
 
 ---
 
@@ -168,15 +205,24 @@ GuidePay extends Guidewire's platform into India's 12 million gig worker segment
 | 1 | Trigger objective & verifiable | ✅ IMD + CPCB + OWM |
 | 2 | Health/life/vehicle excluded | ✅ Income loss only |
 | 3 | Payout automatic | ✅ Trigger → GPS → UPI <2 hours |
-| 4 | Pool financially sustainable | ✅ BCR 0.65, 14-day stress test ADEQUATE |
-| 5 | Fraud on data not behaviour | ✅ GPS + weather + activity logs |
+| 4 | Pool financially sustainable | ✅ BCR 0.65, 14-day stress ADEQUATE |
+| 5 | Fraud on data not behaviour | ✅ GPS + weather + activity |
 | 6 | Premium collection frictionless | ✅ Razorpay UPI auto-pay |
 | 7 | Pricing dynamic not flat | ✅ Hybrid ML + actuarial |
-| 8 | Adverse selection blocked | ✅ Purchase locked 48hrs before alerts |
-| 9 | Operational cost near zero | ✅ $124/month, 0.83% of revenue |
-| 10 | Basis risk minimized | ✅ H3 hex resolution 7, 5km² zones |
+| 8 | Adverse selection blocked | ✅ Locked 48hrs before alerts |
+| 9 | Operational cost near zero | ✅ $124/month, 0.83% revenue |
+| 10 | Basis risk minimized | ✅ H3 hex grid, 5km² zones |
 
-**Also compliant:** DPDP Act 2023 · SS Code 2020 · Data residency Mumbai ap-south-1 (RBI)
+**Also compliant:** DPDP Act 2023 · SS Code 2020 · Data stored Mumbai ap-south-1 (RBI)
+
+---
+
+## Guidewire Platform Integration
+
+**Phase 4 Roadmap:**
+- **PolicyCenter API** — GuidePay parametric policies as a product type
+- **ClaimCenter Integration** — Auto-approved claims as completed transactions
+- **Guidewire Cloud** — Trigger engine as a Guidewire Cloud microservice
 
 ---
 
@@ -184,13 +230,12 @@ GuidePay extends Guidewire's platform into India's 12 million gig worker segment
 
 $$\text{Monthly GWP} = 50{,}000 \times ₹62 \times 4 = ₹1.24 \text{ crore}$$
 
-| Year | Workers | Monthly GWP |
-|---|---|---|
-| Year 1 | 50,000 | ₹1.24 crore |
-| Year 2 | 250,000 | ₹6.2 crore |
-| Year 3 | 1,000,000 | ₹24.8 crore |
-
-**TAM:** ₹890 crore · **Loss Ratio:** 24.5% (target 65%) · **Combined Ratio:** 54.5%
+| Metric | Value |
+|---|---|
+| Loss Ratio | 24.5% (target 65%) |
+| Combined Ratio | 54.5% |
+| TAM | ₹890 crore |
+| Infra Cost | $124/month = 0.83% of revenue |
 
 ---
 
@@ -202,7 +247,7 @@ $$\text{Monthly GWP} = 50{,}000 \times ₹62 \times 4 = ₹1.24 \text{ crore}$$
 | Backend | FastAPI (Python 3.11), Motor, APScheduler, JWT |
 | ML | scikit-learn 1.8 — GradientBoosting, RandomForest, IsolationForest |
 | Database | MongoDB Atlas (Mumbai · ap-south-1) + GridFS |
-| Auth | Firebase Phone OTP + Google OAuth + JWT |
+| Auth | Firebase Google OAuth + JWT |
 | Payments | Razorpay UPI (collection + payout) |
 | Voice | ElevenLabs eleven_multilingual_v2 |
 | Spatial | Uber H3 hex grid (resolution 7) |
@@ -215,10 +260,9 @@ $$\text{Monthly GWP} = 50{,}000 \times ₹62 \times 4 = ₹1.24 \text{ crore}$$
 
 ### Demo
 
-| Access | Credentials |
-|---|---|
-| Worker | Login with phone number → OTP |
-| Admin | `/admin/login` → `admin` / `admin` |
+Sign in with Google at [guidepayklu.vercel.app](https://guidepayklu.vercel.app)
+
+Admin panel: `/admin/login` → `admin` / `admin`
 
 ### Run Locally
 
@@ -229,11 +273,36 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn app.main:app --reload --port 8000
+# Docs: http://localhost:8000/docs
 
 # Frontend
 cd frontend && npm install
-cp .env.example .env
-npm run dev
+cp .env.example .env  # Set VITE_API_URL=http://localhost:8000
+npm run dev           # http://localhost:5173
+```
+
+### Environment Variables
+
+```env
+# Backend
+MONGODB_URL=mongodb+srv://...
+SECRET_KEY=your-secret-key
+FIREBASE_PROJECT_ID=guide-pay
+FIREBASE_CLIENT_EMAIL=...
+FIREBASE_PRIVATE_KEY=...
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
+OPENWEATHER_API_KEY=...
+ELEVENLABS_API_KEY=...
+CPCB_API_KEY=...
+FRONTEND_URL=https://guidepayklu.vercel.app
+
+# Frontend
+VITE_API_URL=https://guidepay.onrender.com
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=guide-pay.firebaseapp.com
+VITE_FIREBASE_APP_ID=...
+VITE_RAZORPAY_KEY_ID=rzp_test_...
 ```
 
 ---
@@ -251,9 +320,11 @@ npm run dev
 
 ## Try It Right Now
 
-Open the app. Login with your phone number. Go to admin. Fire a flood trigger for Hyderabad. Watch ₹600 appear in the worker's claim timeline — with the full hash-chained ML audit trail — in under 2 minutes.
+Sign in with Google at guidepayklu.vercel.app
 
-**No slides. No mockups. No promises. Press the button. Watch it work.**
+Go to admin. Fire a flood trigger for Hyderabad. Watch money move automatically — fraud scored, tier calculated, UPI payout initiated — in under 2 minutes. With a full hash-chained audit trail.
+
+**No slides. No mockups. Press the button. Watch it work.**
 
 ---
 
@@ -273,7 +344,7 @@ Open the app. Login with your phone number. Go to admin. Fire a flood trigger fo
 
 <div align="center">
 
-*Built in 8 weeks. Deployed in production. Ready for 12 million workers.*
+*Built in 8 weeks. Fully automated. Ready for 12 million workers.*
 
 **GuidePay · Team SentinelX · KL University**
 
