@@ -225,8 +225,12 @@ async def create_user(request: CreateUserRequest, db=Depends(get_db)):
     from bson import ObjectId
     worker_id = str(ObjectId())
 
-    import h3
-    h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
+    try:
+        import h3
+        h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
+    except Exception:
+        city = getattr(request, "city", "") or ""
+        h3_zone = f"zone_{city.lower().replace(' ','_')}" if request.zone_lat else None
 
     worker_email = firebase_user.get("email")
 
@@ -307,8 +311,12 @@ async def direct_signup(request: DirectSignupRequest, db=Depends(get_db)):
     worker_id = str(ObjectId())
     password_hash = hashlib.sha256(request.password.encode()).hexdigest()
     
-    import h3
-    h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
+    try:
+        import h3
+        h3_zone = h3.geo_to_h3(request.zone_lat, request.zone_lng, 7) if request.zone_lat else None
+    except Exception:
+        city = getattr(request, "city", "") or ""
+        h3_zone = f"zone_{city.lower().replace(' ','_')}" if request.zone_lat else None
 
     worker_doc = {
         "_id": worker_id,

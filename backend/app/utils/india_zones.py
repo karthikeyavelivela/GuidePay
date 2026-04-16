@@ -628,13 +628,21 @@ def search_cities(query: str) -> list:
             })
     return results[:20]
 
-import h3
+try:
+    import h3
+    H3_AVAILABLE = True
+except ImportError:
+    H3_AVAILABLE = False
 
 def get_hex_from_coord(lat: float, lng: float, resolution: int = 7) -> str:
+    if not H3_AVAILABLE:
+        return f"zone_{round(lat,2)}_{round(lng,2)}"
     return h3.geo_to_h3(lat, lng, resolution)
 
 def calculate_zone_flood_risk(h3_index: str, city_base_risk: float) -> float:
-    # A pseudo-simulation to add hyper-local granularity
-    h = int(h3_index, 16)
-    micro_variance = (h % 100 - 50) / 100.0  # -0.5 to +0.5
-    return min(1.0, max(0.05, city_base_risk + micro_variance * 0.3))
+    if not H3_AVAILABLE:
+        return city_base_risk
+    import hashlib
+    zone_hash = int(hashlib.md5(h3_index.encode()).hexdigest()[:8], 16)
+    variation = (zone_hash % 200 - 100) / 1000
+    return max(0.05, min(0.95, city_base_risk + variation))

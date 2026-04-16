@@ -85,8 +85,12 @@ async def update_my_profile(
         risk_score = current_worker.get("risk_score", 0.75)
         
         if "zone_lat" in update_data and "zone_lng" in update_data:
-            import h3
-            update_data["h3_zone"] = h3.geo_to_h3(update_data["zone_lat"], update_data["zone_lng"], 7)
+            try:
+                import h3
+                update_data["h3_zone"] = h3.geo_to_h3(update_data["zone_lat"], update_data["zone_lng"], 7)
+            except Exception:
+                city = update_data.get("city", current_worker.get("city", "")) or ""
+                update_data["h3_zone"] = f"zone_{city.lower().replace(' ','_')}"
             
         h3_zone = update_data.get("h3_zone", current_worker.get("h3_zone"))
         premium = calculate_premium(zone, risk_score, h3_zone=h3_zone)
