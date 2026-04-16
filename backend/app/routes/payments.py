@@ -17,22 +17,22 @@ PLAN_CONFIG = {
     "daily": {
         "name": "Daily Shield",
         "price": 12.0,
-        "coverage": 600,
+        "coverage": 900,   # Max per-day coverage (Gold tier cap)
     },
     "basic": {
         "name": "Basic Shield",
         "price": 49.0,
-        "coverage": 600,
+        "coverage": 400,   # Basic plan coverage ceiling
     },
     "standard": {
         "name": "Standard Shield",
         "price": 62.0,
-        "coverage": 600,
+        "coverage": 600,   # Standard plan coverage ceiling
     },
     "premium": {
         "name": "Premium Shield",
         "price": 89.0,
-        "coverage": 600,
+        "coverage": 900,   # Premium plan coverage ceiling
     },
 }
 
@@ -181,18 +181,23 @@ async def verify_payment(
     # Use the actual zone-adjusted amount paid by the worker
     actual_premium = request.amount if request.amount > 0 else plan["price"]
 
+    # coverage_cap = plan's coverage ceiling (e.g. 900 for Premium)
+    # payout_amount = worker's tier-based per-event payout (capped by plan ceiling)
+    plan_coverage_cap = plan["coverage"]
+    effective_payout = min(payout_amount, plan_coverage_cap)
+
     policy_doc = {
         "_id": policy_id,
         "worker_id": worker_id,
         "plan_id": request.plan_id,
         "plan_name": plan["name"],
         "plan_type": request.plan_id,
-        "weekly_premium": actual_premium,      # zone-adjusted real amount
-        "base_premium": plan["price"],          # original base for reference
+        "weekly_premium": actual_premium,       # zone-adjusted real amount
+        "base_premium": plan["price"],           # original base for reference
         "premium_paid": actual_premium,
-        "coverage_cap": float(payout_amount),  # tier-based, not flat 600
+        "coverage_cap": float(plan_coverage_cap),  # plan's max coverage ceiling
         "payout_tier": payout_tier,
-        "payout_amount": payout_amount,
+        "payout_amount": effective_payout,       # per-event payout (tier, capped by plan)
         "income_tier": payout_tier,
         "status": "ACTIVE",
         "payment_id": request.razorpay_payment_id,
@@ -229,9 +234,9 @@ async def verify_payment(
             "plan_type": request.plan_id,
             "weekly_premium": actual_premium,
             "base_premium": plan["price"],
-            "coverage_cap": payout_amount,
+            "coverage_cap": plan_coverage_cap,   # plan's ceiling (e.g. 900 for Premium)
             "payout_tier": payout_tier,
-            "payout_amount": payout_amount,
+            "payout_amount": effective_payout,   # actual per-event payout
             "income_tier": payout_tier,
             "status": "ACTIVE",
             "payment_id": request.razorpay_payment_id,

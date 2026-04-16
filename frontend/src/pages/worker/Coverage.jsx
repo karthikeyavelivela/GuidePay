@@ -159,7 +159,7 @@ export default function Coverage() {
         razorpay_payment_id: mockPaymentId,
         razorpay_signature: mockSignature,
         plan_id: selected.id,
-        amount: order.amount || finalPrice,
+        amount: order.actual_amount || finalPrice,  // actual_amount is in rupees; order.amount is in paise (×100)
       })
 
       if (result?.policy) {
