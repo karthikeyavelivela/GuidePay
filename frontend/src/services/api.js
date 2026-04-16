@@ -1,7 +1,30 @@
 import axios from 'axios'
 
-const rawApiUrl = import.meta.env.VITE_API_URL
-const BASE_URL = rawApiUrl && rawApiUrl.includes('http') ? rawApiUrl.replace(/\/$/, '') : 'https://guidepay.onrender.com'
+const DEFAULT_BACKEND_URL = 'https://guidepay.onrender.com'
+
+const isLocalHostname = (value = '') => /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/i.test(value)
+
+const resolveBackendUrl = () => {
+  const rawApiUrl = import.meta.env.VITE_API_URL?.trim()
+  const browserHostname = typeof window !== 'undefined' ? window.location.hostname : ''
+  const isLocalFrontend = isLocalHostname(browserHostname)
+
+  if (!rawApiUrl || !rawApiUrl.includes('http')) {
+    return DEFAULT_BACKEND_URL
+  }
+
+  try {
+    const parsedUrl = new URL(rawApiUrl)
+    if (!isLocalFrontend && isLocalHostname(parsedUrl.hostname)) {
+      return DEFAULT_BACKEND_URL
+    }
+    return parsedUrl.toString().replace(/\/$/, '')
+  } catch {
+    return DEFAULT_BACKEND_URL
+  }
+}
+
+const BASE_URL = resolveBackendUrl()
 export const API_URL = `${BASE_URL}/api/v1`
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -13,7 +36,7 @@ export const workerApi = axios.create({
 
 export const adminApi = axios.create({
   baseURL: API_URL,
-  timeout: 15000,
+  timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
 
@@ -55,7 +78,11 @@ workerApi.interceptors.request.use((config) => {
 })
 
 adminApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('gp-admin-token') || localStorage.getItem('gp-admin-access-token')
+  const token = localStorage.getItem('gp-admin-token')
+    || localStorage.getItem('gp-admin-access-token')
+    || localStorage.getItem('admin_token')
+    || localStorage.getItem('adminToken')
+    || sessionStorage.getItem('admin_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -175,7 +202,10 @@ export const rejectClaim = (id, reason) => adminApi.post(`/admin/claims/${id}/re
 export const getAdminDashboardStats = () => adminApi.get('/admin/dashboard-stats');
 export const getZoneRiskMonitor = () => adminApi.get('/admin/zone-risk-monitor');
 export const getFraudAnalytics = () => adminApi.get('/admin/fraud-analytics');
+export const getAdminPredictiveAnalytics = () => adminApi.get('/admin/predictive-analytics');
 export const simulateTrigger = (city, type) => adminApi.post('/admin/simulate-trigger', { city, trigger_type: type }, { timeout: 60000 })
+export const suspendWorker = (workerId) => adminApi.post(`/admin/workers/${workerId}/suspend`)
+export const unsuspendWorker = (workerId) => adminApi.post(`/admin/workers/${workerId}/unsuspend`)
 export const getAdminSupportTickets = (status = 'all') => adminApi.get('/support/admin/tickets', { params: { status } })
 export const sendAdminSupportMessage = (ticketId, text) => adminApi.post(`/support/admin/tickets/${ticketId}/messages`, { text })
 export const updateAdminSupportStatus = (ticketId, status) => adminApi.patch(`/support/admin/tickets/${ticketId}/status`, { status })

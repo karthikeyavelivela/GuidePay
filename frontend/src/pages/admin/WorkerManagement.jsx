@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { getWorkers } from '../../services/api'
+import { getWorkers, suspendWorker, unsuspendWorker } from '../../services/api'
 import { Search, ShieldAlert, BadgeCheck, FileDown } from 'lucide-react'
 import { useTranslation } from '../../i18n/useTranslation'
 
@@ -66,27 +66,16 @@ export default function WorkerManagement() {
 
   const handleSuspend = async (workerId, suspend) => {
     try {
-      const token = localStorage.getItem('gp-token') || localStorage.getItem('gp-access-token')
-      const endpoint = suspend ? 'suspend' : 'unsuspend'
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/admin/workers/${workerId}/${endpoint}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-      if (res.ok) {
-          fetchWorkers()
-          alert(`Worker ${suspend ? 'suspended' : 'unsuspended'} successfully`)
+      if (suspend) {
+        await suspendWorker(workerId)
       } else {
-          alert('API failed to update worker status')
+        await unsuspendWorker(workerId)
       }
+      fetchWorkers()
+      alert(`Worker ${suspend ? 'suspended' : 'unsuspended'} successfully`)
     } catch (e) {
       console.error('Suspend error:', e)
-      alert('API failed: ' + e.message)
+      alert(`API failed: ${e?.detail || e?.message || 'Unknown error'}`)
     }
   }
 

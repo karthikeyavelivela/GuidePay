@@ -62,8 +62,15 @@ app = FastAPI(
 # ──────────────────────────────────────────────────────────────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=[
+        "https://guidepayklu.vercel.app",
+        "https://guidepay.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"],
@@ -113,19 +120,35 @@ app.add_middleware(RequestLoggingMiddleware)
 
 class AdminVerificationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
+        # Always allow OPTIONS preflight — CORS handles those
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         protected_prefixes = ("/api/v1/admin", "/api/v1/actuarial", "/api/v1/support/admin")
         excluded_paths = {"/api/v1/auth/admin/login"}
 
         if request.url.path.startswith(protected_prefixes) and request.url.path not in excluded_paths:
             auth_header = request.headers.get("Authorization", "")
             if not auth_header.startswith("Bearer "):
-                return JSONResponse({"detail": "Admin authorization required"}, status_code=401)
+                return JSONResponse(
+                    {"detail": "Admin authorization required"},
+                    status_code=401,
+                    headers={"Access-Control-Allow-Origin": "*"},
+                )
             try:
                 payload = decode_token(auth_header.replace("Bearer ", "", 1))
             except Exception:
-                return JSONResponse({"detail": "Admin token expired or invalid. Please log in again."}, status_code=401)
+                return JSONResponse(
+                    {"detail": "Admin token expired or invalid. Please log in again."},
+                    status_code=401,
+                    headers={"Access-Control-Allow-Origin": "*"},
+                )
             if payload.get("role") != "admin":
-                return JSONResponse({"detail": "Admin token required"}, status_code=403)
+                return JSONResponse(
+                    {"detail": "Admin token required"},
+                    status_code=403,
+                    headers={"Access-Control-Allow-Origin": "*"},
+                )
             request.state.admin = payload
         return await call_next(request)
 
@@ -156,3 +179,8 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy", "version": "3.0.0", "service": "GuidePay API"}
+
+
+@app.options("/{path:path}")
+async def options_handler(path: str):
+    return {"status": "ok", "path": path}

@@ -136,17 +136,9 @@ const InsurerDashboard = () => {
     try {
       const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
       if (!USE_MOCK) {
-        const token = localStorage.getItem('gp-token')
-        const res = await fetch(
-          `${import.meta.env.VITE_API_URL}/api/v1/admin/predictive-analytics`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        )
-        if (res.ok) {
-          const data = await res.json()
-          setPredictions(data)
-        } else {
-          setPredictions(DEMO_PREDICTIONS)
-        }
+        const { getAdminPredictiveAnalytics } = await import('../../services/api')
+        const res = await getAdminPredictiveAnalytics()
+        setPredictions(res)
       } else {
         setPredictions(DEMO_PREDICTIONS)
       }

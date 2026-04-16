@@ -716,6 +716,90 @@ async def unsuspend_worker(
     return {"success": True, "worker_id": str(obj_id), "status": "active"}
 
 
+@router.get("/zone-risk-monitor")
+async def get_zone_risk_monitor(db=Depends(get_admin_db)):
+    """
+    Returns per-city risk levels based on active policies, claims, and trigger events.
+    Used by the Admin Dashboard Zone Risk Monitor table.
+    """
+    now = datetime.utcnow()
+    month_start = now.replace(day=1, hour=0, minute=0, second=0)
+
+    # Aggregate active policies per city
+    city_policies = await db.policies.aggregate([
+        {"$match": {"status": "ACTIVE"}},
+        {"$group": {"_id": "$city", "count": {"$sum": 1}}}
+    ]).to_list(20)
+    policy_map = {r["_id"]: r["count"] for r in city_policies if r.get("_id")}
+
+    # Aggregate claims this month per city
+    city_claims = await db.claims.aggregate([
+        {"$match": {"created_at": {"$gte": month_start}}},
+        {"$group": {"_id": "$city", "count": {"$sum": 1}, "total_payout": {"$sum": "$amount"}}}
+    ]).to_list(20)
+    claims_map = {r["_id"]: r for r in city_claims if r.get("_id")}
+
+    # Active trigger events per city
+    active_triggers = await db.trigger_events.aggregate([
+        {"$match": {"status": "ACTIVE"}},
+        {"$group": {"_id": "$city", "count": {"$sum": 1}}}
+    ]).to_list(20)
+    trigger_map = {r["_id"]: r["count"] for r in active_triggers if r.get("_id")}
+
+    all_cities = set(list(policy_map.keys()) + list(claims_map.keys()) + list(trigger_map.keys()))
+    # Fallback cities for demo
+    if not all_cities:
+        all_cities = {"Hyderabad", "Mumbai", "Chennai", "Bengaluru", "Delhi"}
+
+    zones = []
+    critical_zones = 0
+    total_exposure = 0
+
+    PAYOUT_AVG = 600  # avg payout per claim in INR
+
+    for city in sorted(all_cities):
+        active_pol = policy_map.get(city, 0)
+        claims_month = claims_map.get(city, {}).get("count", 0)
+        triggers_active = trigger_map.get(city, 0)
+        potential_exposure = active_pol * PAYOUT_AVG
+
+        # Compute risk level
+        claim_ratio = (claims_month / active_pol) if active_pol > 0 else 0
+        if triggers_active > 0 or claim_ratio > 0.4:
+            risk_level, risk_color = "CRITICAL", "red"
+            critical_zones += 1
+        elif claim_ratio > 0.2:
+            risk_level, risk_color = "HIGH", "orange"
+        elif claim_ratio > 0.05:
+            risk_level, risk_color = "MEDIUM", "yellow"
+        else:
+            risk_level, risk_color = "LOW", "green"
+
+        total_exposure += potential_exposure
+        zones.append({
+            "city": city,
+            "risk_level": risk_level,
+            "risk_color": risk_color,
+            "active_policies": active_pol,
+            "claims_this_month": claims_month,
+            "active_triggers": triggers_active,
+            "potential_exposure_inr": potential_exposure,
+        })
+
+    # Sort: critical first, then by potential exposure desc
+    zones.sort(key=lambda z: (z["risk_color"] != "red", z["risk_color"] != "orange", -z["potential_exposure_inr"]))
+
+    return {
+        "zones": zones,
+        "summary": {
+            "total_cities_monitored": len(zones),
+            "critical_zones": critical_zones,
+            "total_potential_exposure": total_exposure,
+            "generated_at": now.isoformat(),
+        }
+    }
+
+
 @router.get("/actuarial-metrics")
 async def get_actuarial_metrics(db=Depends(get_admin_db)):
     """
