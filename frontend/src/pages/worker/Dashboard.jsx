@@ -78,15 +78,17 @@ export default function Dashboard() {
             riskScore: profile.risk_score,
             riskTier: profile.risk_tier,
             premium: profile.premium_amount,
-            coverageCap: 600,
+            coverageCap: profile.active_policy?.coverage_cap || profile.active_policy?.payout_amount || 600,
           })
           if (profile.active_policy) {
             setActivePolicy({
               policyId: profile.active_policy._id || profile.active_policy.id,
               planId: profile.active_policy.plan_id,
               planName: profile.active_policy.plan_name,
-              price: profile.active_policy.weekly_premium,
-              coverage: profile.active_policy.coverage_cap || 600,
+              price: profile.active_policy.weekly_premium || profile.active_policy.premium_paid,
+              coverage: profile.active_policy.coverage_cap || profile.active_policy.payout_amount || 600,
+              payoutTier: profile.active_policy.payout_tier || profile.active_policy.income_tier,
+              payoutAmount: profile.active_policy.payout_amount || profile.active_policy.coverage_cap || 600,
               weekStart: profile.active_policy.week_start,
               weekEnd: profile.active_policy.week_end,
               paymentId: profile.active_policy.payment_id,

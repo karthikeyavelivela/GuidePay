@@ -46,13 +46,14 @@ def get_razorpay_client():
 
 class CreateOrderRequest(BaseModel):
     plan_id: str
+    amount: float = 0  # zone-adjusted amount from frontend
 
 class VerifyPaymentRequest(BaseModel):
     razorpay_order_id: str
     razorpay_payment_id: str
     razorpay_signature: str
     plan_id: str
-    amount: float = 0  # optional, sent by frontend
+    amount: float = 0  # zone-adjusted amount paid by worker
 
 class PayoutRequest(BaseModel):
     claim_id: str
@@ -68,6 +69,9 @@ async def create_payment_order(
     if not plan:
         raise HTTPException(400, "Invalid plan")
 
+    # Use zone-adjusted amount if provided by frontend, else fall back to base price
+    charge_amount = request.amount if request.amount > 0 else plan["price"]
+
     mock_mode = getattr(
         settings, 'razorpay_mock_mode', 'true'
     ).lower() == 'true'
@@ -77,16 +81,17 @@ async def create_payment_order(
         order_id = f"order_MOCK_{uuid.uuid4().hex[:16]}"
         return {
             "order_id": order_id,
-            "amount": int(plan["price"] * 100),
+            "amount": int(charge_amount * 100),
             "currency": "INR",
             "key": settings.razorpay_key_id,
             "mock": True,
+            "actual_amount": charge_amount,
         }
 
     try:
         client = get_razorpay_client()
         order = client.order.create({
-            "amount": int(plan["price"] * 100),
+            "amount": int(charge_amount * 100),
             "currency": "INR",
             "notes": {
                 "plan_id": request.plan_id,
@@ -96,10 +101,11 @@ async def create_payment_order(
 
         return {
             "order_id": order["id"],
-            "amount": plan["price"],
+            "amount": charge_amount,
             "currency": "INR",
             "key": settings.razorpay_key_id,
             "mock": False,
+            "actual_amount": charge_amount,
         }
     except Exception as e:
         logger.error(f"Razorpay order error: {e}")
@@ -172,14 +178,18 @@ async def verify_payment(
     is_daily = request.plan_id == "daily"
     expires_delta = timedelta(hours=24) if is_daily else timedelta(days=7)
 
+    # Use the actual zone-adjusted amount paid by the worker
+    actual_premium = request.amount if request.amount > 0 else plan["price"]
+
     policy_doc = {
         "_id": policy_id,
         "worker_id": worker_id,
         "plan_id": request.plan_id,
         "plan_name": plan["name"],
         "plan_type": request.plan_id,
-        "weekly_premium": plan["price"],
-        "premium_paid": plan["price"],
+        "weekly_premium": actual_premium,      # zone-adjusted real amount
+        "base_premium": plan["price"],          # original base for reference
+        "premium_paid": actual_premium,
         "coverage_cap": float(payout_amount),  # tier-based, not flat 600
         "payout_tier": payout_tier,
         "payout_amount": payout_amount,
@@ -203,7 +213,7 @@ async def verify_payment(
         "worker_id": worker_id,
         "razorpay_payment_id": request.razorpay_payment_id,
         "razorpay_order_id": request.razorpay_order_id,
-        "amount": plan["price"],
+        "amount": actual_premium,
         "currency": "INR",
         "status": "captured",
         "created_at": now,
@@ -217,7 +227,8 @@ async def verify_payment(
             "plan_id": request.plan_id,
             "plan_name": plan["name"],
             "plan_type": request.plan_id,
-            "weekly_premium": plan["price"],
+            "weekly_premium": actual_premium,
+            "base_premium": plan["price"],
             "coverage_cap": payout_amount,
             "payout_tier": payout_tier,
             "payout_amount": payout_amount,
@@ -230,7 +241,7 @@ async def verify_payment(
         "payment_id": request.razorpay_payment_id,
         "receipt": {
             "receipt_id": f"GP-{request.razorpay_payment_id[-8:].upper()}",
-            "amount": plan["price"],
+            "amount": actual_premium,
             "plan": plan["name"],
             "timestamp": now.isoformat(),
         }
