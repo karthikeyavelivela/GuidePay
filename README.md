@@ -34,7 +34,7 @@ The worker never opens the app. The worker never files a claim. Everything is au
 
 ## Demo Video
 
-[![Demo Video](https://img.shields.io/badge/Demo_Video-Watch_on_YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](YOUR_DEMO_VIDEO_LINK_HERE)
+[![Demo Video](https://img.shields.io/badge/Demo_Video-Watch_on_YouTube-FF0000?style=for-the-badge&logo=youtube&logoColor=white)](https://youtu.be/E13CQEx5pBI?si=zWGzfyyBFphmIa22)
 
 > **5-minute end-to-end demo:** Worker registration → Policy purchase → Trigger simulation → Automated fraud scoring → UPI payout → Audit trail verification.
 
@@ -269,6 +269,8 @@ Admin panel: [guidepayklu.vercel.app/admin/login](https://guidepayklu.vercel.app
 5. Return to worker view — claim appears with full hash-chained audit trail
 6. Check admin Claims Queue — payout shows ₹600 (Silver tier)
 
+> **📌 Note for Judges:** The claim payout amount may display as **₹0** in the demo environment. This is because no real money has been paid by the worker in this demo — it uses test/simulated payments via Razorpay's test mode. In a real deployment where workers pay actual premiums, the system reads and displays the correct payout amount (₹400 / ₹600 / ₹900) based on their active policy tier. The full automated pipeline logic is intact and functional.
+
 ### Run Locally
 
 ```bash
@@ -323,7 +325,7 @@ VITE_RAZORPAY_KEY_ID=rzp_test_...
 | API Documentation | https://guidepay.onrender.com/docs |
 | Source Code | https://github.com/karthikeyavelivela/GuidePay |
 | Pitch Deck | https://drive.google.com/file/d/1qTPfL6nEnW_R5tEsK4xyANe6yNZC7UHY/view?usp=sharing |
-| Demo Video | YOUR_DEMO_VIDEO_LINK_HERE |
+| Demo Video | https://youtu.be/E13CQEx5pBI?si=zWGzfyyBFphmIa22 |
 
 ---
 
