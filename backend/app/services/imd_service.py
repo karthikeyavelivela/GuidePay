@@ -361,8 +361,8 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
     eligibility = await evaluate_worker_eligibility(worker, policy, trigger_event, db)
     remaining_coverage = await _calculate_remaining_weekly_coverage(db, policy)
 
-    # Read the correct coverage field (coverage_amount or coverage, not premium)
-    base_coverage = float(policy.get("coverage_amount", policy.get("coverage", 0.0)))
+    # Read the correct coverage field
+    base_coverage = float(policy.get("coverage_cap", 0.0))
 
     # Apply payout percentage, cap at remaining coverage
     proposed_payout = round(base_coverage * trigger_event.get("payout_percentage", 1.0), 2)
