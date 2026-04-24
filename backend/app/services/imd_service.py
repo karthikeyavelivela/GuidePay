@@ -329,18 +329,26 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
     from app.services.underwriting_service import evaluate_worker_eligibility
     from app.services.premium_service import calculate_payout_amount
     from bson import ObjectId
+    import asyncio
 
     worker_id = str(worker["_id"])
 
-    policy = policy or await db.policies.find_one({
-        "worker_id": worker_id,
-        "status": "ACTIVE"
-    })
+    # Fallback to direct DB lookup with retry for race conditions
+    if not policy:
+        for _ in range(3):
+            policy = await db.policies.find_one({
+                "worker_id": worker_id,
+                "status": "ACTIVE"
+            })
+            if policy:
+                break
+            await asyncio.sleep(0.5)
 
     if not policy:
+        logger.warning(f"No active policy found for worker {worker_id} after retries")
         return
 
-    # --- Income-based dynamic payout ---
+    # --- Dynamic payout from policy coverage ---
     daily_orders = float(
         worker.get(
             "avg_orders_per_day",
@@ -348,17 +356,16 @@ async def create_automatic_claim(worker: dict, trigger_event: dict, db, policy: 
         )
     )
     payout_info = calculate_payout_amount(daily_orders)
-    income_payout = payout_info["payout_amount"]
     payout_tier = payout_info["payout_tier"]
 
     eligibility = await evaluate_worker_eligibility(worker, policy, trigger_event, db)
     remaining_coverage = await _calculate_remaining_weekly_coverage(db, policy)
 
-    # Use income-based payout scaled by payout percentage, but cap at remaining coverage
-    proposed_payout = round(
-        income_payout * trigger_event["payout_percentage"],
-        2,
-    )
+    # Read the correct coverage field (coverage_amount or coverage, not premium)
+    base_coverage = float(policy.get("coverage_amount", policy.get("coverage", 0.0)))
+
+    # Apply payout percentage, cap at remaining coverage
+    proposed_payout = round(base_coverage * trigger_event.get("payout_percentage", 1.0), 2)
     payout_amount = round(min(proposed_payout, remaining_coverage), 2)
 
     fraud_result = await calculate_fraud_score(
