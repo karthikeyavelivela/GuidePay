@@ -10,7 +10,7 @@ async def calculate_risk_score(worker: dict, claims: list, db) -> Dict:
     Calculate worker risk score 0.0 (high risk) - 1.0 (low risk).
     Higher score = more trustworthy = lower premium.
     """
-    score = 0.75  # Default medium risk
+    score = 0.60  # Default medium risk
     factors = {}
 
     # Factor 1: Account age (older = more trustworthy)
@@ -33,6 +33,10 @@ async def calculate_risk_score(worker: dict, claims: list, db) -> Dict:
     # Factor 2: Claim history
     paid_claims = [c for c in claims if c.get("status") == "PAID"]
     rejected_claims = [c for c in claims if c.get("status") == "REJECTED"]
+
+    if paid_claims:
+        score += 0.20
+        factors["paid_bonus"] = 0.20
 
     if rejected_claims:
         rejection_penalty = min(len(rejected_claims) * 0.10, 0.30)
@@ -67,7 +71,7 @@ async def calculate_risk_score(worker: dict, claims: list, db) -> Dict:
         factors["upi_linked"] = False
 
     # Clamp
-    final_score = round(max(0.0, min(1.0, score)), 3)
+    final_score = round(max(0.0, min(1.0, score)), 2)
 
     if final_score >= 0.75:
         tier = "LOW"  # Low risk

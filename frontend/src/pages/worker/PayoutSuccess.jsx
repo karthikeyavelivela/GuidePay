@@ -24,9 +24,17 @@ const TRANSACTION = [
   { label: 'Processed by',    value: 'Razorpay' },
 ]
 
+import { useEffect } from 'react'
+import { playPayoutVoiceNotification } from '../../services/VoiceNotification'
+
 export default function PayoutSuccess() {
   const navigate = useNavigate()
   const amount = useCountUp(600, 1200)
+
+  useEffect(() => {
+    // Only play once on mount
+    playPayoutVoiceNotification(1200)
+  }, [])
 
   return (
     <motion.div

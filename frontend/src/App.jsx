@@ -38,6 +38,7 @@ const Terms = lazy(() => import('./pages/Terms'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Maintenance = lazy(() => import('./pages/Maintenance'))
 const NotFound = lazy(() => import('./pages/NotFound'))
+const TierDetails = lazy(() => import('./pages/worker/TierDetails'))
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'))
 const ActuarialDashboard = lazy(() => import('./pages/admin/ActuarialDashboard'))
 const ClaimsQueue = lazy(() => import('./pages/admin/ClaimsQueue'))
@@ -139,6 +140,7 @@ function AppRoutes() {
           <Route path="/payout-success" element={<PayoutSuccess />} />
           <Route path="/payout/:claimId" element={<PayoutReceipt />} />
           <Route path="/profile"        element={<Profile />} />
+          <Route path="/tier/:tier"     element={<TierDetails />} />
           <Route path="/claims"         element={<ClaimsList />} />
           <Route path="/notifications"  element={<NotificationsPage />} />
           <Route path="/earnings"       element={<EarningsShield />} />

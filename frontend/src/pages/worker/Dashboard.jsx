@@ -238,7 +238,7 @@ export default function Dashboard() {
   const stats = [
     {
       label: 'PROTECTED',
-      value: displayTotalProtected > 0 ? formatINR(displayTotalProtected) : (activePolicy ? `₹${activePolicy.coverage || 600}` : '₹0'),
+      value: displayTotalProtected > 0 ? formatINR(displayTotalProtected) : (activePolicy ? `₹${activePolicy.coverage || 600}` : '₹0 (No Policy Active)'),
       sub: totalClaims > 0 ? `${totalClaims} payout${totalClaims > 1 ? 's' : ''} received` : 'Coverage active',
       valueColor: '#D97757',
     },
